@@ -1,0 +1,92 @@
+package ovh.battistella.sillon.data.plex
+
+import kotlinx.coroutines.test.runTest
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Before
+import org.junit.Test
+
+class PlexApiTest {
+
+    private val server = MockWebServer()
+    private val device = PlexDevice("Sillon", "1.0.0", "15", "Pixel")
+    private lateinit var api: PlexApi
+
+    @Before
+    fun setUp() {
+        server.start()
+        api = PlexApi(OkHttpClient(), device, server.url("/"))
+    }
+
+    @After
+    fun tearDown() = server.shutdown()
+
+    @Test
+    fun `creates a PIN with the client headers`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"id": 42, "code": "AB12", "expiresIn": 900, "authToken": null}"""))
+
+        val pin = api.createPin("client-1")
+
+        assertEquals(42L, pin.id)
+        assertEquals("AB12", pin.code)
+        assertNull(pin.authToken)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v2/pins", request.requestUrl!!.encodedPath)
+        assertEquals("client-1", request.getHeader("X-Plex-Client-Identifier"))
+        assertEquals("Sillon", request.getHeader("X-Plex-Product"))
+        assertEquals("application/json", request.getHeader("Accept"))
+    }
+
+    @Test
+    fun `sends the token as a header for library calls`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {"Metadata": [{"ratingKey": "5", "title": "A"}]}}"""))
+        val endpoint = ServerEndpoint(server.url("/").toString(), "srv-token")
+
+        val artists = api.artists("client-1", endpoint, "3")
+
+        assertEquals("A", artists.single().title)
+        val request = server.takeRequest()
+        assertEquals("/library/sections/3/all", request.requestUrl!!.encodedPath)
+        assertEquals("8", request.requestUrl!!.queryParameter("type"))
+        assertEquals("srv-token", request.getHeader("X-Plex-Token"))
+    }
+
+    @Test
+    fun `reports a revoked token as unauthorized`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(401))
+        try {
+            api.sections("client-1", ServerEndpoint(server.url("/").toString(), "bad"))
+            fail("expected PlexHttpException")
+        } catch (e: PlexHttpException) {
+            assertTrue(e.isUnauthorized)
+        }
+    }
+
+    @Test
+    fun `builds direct-play and artwork URLs on the chosen server`() {
+        val endpoint = ServerEndpoint("https://10-0-0-2.abc.plex.direct:32400", "t0k")
+
+        assertEquals(
+            "https://10-0-0-2.abc.plex.direct:32400/library/parts/7/1700000000/file.flac?X-Plex-Token=t0k",
+            api.streamUrl(endpoint, "/library/parts/7/1700000000/file.flac"),
+        )
+        val art = api.artworkUrl(endpoint, "/library/metadata/100/thumb/1700000000", 400)!!
+        assertTrue(art.startsWith("https://10-0-0-2.abc.plex.direct:32400/photo/:/transcode?width=400&height=400"))
+        assertTrue(art.contains("url=%2Flibrary%2Fmetadata%2F100%2Fthumb%2F1700000000"))
+        assertNull(api.artworkUrl(endpoint, null, 400))
+    }
+
+    @Test
+    fun `auth URL carries the client id and code`() {
+        val url = api.authUrl("client-1", PlexPin(id = 1, code = "AB12"))
+        assertTrue(url.startsWith("https://app.plex.tv/auth#?clientID=client-1&code=AB12"))
+        assertTrue(url.contains("context%5Bdevice%5D%5Bproduct%5D=Sillon"))
+    }
+}

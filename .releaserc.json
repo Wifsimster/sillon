@@ -1,0 +1,35 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "bash scripts/set-version.sh ${nextRelease.version} && ./gradlew assembleRelease --stacktrace && (cd app/build/outputs/apk/release && sha256sum app-release.apk > SHA256SUMS.txt)"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["gradle.properties"],
+        "message": "chore(release): v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "app/build/outputs/apk/release/app-release.apk",
+            "label": "Sillon v${nextRelease.version} — Android APK (app-release.apk)"
+          },
+          {
+            "path": "app/build/outputs/apk/release/SHA256SUMS.txt",
+            "label": "SHA256SUMS.txt"
+          }
+        ]
+      }
+    ]
+  ]
+}

@@ -1,0 +1,118 @@
+package ovh.battistella.sillon.data.plex
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/*
+ * Wire models for the two Plex APIs Sillon talks to: plex.tv (account, PIN
+ * sign-in, server discovery) and the Plex Media Server itself (library). Only
+ * the fields Sillon reads are declared; everything else is ignored by the
+ * lenient [PlexJson] decoder, so a Plex update adding fields can't break us.
+ */
+
+/** A sign-in PIN from `POST plex.tv/api/v2/pins`. [authToken] is set once the user approves it. */
+@Serializable
+data class PlexPin(
+    val id: Long,
+    val code: String,
+    val authToken: String? = null,
+    val expiresIn: Long = 0,
+)
+
+/** A device linked to the account, from `GET plex.tv/api/v2/resources`. */
+@Serializable
+data class PlexResource(
+    val name: String,
+    val clientIdentifier: String,
+    val provides: String = "",
+    val owned: Boolean = false,
+    val accessToken: String? = null,
+    val connections: List<PlexConnection> = emptyList(),
+) {
+    val isServer: Boolean get() = provides.split(',').any { it.trim() == "server" }
+}
+
+/** One way to reach a server: LAN address, public address or Plex relay. */
+@Serializable
+data class PlexConnection(
+    val protocol: String = "",
+    val address: String = "",
+    val port: Int = 0,
+    val uri: String,
+    val local: Boolean = false,
+    val relay: Boolean = false,
+)
+
+/** Every Plex Media Server response is wrapped as `{"MediaContainer": {...}}`. */
+@Serializable
+data class PlexResponse(
+    @SerialName("MediaContainer") val container: MediaContainer = MediaContainer(),
+)
+
+@Serializable
+data class MediaContainer(
+    val size: Int = 0,
+    val machineIdentifier: String? = null,
+    @SerialName("Directory") val directories: List<PlexDirectory> = emptyList(),
+    @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
+)
+
+/** A library section. Music sections have `type == "artist"`. */
+@Serializable
+data class PlexDirectory(
+    val key: String,
+    val title: String,
+    val type: String = "",
+) {
+    val isMusic: Boolean get() = type == TYPE_MUSIC_SECTION
+
+    companion object {
+        const val TYPE_MUSIC_SECTION = "artist"
+    }
+}
+
+/**
+ * An artist, album or track. Plex uses the same shape for all three, with the
+ * hierarchy flattened into `parent*` (one level up) and `grandparent*` (two
+ * levels up): for a track, the parent is the album and the grandparent the artist.
+ */
+@Serializable
+data class PlexMetadata(
+    val ratingKey: String,
+    val type: String = "",
+    val title: String = "",
+    val parentTitle: String? = null,
+    val grandparentTitle: String? = null,
+    /** Track artist when it differs from the album artist (compilations, featurings). */
+    val originalTitle: String? = null,
+    val index: Int? = null,
+    val year: Int? = null,
+    val duration: Long? = null,
+    val leafCount: Int? = null,
+    val thumb: String? = null,
+    val parentThumb: String? = null,
+    val grandparentThumb: String? = null,
+    @SerialName("Media") val media: List<PlexMedia> = emptyList(),
+) {
+    /** Cover art: a track usually has none of its own and borrows its album's. */
+    val artwork: String? get() = thumb ?: parentThumb ?: grandparentThumb
+
+    /** Server path of the first playable file, e.g. `/library/parts/12/1700000000/file.flac`. */
+    val partKey: String? get() = media.firstOrNull()?.parts?.firstOrNull()?.key
+
+    /** The artist to show for a track. */
+    val trackArtist: String? get() = originalTitle ?: grandparentTitle
+}
+
+@Serializable
+data class PlexMedia(
+    val audioCodec: String? = null,
+    val container: String? = null,
+    @SerialName("Part") val parts: List<PlexPart> = emptyList(),
+)
+
+@Serializable
+data class PlexPart(
+    val key: String,
+    val duration: Long? = null,
+)
