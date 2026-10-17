@@ -42,14 +42,16 @@ class SignInViewModel @Inject constructor(
         _state.value = SignInState.Loading
         job = viewModelScope.launch {
             try {
-                val pin = repository.createPin()
-                _state.value = SignInState.Waiting(pin.code, repository.authUrl(pin))
+                val pins = repository.createPins()
+                _state.value = SignInState.Waiting(pins.link.code, repository.authUrl(pins.browser))
                 val deadline = System.currentTimeMillis() + MAX_WAIT_MS
                 while (System.currentTimeMillis() < deadline) {
                     delay(POLL_INTERVAL_MS)
                     // A dropped poll (flaky network) isn't fatal: try again next tick.
-                    val approved = runCatching { repository.completeSignInIfApproved(pin) }.getOrDefault(false)
-                    if (approved) return@launch
+                    for (pin in listOf(pins.browser, pins.link)) {
+                        val approved = runCatching { repository.completeSignInIfApproved(pin) }.getOrDefault(false)
+                        if (approved) return@launch
+                    }
                 }
                 _state.value = SignInState.Expired
             } catch (e: Exception) {

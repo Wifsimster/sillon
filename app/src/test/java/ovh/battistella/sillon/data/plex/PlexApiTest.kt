@@ -31,7 +31,7 @@ class PlexApiTest {
     fun `creates a PIN with the client headers`() = runTest {
         server.enqueue(MockResponse().setBody("""{"id": 42, "code": "AB12", "expiresIn": 900, "authToken": null}"""))
 
-        val pin = api.createPin("client-1")
+        val pin = api.createPin("client-1", strong = false)
 
         assertEquals(42L, pin.id)
         assertEquals("AB12", pin.code)
@@ -39,9 +39,19 @@ class PlexApiTest {
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/api/v2/pins", request.requestUrl!!.encodedPath)
+        assertNull(request.requestUrl!!.queryParameter("strong"))
         assertEquals("client-1", request.getHeader("X-Plex-Client-Identifier"))
         assertEquals("Sillon", request.getHeader("X-Plex-Product"))
         assertEquals("application/json", request.getHeader("Accept"))
+    }
+
+    @Test
+    fun `asks for a strong PIN for the browser sign-in`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"id": 43, "code": "wwxn988ytlwh8jt7ct622327n"}"""))
+
+        api.createPin("client-1", strong = true)
+
+        assertEquals("true", server.takeRequest().requestUrl!!.queryParameter("strong"))
     }
 
     @Test

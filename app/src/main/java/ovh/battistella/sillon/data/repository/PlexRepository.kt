@@ -1,5 +1,7 @@
 package ovh.battistella.sillon.data.repository
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -18,6 +20,9 @@ import ovh.battistella.sillon.data.session.SessionStore
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** The two PINs of a sign-in attempt; approving either one signs the user in. */
+data class SignInPins(val browser: PlexPin, val link: PlexPin)
 
 /** Thrown when a library call is made before a server is selected. */
 class NoServerException : IllegalStateException("No Plex server selected")
@@ -39,7 +44,13 @@ class PlexRepository @Inject constructor(
     // Sign-in
     // ---------------------------------------------------------------------
 
-    suspend fun createPin(): PlexPin = api.createPin(sessionStore.clientId())
+    /** A strong PIN for the browser sign-in and a short one for plex.tv/link. */
+    suspend fun createPins(): SignInPins = coroutineScope {
+        val clientId = sessionStore.clientId()
+        val browser = async { api.createPin(clientId, strong = true) }
+        val link = async { api.createPin(clientId, strong = false) }
+        SignInPins(browser = browser.await(), link = link.await())
+    }
 
     suspend fun authUrl(pin: PlexPin): String = api.authUrl(sessionStore.clientId(), pin)
 

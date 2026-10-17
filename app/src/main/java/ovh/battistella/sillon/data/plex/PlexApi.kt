@@ -72,12 +72,19 @@ class PlexApi(
     // ---------------------------------------------------------------------
 
     /**
-     * Create a short (4-character) PIN. The user approves it either in the
-     * browser via [authUrl] or by typing it at plex.tv/link.
+     * Create a sign-in PIN. Plex has two kinds, one per way of approving it:
+     * a [strong] one (25 characters) for the browser page at [authUrl], and a
+     * short one (4 characters) to type at plex.tv/link. The browser page
+     * rejects a short PIN with "unable to respond to the request".
      */
-    suspend fun createPin(clientId: String): PlexPin {
+    suspend fun createPin(clientId: String, strong: Boolean): PlexPin {
         val request = Request.Builder()
-            .url(plexTv.newBuilder().addPathSegments("api/v2/pins").build())
+            .url(
+                plexTv.newBuilder()
+                    .addPathSegments("api/v2/pins")
+                    .apply { if (strong) addQueryParameter("strong", "true") }
+                    .build(),
+            )
             .headers(clientId)
             .post(FormBody.Builder().build())
             .build()
@@ -99,7 +106,7 @@ class PlexApi(
         return PlexJson.decodeFromString(PlexPin.serializer(), client.fetch(request))
     }
 
-    /** Browser URL where the signed-in user approves [pin] for this device. */
+    /** Browser URL where the signed-in user approves a strong [pin] for this device. */
     fun authUrl(clientId: String, pin: PlexPin): String =
         "https://app.plex.tv/auth#?" + listOf(
             "clientID" to clientId,
