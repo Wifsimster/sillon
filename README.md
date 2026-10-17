@@ -24,15 +24,16 @@ artists and albums, and listen with the screen off.
 - 📊 **Plays reported to Plex**: the track shows under *Now playing* on the
   server dashboard, lands in the history and counts as played — whether
   playback was started from the app, the notification or a headset.
+- 🚗 **Android Auto**: browse artists, albums and playlists in the car, and
+  play by voice ("play … on Sillon").
 - 🌍 English and French, Material You.
 
 ## Roadmap
 
 1. Search, all-albums view, playlists, choosing among several music libraries.
-2. Android Auto (a `MediaLibraryService` browse tree, as in Ondes).
-3. Offline downloads (WorkManager) and transcoding on mobile data.
-4. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
-5. A Windows desktop app (Tauri), later.
+2. Offline downloads (WorkManager) and transcoding on mobile data.
+3. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
+4. A Windows desktop app (Tauri), later.
 
 ## Tech stack
 
