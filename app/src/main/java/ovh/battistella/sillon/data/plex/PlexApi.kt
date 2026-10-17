@@ -202,6 +202,16 @@ class PlexApi(
         get(clientId, server, "library/metadata/$ratingKey/children").metadata
 
     /** A single item (artist, album or track) by key. */
+    /**
+     * Full metadata of several items in one request (Plex accepts a comma
+     * separated list of keys). Unlike listings, it includes the audio streams
+     * and their loudness gains.
+     */
+    suspend fun metadataBatch(clientId: String, server: ServerEndpoint, ratingKeys: List<String>): List<PlexMetadata> =
+        ratingKeys.chunked(BATCH_SIZE).flatMap { keys ->
+            get(clientId, server, "library/metadata/${keys.joinToString(",")}").metadata
+        }
+
     suspend fun metadata(clientId: String, server: ServerEndpoint, ratingKey: String): PlexMetadata? =
         get(clientId, server, "library/metadata/$ratingKey").metadata.firstOrNull()
 
@@ -333,6 +343,7 @@ class PlexApi(
         private const val TYPE_TRACK = "10"
         private const val FIVE_STARS = 9.5f
         private const val SEARCH_LIMIT = 20
+        private const val BATCH_SIZE = 50
         private const val PROBE_TIMEOUT_S = 4L
     }
 }

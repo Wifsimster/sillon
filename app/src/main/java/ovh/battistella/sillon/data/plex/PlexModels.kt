@@ -107,6 +107,8 @@ data class PlexMetadata(
     val ratingCount: Long? = null,
     /** How many times the user played it. */
     val viewCount: Int? = null,
+    /** Track gain in dB from servers that give it directly (Jellyfin's NormalizationGain). */
+    val normalizationGain: Float? = null,
     val thumb: String? = null,
     val parentThumb: String? = null,
     val grandparentThumb: String? = null,
@@ -123,6 +125,16 @@ data class PlexMetadata(
     /** The user's rating in stars (0–5), when rated. */
     val stars: Float? get() = userRating?.takeIf { it > 0f }?.div(2f)
 
+    /** Loudness gains of the track's audio stream, when Plex analysed it. */
+    private val audioStream: PlexStream?
+        get() = media.firstOrNull()?.parts?.firstOrNull()?.streams?.firstOrNull { it.streamType == 2 }
+
+    /** dB to apply for the same loudness track to track; set directly for Jellyfin. */
+    val trackGain: Float? get() = normalizationGain ?: audioStream?.gain
+
+    /** dB to apply for the same loudness album to album, keeping the album's own dynamics. */
+    val albumGain: Float? get() = audioStream?.albumGain ?: trackGain
+
     /** The artist to show for a track. */
     val trackArtist: String? get() = originalTitle ?: grandparentTitle
 }
@@ -138,4 +150,20 @@ data class PlexMedia(
 data class PlexPart(
     val key: String,
     val duration: Long? = null,
+    /** Only in full item responses (not listings): see [PlexApi.metadataBatch]. */
+    @SerialName("Stream") val streams: List<PlexStream> = emptyList(),
+)
+
+/**
+ * A stream of a file. For audio (streamType 2), Plex adds ReplayGain-style
+ * values once the library's loudness analysis has run: gains in dB to bring
+ * the track (or its album) to a common loudness.
+ */
+@Serializable
+data class PlexStream(
+    val streamType: Int = 0,
+    val gain: Float? = null,
+    val albumGain: Float? = null,
+    val peak: Float? = null,
+    val albumPeak: Float? = null,
 )

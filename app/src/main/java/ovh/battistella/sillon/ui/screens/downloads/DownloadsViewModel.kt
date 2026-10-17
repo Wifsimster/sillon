@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.local.DownloadEntity
@@ -97,6 +98,7 @@ class DownloadedAlbumViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val downloads: DownloadManager,
     private val playback: PlaybackConnection,
+    private val settings: SettingsStore,
 ) : ViewModel() {
 
     private val albumKey: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
@@ -129,14 +131,21 @@ class DownloadedAlbumViewModel @Inject constructor(
         }
     }
 
-    private fun playable() = rows.filter { it.isPlayableOffline() }.map { it.toPlayable() }
-
-    fun play(trackKey: String?) {
-        val tracks = playable()
-        playback.play(tracks, tracks.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0))
+    private suspend fun playable(): List<ovh.battistella.sillon.playback.PlayableTrack> {
+        val mode = settings.loudness.first()
+        return rows.filter { it.isPlayableOffline() }.map { it.toPlayable(mode) }
     }
 
-    fun shuffle() = playback.play(playable(), shuffle = true)
+    fun play(trackKey: String?) {
+        viewModelScope.launch {
+            val tracks = playable()
+            playback.play(tracks, tracks.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0))
+        }
+    }
+
+    fun shuffle() {
+        viewModelScope.launch { playback.play(playable(), shuffle = true) }
+    }
 
     /** Remove the whole album from the phone. */
     fun remove() {
