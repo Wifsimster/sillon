@@ -6,6 +6,8 @@ data class TileUi(
     val title: String,
     val subtitle: String?,
     val artworkUrl: String?,
+    /** Shown as "N tracks" when there is no [subtitle] (playlists). */
+    val trackCount: Int? = null,
 )
 
 data class TrackUi(

@@ -33,4 +33,14 @@
     <string name="player_next">Titre suivant</string>
     <string name="player_previous">Titre précédent</string>
     <string name="player_open">Ouvrir le lecteur</string>
+
+    <string name="library_albums">Albums</string>
+    <string name="library_playlists">Playlists</string>
+    <string name="library_tracks">Titres</string>
+    <string name="library_search">Recherche</string>
+    <string name="playlists_empty">Aucune playlist musicale sur ce serveur.</string>
+    <string name="search_hint">Artistes, albums, titres</string>
+    <string name="search_clear">Effacer</string>
+    <string name="search_no_results">Aucun résultat pour « %1$s ».</string>
+    <string name="action_more">Plus d\'options</string>
 </resources>

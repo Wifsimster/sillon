@@ -137,4 +137,43 @@ class PlexApiTest {
         assertNull(streamEndpoint("https://example.com/no-token.mp3"))
         assertNull(streamEndpoint("not a url"))
     }
+
+    @Test
+    fun `searches the music library and groups results by type`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Hub": [
+                  {"type": "artist", "title": "Artists", "Metadata": [{"ratingKey": "5", "title": "Daft Punk"}]},
+                  {"type": "track", "title": "Tracks", "Metadata": [
+                    {"ratingKey": "9", "title": "One More Time", "parentRatingKey": "8", "parentTitle": "Discovery"}]}
+                ]}}""",
+            ),
+        )
+        val endpoint = ServerEndpoint(server.url("/").toString(), "t")
+
+        val hubs = api.search("c", endpoint, "3", "daft")
+
+        assertEquals(listOf("artist", "track"), hubs.map { it.type })
+        assertEquals("8", hubs[1].metadata.single().parentRatingKey)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/hubs/search", url.encodedPath)
+        assertEquals("daft", url.queryParameter("query"))
+        assertEquals("3", url.queryParameter("sectionId"))
+    }
+
+    @Test
+    fun `lists audio playlists with their mosaic cover`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Metadata": [
+                  {"ratingKey": "77", "title": "Running", "leafCount": 42, "composite": "/playlists/77/composite/1"}]}}""",
+            ),
+        )
+
+        val playlist = api.playlists("c", ServerEndpoint(server.url("/").toString(), "t")).single()
+
+        assertEquals(42, playlist.leafCount)
+        assertEquals("/playlists/77/composite/1", playlist.artwork)
+        assertEquals("audio", server.takeRequest().requestUrl!!.queryParameter("playlistType"))
+    }
 }

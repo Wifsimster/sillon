@@ -35,4 +35,14 @@
     <string name="player_next">Next track</string>
     <string name="player_previous">Previous track</string>
     <string name="player_open">Open the player</string>
+
+    <string name="library_albums">Albums</string>
+    <string name="library_playlists">Playlists</string>
+    <string name="library_tracks">Tracks</string>
+    <string name="library_search">Search</string>
+    <string name="playlists_empty">No music playlists on this server.</string>
+    <string name="search_hint">Artists, albums, tracks</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_no_results">Nothing found for “%1$s”.</string>
+    <string name="action_more">More options</string>
 </resources>
