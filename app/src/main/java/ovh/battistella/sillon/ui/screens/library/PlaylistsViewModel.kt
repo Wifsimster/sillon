@@ -120,12 +120,14 @@ class FiveStarsViewModel @Inject constructor(
     override suspend fun fetch(): TrackCollection {
         val tracks = repository.fiveStarTracks()
         val pop = popularityOf(tracks)
+        val server = repository.endpoint()
         return TrackCollection(
             ui = AlbumUi(
                 title = context.getString(R.string.five_stars),
                 artist = null,
                 year = null,
-                artworkUrl = null,
+                // The cover of a 5-star track rather than an empty square.
+                artworkUrl = tracks.firstNotNullOfOrNull { repository.artworkUrl(server, it.artwork, HEADER_ART_PX) },
                 tracks = tracks.map { it.toTrackUi(null, listOfNotNull(it.trackArtist, it.parentTitle).joinToString(" · "), pop) },
             ),
             tracks = tracks,

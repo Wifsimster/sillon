@@ -26,17 +26,21 @@ data class TrackUi(
 )
 
 /**
- * Popularity of each track relative to the most popular one in [tracks], on a
- * log scale: listener counts span orders of magnitude, and a linear scale
- * would show every track but the hit as empty.
+ * Popularity of each track within [tracks]: the least popular is 0, the most
+ * popular 1, on a log scale in between. Relative to the list's own range, not
+ * to zero: on a popular album every track has millions of listeners, and
+ * measuring from zero lit every bar. Like Plexamp, it answers "which are the
+ * hits of this album?".
  */
 fun popularityOf(tracks: List<PlexMetadata>): Map<String, Float> {
-    val max = tracks.maxOfOrNull { it.ratingCount ?: 0L } ?: 0L
-    if (max <= 0L) return emptyMap()
-    val top = ln(max + 1.0)
-    return tracks.mapNotNull { t ->
-        t.ratingCount?.let { t.ratingKey to (ln(it + 1.0) / top).toFloat().coerceIn(0f, 1f) }
-    }.toMap()
+    val counts = tracks.mapNotNull { t -> t.ratingCount?.takeIf { it > 0 }?.let { t.ratingKey to ln(it.toDouble()) } }
+    if (counts.isEmpty()) return emptyMap()
+    val low = counts.minOf { it.second }
+    val high = counts.maxOf { it.second }
+    val range = high - low
+    return counts.associate { (key, value) ->
+        key to if (range <= 0.0) 1f else ((value - low) / range).toFloat()
+    }
 }
 
 /** A track as a row, with its popularity among [popularity] and the user's rating. */
