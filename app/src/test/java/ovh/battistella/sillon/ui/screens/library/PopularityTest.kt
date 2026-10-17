@@ -11,13 +11,22 @@ class PopularityTest {
     private fun track(key: String, listeners: Long?) = PlexMetadata(ratingKey = key, title = key, ratingCount = listeners)
 
     @Test
-    fun `the most popular track of the list is full, the others relative on a log scale`() {
-        val pop = popularityOf(listOf(track("hit", 1_000_000), track("deep cut", 1_000), track("unknown", null)))
+    fun `popularity spans the album's own range on a log scale`() {
+        val pop = popularityOf(
+            listOf(track("hit", 1_000_000), track("single", 31_623), track("intro", 1_000), track("unknown", null)),
+        )
 
         assertEquals(1f, pop.getValue("hit"), 0.001f)
-        // 1 000 listeners is half of a million on a log scale, not 0.1 %.
-        assertEquals(0.5f, pop.getValue("deep cut"), 0.01f)
+        // Halfway between 1 000 and 1 000 000 on a log scale.
+        assertEquals(0.5f, pop.getValue("single"), 0.01f)
+        assertEquals(0f, pop.getValue("intro"), 0.001f)
         assertNull(pop["unknown"])
+    }
+
+    @Test
+    fun `an album of equally popular tracks is all hits`() {
+        val pop = popularityOf(listOf(track("a", 5_000), track("b", 5_000)))
+        assertEquals(listOf(1f, 1f), pop.values.toList())
     }
 
     @Test
