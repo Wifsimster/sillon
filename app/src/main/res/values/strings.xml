@@ -65,4 +65,9 @@
         <item quantity="one">%1$d track · %2$s</item>
         <item quantity="other">%1$d tracks · %2$s</item>
     </plurals>
+    <string name="five_stars">My 5 stars</string>
+    <string name="five_stars_hint">Every track you rated 5 stars</string>
+    <string name="five_stars_shuffle">Shuffle my 5-star tracks</string>
+    <string name="track_popularity">Popularity %1$d of %2$d</string>
+    <string name="track_rating">Rated %1$.1f stars</string>
 </resources>

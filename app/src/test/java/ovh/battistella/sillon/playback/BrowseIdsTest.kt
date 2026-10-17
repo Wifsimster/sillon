@@ -18,6 +18,8 @@ class BrowseIdsTest {
             BrowseNode.Playlist("56"),
             BrowseNode.Track(BrowseNode.Album("34"), "101"),
             BrowseNode.Track(BrowseNode.Playlist("56"), "102"),
+            BrowseNode.FiveStars,
+            BrowseNode.Track(BrowseNode.FiveStars, "103"),
         )
         nodes.forEach { assertEquals(it, BrowseIds.parse(BrowseIds.of(it))) }
     }

@@ -6,6 +6,7 @@ object Routes {
     const val ARTISTS = "artists"
     const val ALBUMS = "albums"
     const val PLAYLISTS = "playlists"
+    const val FIVE_STARS = "five-stars"
     const val SEARCH = "search"
     const val DOWNLOADS = "downloads"
     const val DOWNLOADED_ALBUM = "downloaded/{$ARG_KEY}"

@@ -63,4 +63,9 @@
         <item quantity="one">%1$d titre · %2$s</item>
         <item quantity="other">%1$d titres · %2$s</item>
     </plurals>
+    <string name="five_stars">Mes 5 étoiles</string>
+    <string name="five_stars_hint">Tous les titres que tu as notés 5 étoiles</string>
+    <string name="five_stars_shuffle">Lecture aléatoire de mes 5 étoiles</string>
+    <string name="track_popularity">Popularité %1$d sur %2$d</string>
+    <string name="track_rating">Noté %1$.1f étoiles</string>
 </resources>

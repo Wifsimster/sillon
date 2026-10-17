@@ -101,6 +101,12 @@ data class PlexMetadata(
     val year: Int? = null,
     val duration: Long? = null,
     val leafCount: Int? = null,
+    /** The user's rating out of 10 (5 stars = 10), when rated. */
+    val userRating: Float? = null,
+    /** Number of listeners on Last.fm, which Plex uses as the track's popularity. */
+    val ratingCount: Long? = null,
+    /** How many times the user played it. */
+    val viewCount: Int? = null,
     val thumb: String? = null,
     val parentThumb: String? = null,
     val grandparentThumb: String? = null,
@@ -113,6 +119,9 @@ data class PlexMetadata(
 
     /** Server path of the first playable file, e.g. `/library/parts/12/1700000000/file.flac`. */
     val partKey: String? get() = media.firstOrNull()?.parts?.firstOrNull()?.key
+
+    /** The user's rating in stars (0–5), when rated. */
+    val stars: Float? get() = userRating?.takeIf { it > 0f }?.div(2f)
 
     /** The artist to show for a track. */
     val trackArtist: String? get() = originalTitle ?: grandparentTitle

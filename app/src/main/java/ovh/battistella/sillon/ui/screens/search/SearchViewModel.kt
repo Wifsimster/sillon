@@ -15,6 +15,7 @@ import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.screens.library.TILE_ART_PX
 import ovh.battistella.sillon.ui.screens.library.TileUi
 import ovh.battistella.sillon.ui.screens.library.TrackUi
+import ovh.battistella.sillon.ui.screens.library.toTrackUi
 import javax.inject.Inject
 
 data class SearchResults(
@@ -101,7 +102,7 @@ class SearchViewModel @Inject constructor(
             artists = tiles("artist") { null },
             albums = tiles("album") { it.parentTitle },
             tracks = trackResults.map {
-                TrackUi(it.ratingKey, null, it.title, listOfNotNull(it.trackArtist, it.parentTitle).joinToString(" · "), it.duration)
+                it.toTrackUi(null, listOfNotNull(it.trackArtist, it.parentTitle).joinToString(" · "))
             },
         )
     }

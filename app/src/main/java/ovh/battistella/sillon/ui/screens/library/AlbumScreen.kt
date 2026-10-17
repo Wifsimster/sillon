@@ -47,6 +47,8 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
+import ovh.battistella.sillon.ui.components.PopularityBars
+import ovh.battistella.sillon.ui.components.RatingStars
 import ovh.battistella.sillon.ui.components.formatDuration
 
 @Composable
@@ -156,6 +158,8 @@ fun TrackCollectionScreen(
 fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
     val accent = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val artist = track.artist
+    val stars = track.stars
+    val popularity = track.popularity
     ListItem(
         leadingContent = {
             Text(
@@ -168,13 +172,23 @@ fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
         headlineContent = {
             Text(track.title, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
-        supportingContent = if (artist != null) {
-            { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        supportingContent = if (artist != null || stars != null) {
+            {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (stars != null) {
+                        RatingStars(stars, Modifier.padding(end = 6.dp))
+                    }
+                    if (artist != null) Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
         } else {
             null
         },
         trailingContent = {
-            track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (popularity != null) PopularityBars(popularity, Modifier.padding(end = 12.dp))
+                track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
+            }
         },
         modifier = Modifier.clickable(onClick = onClick),
     )
