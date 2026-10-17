@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import ovh.battistella.sillon.data.plex.ServerEndpoint
+import ovh.battistella.sillon.data.plex.ServerKind
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -52,9 +53,14 @@ class SessionStore @Inject constructor(
         if (machineId == null || uri == null || serverToken == null) {
             Session.NeedsServer(userToken)
         } else {
+            val kind = ServerKind.entries.firstOrNull { it.name == prefs[SERVER_KIND] } ?: ServerKind.PLEX
             Session.Ready(
                 userToken,
-                SelectedServer(machineId, prefs[SERVER_NAME].orEmpty(), ServerEndpoint(uri, serverToken)),
+                SelectedServer(
+                    machineId,
+                    prefs[SERVER_NAME].orEmpty(),
+                    ServerEndpoint(uri, serverToken, kind, prefs[SERVER_USER_ID]),
+                ),
             )
         }
     }
@@ -85,12 +91,28 @@ class SessionStore @Inject constructor(
     }
 
     suspend fun selectServer(server: SelectedServer) {
+        store.edit { it.putServer(server) }
+    }
+
+    /**
+     * A Jellyfin sign-in names the server and the token at once: there is no
+     * account-wide server list to pick from as with Plex.
+     */
+    suspend fun signInJellyfin(server: SelectedServer) {
         store.edit {
-            it[SERVER_ID] = server.machineId
-            it[SERVER_NAME] = server.name
-            it[SERVER_URI] = server.endpoint.uri
-            it[SERVER_TOKEN] = server.endpoint.token
+            it[USER_TOKEN] = server.endpoint.token
+            it.putServer(server)
         }
+    }
+
+    private fun androidx.datastore.preferences.core.MutablePreferences.putServer(server: SelectedServer) {
+        this[SERVER_ID] = server.machineId
+        this[SERVER_NAME] = server.name
+        this[SERVER_URI] = server.endpoint.uri
+        this[SERVER_TOKEN] = server.endpoint.token
+        this[SERVER_KIND] = server.endpoint.kind.name
+        val userId = server.endpoint.userId
+        if (userId != null) this[SERVER_USER_ID] = userId else remove(SERVER_USER_ID)
     }
 
     suspend fun clearServer() {
@@ -99,6 +121,8 @@ class SessionStore @Inject constructor(
             it.remove(SERVER_NAME)
             it.remove(SERVER_URI)
             it.remove(SERVER_TOKEN)
+            it.remove(SERVER_KIND)
+            it.remove(SERVER_USER_ID)
             it.remove(MUSIC_SECTION)
         }
     }
@@ -119,5 +143,7 @@ class SessionStore @Inject constructor(
         val SERVER_URI = stringPreferencesKey("server_uri")
         val SERVER_TOKEN = stringPreferencesKey("server_token")
         val MUSIC_SECTION = stringPreferencesKey("music_section")
+        val SERVER_KIND = stringPreferencesKey("server_kind")
+        val SERVER_USER_ID = stringPreferencesKey("server_user_id")
     }
 }

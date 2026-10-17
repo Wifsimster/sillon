@@ -37,7 +37,7 @@ class ArtistViewModel @Inject constructor(
             _state.value = runCatching {
                 val server = repository.endpoint()
                 val artist = async { repository.metadata(key) }
-                val albums = repository.children(key)
+                val albums = repository.albumsOf(key)
                     .sortedByDescending { it.year ?: 0 }
                     .map {
                         TileUi(

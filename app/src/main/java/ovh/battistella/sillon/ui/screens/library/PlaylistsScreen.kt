@@ -40,8 +40,14 @@ fun PlaylistsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingFiveStars by viewModel.startingFiveStars.collectAsStateWithLifecycle()
+    val isJellyfin by viewModel.isJellyfin.collectAsStateWithLifecycle()
     val fiveStarsCard: @Composable () -> Unit = {
-        FiveStarsCard(starting = startingFiveStars, onOpen = onFiveStars, onShuffle = viewModel::shuffleFiveStars)
+        FiveStarsCard(
+            favourites = isJellyfin,
+            starting = startingFiveStars,
+            onOpen = onFiveStars,
+            onShuffle = viewModel::shuffleFiveStars,
+        )
     }
     Scaffold(
         topBar = {
@@ -78,7 +84,7 @@ fun PlaylistScreen(
  * the card to see the list.
  */
 @Composable
-private fun FiveStarsCard(starting: Boolean, onOpen: () -> Unit, onShuffle: () -> Unit) {
+private fun FiveStarsCard(favourites: Boolean, starting: Boolean, onOpen: () -> Unit, onShuffle: () -> Unit) {
     Card(
         onClick = onOpen,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -87,8 +93,14 @@ private fun FiveStarsCard(starting: Boolean, onOpen: () -> Unit, onShuffle: () -
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Star, contentDescription = null, modifier = Modifier.size(32.dp))
             Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                Text(stringResource(R.string.five_stars), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.five_stars_hint), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(if (favourites) R.string.five_stars_jellyfin else R.string.five_stars),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    stringResource(if (favourites) R.string.five_stars_jellyfin_hint else R.string.five_stars_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             FilledIconButton(onClick = onShuffle, enabled = !starting, modifier = Modifier.size(48.dp)) {
                 if (starting) {

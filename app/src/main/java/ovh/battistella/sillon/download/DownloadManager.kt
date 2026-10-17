@@ -120,7 +120,7 @@ object DownloadFiles {
         File(context.filesDir, "music/${safe(serverId)}")
 
     fun target(context: Context, serverId: String, ratingKey: String, partKey: String): File {
-        val extension = partKey.substringAfterLast('/', "").substringAfterLast('.', "")
+        val extension = partKey.substringBefore('?').substringAfterLast('/', "").substringAfterLast('.', "")
             .takeIf { it.length in 2..5 && it.all(Char::isLetterOrDigit) } ?: "audio"
         return File(musicDir(context, serverId), "${safe(ratingKey)}.$extension")
     }

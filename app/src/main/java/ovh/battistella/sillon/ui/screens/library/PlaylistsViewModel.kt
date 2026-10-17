@@ -9,7 +9,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
@@ -26,6 +29,9 @@ class PlaylistsViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
 ) : ViewModel() {
+
+    /** On Jellyfin, favourites stand in for 5-star ratings, and the card says so. */
+    val isJellyfin = repository.isJellyfin.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** True while the 5-star tracks are being fetched for [shuffleFiveStars]. */
     private val _startingFiveStars = MutableStateFlow(false)
@@ -123,7 +129,9 @@ class FiveStarsViewModel @Inject constructor(
         val server = repository.endpoint()
         return TrackCollection(
             ui = AlbumUi(
-                title = context.getString(R.string.five_stars),
+                title = context.getString(
+                    if (repository.isJellyfin.first()) R.string.five_stars_jellyfin else R.string.five_stars,
+                ),
                 artist = null,
                 year = null,
                 // The cover of a 5-star track rather than an empty square.

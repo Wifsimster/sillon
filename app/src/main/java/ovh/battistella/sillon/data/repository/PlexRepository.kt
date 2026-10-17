@@ -6,8 +6,13 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ovh.battistella.sillon.data.jellyfin.JellyfinApi
+import ovh.battistella.sillon.data.jellyfin.JellyfinAuthResult
+import ovh.battistella.sillon.data.jellyfin.JellyfinPublicInfo
+import ovh.battistella.sillon.data.jellyfin.JellyfinQuickConnect
 import ovh.battistella.sillon.data.local.DownloadDao
 import ovh.battistella.sillon.data.network.NetworkMonitor
 import ovh.battistella.sillon.data.local.DownloadEntity
@@ -21,6 +26,8 @@ import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPin
 import ovh.battistella.sillon.data.plex.PlexResource
 import ovh.battistella.sillon.data.plex.ServerEndpoint
+import ovh.battistella.sillon.data.plex.ServerKind
+import ovh.battistella.sillon.data.plex.TimelineState
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
@@ -55,11 +62,13 @@ fun DownloadEntity.toPlayable(): PlayableTrack = PlayableTrack(
 const val PLAYER_ART_PX = 900
 
 /** Thrown when a library call is made before a server is selected. */
-class NoServerException : IllegalStateException("No Plex server selected")
+class NoServerException : IllegalStateException("No server selected")
 
 /**
- * Everything the UI needs from Plex, with the current account and server
- * filled in from [SessionStore].
+ * Everything the UI needs from the media server, with the current account and
+ * server filled in from [SessionStore]. Each call goes to Plex or Jellyfin
+ * depending on the server the user signed in to; both answer with the same
+ * models (named after Plex, which Sillon supported first).
  */
 @Singleton
 class PlexRepository @Inject constructor(
@@ -68,6 +77,7 @@ class PlexRepository @Inject constructor(
     private val downloads: DownloadDao,
     private val settings: SettingsStore,
     private val network: NetworkMonitor,
+    private val jellyfin: JellyfinApi,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -97,7 +107,59 @@ class PlexRepository @Inject constructor(
 
     suspend fun signOut() = sessionStore.signOut()
 
-    suspend fun changeServer() = sessionStore.clearServer()
+    /** Back to the server list (Plex), or to the sign-in screen (Jellyfin: one server per sign-in). */
+    suspend fun changeServer() {
+        if (jellyfinServer() != null) sessionStore.signOut() else sessionStore.clearServer()
+    }
+
+    // ---------------------------------------------------------------------
+    // Jellyfin sign-in
+    // ---------------------------------------------------------------------
+
+    /**
+     * Find the Jellyfin server behind what the user typed. Without a scheme,
+     * HTTPS is tried first, then HTTP (Jellyfin's default on a home network).
+     */
+    suspend fun findJellyfinServer(input: String): Pair<String, JellyfinPublicInfo> {
+        val trimmed = input.trim().trimEnd('/')
+        val candidates = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            listOf(trimmed)
+        } else {
+            listOf("https://$trimmed", "http://$trimmed")
+        }
+        var lastError: Throwable? = null
+        for (url in candidates) {
+            val info = runCatching { jellyfin.publicInfo(url) }.onFailure { lastError = it }.getOrNull()
+            if (info != null && info.id.isNotBlank()) return url to info
+        }
+        throw lastError ?: IOException("No Jellyfin server at $input")
+    }
+
+    suspend fun signInJellyfin(baseUrl: String, info: JellyfinPublicInfo, username: String, password: String) {
+        val auth = jellyfin.authenticate(baseUrl, sessionStore.clientId(), username, password)
+        storeJellyfin(baseUrl, info, auth)
+    }
+
+    suspend fun startQuickConnect(baseUrl: String): JellyfinQuickConnect =
+        jellyfin.quickConnectInitiate(baseUrl, sessionStore.clientId())
+
+    /** Poll a Quick Connect request; once approved, sign in and return true. */
+    suspend fun completeQuickConnectIfApproved(baseUrl: String, info: JellyfinPublicInfo, secret: String): Boolean {
+        val clientId = sessionStore.clientId()
+        if (!jellyfin.quickConnectState(baseUrl, clientId, secret).authenticated) return false
+        storeJellyfin(baseUrl, info, jellyfin.quickConnectAuthenticate(baseUrl, clientId, secret))
+        return true
+    }
+
+    private suspend fun storeJellyfin(baseUrl: String, info: JellyfinPublicInfo, auth: JellyfinAuthResult) {
+        sessionStore.signInJellyfin(
+            SelectedServer(
+                machineId = auth.serverId,
+                name = info.serverName.ifBlank { baseUrl },
+                endpoint = ServerEndpoint(baseUrl, auth.accessToken, ServerKind.JELLYFIN, auth.user.id),
+            ),
+        )
+    }
 
     // ---------------------------------------------------------------------
     // Servers
@@ -144,23 +206,42 @@ class PlexRepository @Inject constructor(
 
     suspend fun selectMusicSection(key: String) = sessionStore.selectMusicSection(key)
 
-    suspend fun albums(sectionKey: String): List<PlexMetadata> =
-        onServer { clientId, server -> api.albums(clientId, server, sectionKey) }
+    suspend fun albums(sectionKey: String): List<PlexMetadata> = onServer(
+        plex = { clientId, server -> api.albums(clientId, server, sectionKey) },
+        jellyfin = { deviceId, server -> jellyfin.albums(server, deviceId, sectionKey) },
+    )
 
-    /** Tracks rated 5 stars in the current music library. */
+    /**
+     * Tracks rated 5 stars in the current music library. Jellyfin has no star
+     * ratings: its favourites stand in for them.
+     */
     suspend fun fiveStarTracks(): List<PlexMetadata> {
         val section = currentMusicSection() ?: return emptyList()
-        return onServer { clientId, server -> api.fiveStarTracks(clientId, server, section.key) }
+        return onServer(
+            plex = { clientId, server -> api.fiveStarTracks(clientId, server, section.key) },
+            jellyfin = { deviceId, server -> jellyfin.favouriteTracks(server, deviceId, section.key) },
+        )
     }
 
-    suspend fun playlists(): List<PlexMetadata> =
-        onServer { clientId, server -> api.playlists(clientId, server) }
+    suspend fun playlists(): List<PlexMetadata> = onServer(
+        plex = { clientId, server -> api.playlists(clientId, server) },
+        jellyfin = { deviceId, server -> jellyfin.playlists(server, deviceId) },
+    )
 
-    suspend fun playlistItems(ratingKey: String): List<PlexMetadata> =
-        onServer { clientId, server -> api.playlistItems(clientId, server, ratingKey) }
+    suspend fun playlistItems(ratingKey: String): List<PlexMetadata> = onServer(
+        plex = { clientId, server -> api.playlistItems(clientId, server, ratingKey) },
+        jellyfin = { deviceId, server -> jellyfin.playlistItems(server, deviceId, ratingKey) },
+    )
 
-    suspend fun search(sectionKey: String, query: String): List<PlexHub> =
-        onServer { clientId, server -> api.search(clientId, server, sectionKey, query) }
+    suspend fun search(sectionKey: String, query: String): List<PlexHub> = onServer(
+        plex = { clientId, server -> api.search(clientId, server, sectionKey, query) },
+        jellyfin = { deviceId, server -> jellyfin.search(server, deviceId, sectionKey, query) },
+    )
+
+    /** True when the current server is a Jellyfin one (the UI words a few things differently). */
+    val isJellyfin: Flow<Boolean> = sessionStore.session.map {
+        (it as? Session.Ready)?.server?.endpoint?.kind == ServerKind.JELLYFIN
+    }
 
     /**
      * Turn tracks into player items. Downloaded tracks play from their file;
@@ -190,7 +271,11 @@ class PlexRepository @Inject constructor(
             local[track.ratingKey]?.let { return@mapNotNull it.toPlayable() }
             if (track.partKey == null) return@mapNotNull null
             val url = quality.kbps?.let { kbps ->
-                api.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, UUID.randomUUID().toString())
+                val session = UUID.randomUUID().toString()
+                when (server.endpoint.kind) {
+                    ServerKind.PLEX -> api.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, session)
+                    ServerKind.JELLYFIN -> jellyfin.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, session)
+                }
             } ?: streamUrl(server.endpoint, track) ?: return@mapNotNull null
             PlayableTrack(
                 ratingKey = track.ratingKey,
@@ -208,37 +293,90 @@ class PlexRepository @Inject constructor(
     /** Machine identifier of the current server, which downloads are filed under. */
     suspend fun currentServerId(): String = currentServer().machineId
 
-    suspend fun musicSections(): List<PlexDirectory> =
-        onServer { clientId, server -> api.sections(clientId, server).filter { it.isMusic } }
+    suspend fun musicSections(): List<PlexDirectory> = onServer(
+        plex = { clientId, server -> api.sections(clientId, server) },
+        jellyfin = { deviceId, server -> jellyfin.sections(server, deviceId) },
+    ).filter { it.isMusic }
 
-    suspend fun artists(sectionKey: String): List<PlexMetadata> =
-        onServer { clientId, server -> api.artists(clientId, server, sectionKey) }
+    suspend fun artists(sectionKey: String): List<PlexMetadata> = onServer(
+        plex = { clientId, server -> api.artists(clientId, server, sectionKey) },
+        jellyfin = { deviceId, server -> jellyfin.artists(server, deviceId, sectionKey) },
+    )
 
-    suspend fun children(ratingKey: String): List<PlexMetadata> =
-        onServer { clientId, server -> api.children(clientId, server, ratingKey) }
+    /** An artist's albums. */
+    suspend fun albumsOf(artistKey: String): List<PlexMetadata> = onServer(
+        plex = { clientId, server -> api.children(clientId, server, artistKey) },
+        jellyfin = { deviceId, server -> jellyfin.albumsOf(server, deviceId, artistKey) },
+    )
 
-    suspend fun metadata(ratingKey: String): PlexMetadata? =
-        onServer { clientId, server -> api.metadata(clientId, server, ratingKey) }
+    /** An album's tracks. */
+    suspend fun tracksOf(albumKey: String): List<PlexMetadata> = onServer(
+        plex = { clientId, server -> api.children(clientId, server, albumKey) },
+        jellyfin = { deviceId, server -> jellyfin.tracksOf(server, deviceId, albumKey) },
+    )
+
+    suspend fun metadata(ratingKey: String): PlexMetadata? = onServer(
+        plex = { clientId, server -> api.metadata(clientId, server, ratingKey) },
+        jellyfin = { deviceId, server -> jellyfin.item(server, deviceId, ratingKey) },
+    )
+
+    /** Report playback of a track to the server it was played from. */
+    suspend fun reportPlayback(
+        server: ServerEndpoint,
+        ratingKey: String,
+        state: TimelineState,
+        timeMs: Long,
+        durationMs: Long,
+        continuing: Boolean,
+    ) {
+        val clientId = sessionStore.clientId()
+        when (server.kind) {
+            ServerKind.PLEX -> api.timeline(clientId, server, ratingKey, state, timeMs, durationMs, continuing)
+            ServerKind.JELLYFIN -> {
+                // Jellyfin wants a "started" event once per track, then progress, then "stopped".
+                val event = when {
+                    state == TimelineState.Stopped -> "Playing/Stopped".also { jellyfinStarted = null }
+                    jellyfinStarted != ratingKey -> "Playing".also { jellyfinStarted = ratingKey }
+                    else -> "Playing/Progress"
+                }
+                jellyfin.reportPlayback(server, clientId, event, ratingKey, timeMs, paused = state == TimelineState.Paused)
+            }
+        }
+    }
+
+    /** The track Jellyfin was last told started playing. */
+    @Volatile private var jellyfinStarted: String? = null
 
     /** The current server's address and token, for building artwork and stream URLs. */
     suspend fun endpoint(): ServerEndpoint = currentServer().endpoint
 
-    fun artworkUrl(server: ServerEndpoint, thumb: String?, sizePx: Int): String? =
-        api.artworkUrl(server, thumb, sizePx)
+    fun artworkUrl(server: ServerEndpoint, thumb: String?, sizePx: Int): String? = when (server.kind) {
+        ServerKind.PLEX -> api.artworkUrl(server, thumb, sizePx)
+        ServerKind.JELLYFIN -> jellyfin.artworkUrl(server, thumb, sizePx)
+    }
 
-    fun streamUrl(server: ServerEndpoint, partKey: String): String = api.streamUrl(server, partKey)
+    fun streamUrl(server: ServerEndpoint, partKey: String): String = when (server.kind) {
+        ServerKind.PLEX -> api.streamUrl(server, partKey)
+        ServerKind.JELLYFIN -> jellyfin.streamUrl(server, partKey)
+    }
 
     fun streamUrl(server: ServerEndpoint, track: PlexMetadata): String? =
-        track.partKey?.let { api.streamUrl(server, it) }
+        track.partKey?.let { streamUrl(server, it) }
 
     /**
      * Run a server call; if the saved address no longer answers (the phone left
      * the home Wi-Fi, the public IP changed), look for a working one and retry
      * once. HTTP errors are real answers from the server and are not retried.
      */
-    private suspend fun <T> onServer(block: suspend (String, ServerEndpoint) -> T): T {
+    private suspend fun <T> onServer(
+        plex: suspend (String, ServerEndpoint) -> T,
+        jellyfin: suspend (String, ServerEndpoint) -> T,
+    ): T {
         val clientId = sessionStore.clientId()
         val server = currentServer()
+        // A Jellyfin server has the one address the user typed: nothing to reconnect to.
+        if (server.endpoint.kind == ServerKind.JELLYFIN) return jellyfin(clientId, server.endpoint)
+        val block = plex
         return try {
             block(clientId, server.endpoint)
         } catch (e: IOException) {
@@ -255,6 +393,9 @@ class PlexRepository @Inject constructor(
         val resource = servers().firstOrNull { it.clientIdentifier == stale.machineId } ?: return@withLock null
         connect(resource)?.also { sessionStore.selectServer(it) }
     }
+
+    private suspend fun jellyfinServer(): ServerEndpoint? =
+        (sessionStore.session.first() as? Session.Ready)?.server?.endpoint?.takeIf { it.kind == ServerKind.JELLYFIN }
 
     private suspend fun currentServer(): SelectedServer =
         (sessionStore.session.first() as? Session.Ready)?.server ?: throw NoServerException()

@@ -6,14 +6,20 @@
 
 <p align="center">
   <strong>Your own music, the way a music app should feel.</strong><br/>
-  A free, open-source Android player for the music library on your Plex server.
+  A free, open-source Android player for the music library on your Plex or Jellyfin server.
 </p>
 
 <p align="center">
   <a href="https://github.com/Wifsimster/sillon/releases/latest/download/app-release.apk"><img src="https://img.shields.io/badge/Download-APK-E8A33D?style=for-the-badge&logo=android&logoColor=white" alt="Download the Sillon APK" /></a>
   <a href="https://github.com/Wifsimster/sillon/releases/latest"><img src="https://img.shields.io/github/v/release/Wifsimster/sillon?style=for-the-badge&label=version&color=1C1B1F" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-1C1B1F?style=for-the-badge" alt="Android 8.0 and later" />
-  <img src="https://img.shields.io/badge/Plex-compatible-E5A00D?style=for-the-badge&logo=plex&logoColor=white" alt="Works with Plex" />
+</p>
+
+<p align="center">
+  <sub>WORKS WITH</sub><br/>
+  <a href="https://www.plex.tv/"><img src="docs/brands/plex.svg" height="40" alt="Plex" /></a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="https://jellyfin.org/"><img src="docs/brands/jellyfin.svg" height="40" alt="Jellyfin" /></a>
 </p>
 
 <p align="center">
@@ -41,9 +47,10 @@ go, with no ads, no tracking and no subscription.
   listen with no connection at all.
 - 📶 **Easy on your data plan.** Original quality on Wi-Fi, AAC at 320, 192 or
   128 kbps on mobile data, chosen separately and transcoded by your server.
-- 📊 **Plex stays in sync.** What you play shows under *Now playing* on your
-  server, lands in the history and counts as played, like the official apps.
-- 🔒 **Private.** No account but your Plex one, no analytics, no ads. Your
+- 🖥️ **Plex or Jellyfin.** Sign in to either; everything below works with both.
+- 📊 **Your server stays in sync.** What you play shows under *Now playing* on
+  your server, lands in the history and counts as played, like the official apps.
+- 🔒 **Private.** No account but your server's, no analytics, no ads. Your
   server token never leaves the app.
 - 🌍 **Open source**, in English and French, with Material You colours.
 
@@ -56,10 +63,14 @@ GitHub account needed.
 
 Then:
 
-1. **Sign in with Plex**, in the browser or by typing the code shown at
-   [plex.tv/link](https://plex.tv/link) from another device.
-2. **Pick your server.** Sillon finds the best way to reach it: your home
-   network first, then the internet, then the Plex relay.
+1. **Pick Plex or Jellyfin.**
+2. **Sign in.**
+   - *Plex*: in the browser, or by typing the code shown at
+     [plex.tv/link](https://plex.tv/link) from another device. Then pick your
+     server; Sillon finds the best way to reach it (home network, internet,
+     Plex relay).
+   - *Jellyfin*: type your server's address, then your user name and password,
+     or approve the **Quick Connect** code from another Jellyfin app.
 3. **Play.**
 
 Every release ships a `SHA256SUMS.txt` to check the download against what CI
@@ -73,17 +84,17 @@ is rebuilt on every push.
 |---|---|
 | **Library** | Artists, albums, playlists; search as you type; choice of music library when the server has several |
 | **Playback** | Background play, notification and lock-screen controls, Bluetooth and headset buttons, gapless albums, shuffle, repeat |
-| **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix |
+| **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
 | **Car** | Android Auto browsing (Artists, Albums, Playlists, My 5 stars) and voice requests |
 | **Offline** | Album and playlist downloads with covers, a Downloads tab that works with no network |
 | **Data** | Streaming quality per network (Original / 320 / 192 / 128 kbps AAC), Wi-Fi-only downloads |
 | **Plex** | PIN sign-in, owned and shared servers, automatic reconnection, play reports to the server |
+| **Jellyfin** | Password or Quick Connect sign-in, HTTP or HTTPS servers, transcoding, play reports to the server |
 
 ## Roadmap
 
-1. **Jellyfin** servers, next to Plex.
-2. ReplayGain loudness levelling, Plex mixes and radios (Plex Pass).
-3. A Windows desktop app.
+1. ReplayGain loudness levelling, Plex mixes and radios (Plex Pass).
+2. A Windows desktop app.
 
 Ideas and bug reports are welcome in the
 [issues](https://github.com/Wifsimster/sillon/issues).
@@ -95,7 +106,7 @@ Ideas and bug reports are welcome in the
 | Language    | Kotlin 2.0 |
 | UI          | Jetpack Compose + Material 3 |
 | Playback    | AndroidX **Media3** (ExoPlayer, HLS, MediaLibraryService for Android Auto) |
-| Plex API    | OkHttp + kotlinx.serialization |
+| Server APIs | Plex and Jellyfin, over OkHttp + kotlinx.serialization |
 | Storage     | Room (downloads), DataStore (session and settings, excluded from backups) |
 | Background  | WorkManager (downloads) |
 | DI          | Hilt |
@@ -110,10 +121,11 @@ The build, CI and release setup come from
 ```
 app/src/main/java/ovh/battistella/sillon/
 ├─ data/plex/        Plex wire models, HTTP client, connection selection
+├─ data/jellyfin/    Jellyfin client, mapped onto the same models
 ├─ data/session/     Account token + chosen server (DataStore)
 ├─ data/settings/    Streaming quality, download preferences (DataStore)
 ├─ data/local/       Downloaded tracks (Room)
-├─ data/repository/  PlexRepository: what the UI asks for
+├─ data/repository/  PlexRepository: what the UI asks for, from Plex or Jellyfin
 ├─ download/         Download queue and WorkManager worker
 ├─ playback/         Media3 service, Android Auto tree, play reports to Plex
 ├─ ui/               Compose screens, navigation, theme, components
@@ -133,11 +145,18 @@ in GitHub Actions; pushes to `main` are released with semantic-release
 
 ## Notes
 
-- Only HTTPS connections are used. Plex issues `*.plex.direct` certificates for
-  every server address, and the token must not travel in clear text. If your
-  server has *Secure connections* set to *Disabled*, set it to *Preferred*.
+- **Plex** is only reached over HTTPS. Plex issues `*.plex.direct`
+  certificates for every server address, and the token must not travel in
+  clear text. If your server has *Secure connections* set to *Disabled*, set
+  it to *Preferred*.
+- **Jellyfin** servers can be reached over HTTP, as they usually are on a home
+  network (`http://192.168.1.10:8096`). Without a scheme, Sillon tries HTTPS
+  first. Jellyfin has no star ratings and no popularity figures: *My 5 stars*
+  becomes *My favourites*, and tracks show no popularity bars.
 - On Wi-Fi with *Original* quality, tracks play as the original files. Formats
   Android can't decode natively (ALAC on older devices, for example) play once a
   transcoded quality is chosen.
-- Sillon is an independent client, not affiliated with Plex Inc. Screenshots
-  show album covers from the author's own library.
+- Sillon is an independent client, not affiliated with Plex Inc. or the
+  Jellyfin project. Plex and Jellyfin are trademarks of their owners; the logos
+  come from [simple-icons](https://simpleicons.org/) (CC0). Screenshots show
+  album covers from the author's own library.
