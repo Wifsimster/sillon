@@ -11,7 +11,15 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import ovh.battistella.sillon.MainActivity
+import ovh.battistella.sillon.data.plex.PlexApi
+import ovh.battistella.sillon.data.session.SessionStore
+import javax.inject.Inject
 
 /**
  * Foreground media service owning the ExoPlayer and its MediaSession: playback
@@ -20,10 +28,18 @@ import ovh.battistella.sillon.MainActivity
  *
  * Tracks queued together play gaplessly when the files carry gapless metadata
  * (MP3 LAME/iTunes headers, AAC/M4A); FLAC is sample-exact by nature.
+ *
+ * Playback is reported to the Plex server by [TimelineReporter].
  */
+@AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
 
+    @Inject lateinit var plexApi: PlexApi
+    @Inject lateinit var sessionStore: SessionStore
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaSession? = null
+    private var timelineReporter: TimelineReporter? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -37,6 +53,17 @@ class PlaybackService : MediaSessionService() {
             // Keep the Wi-Fi and CPU awake while streaming with the screen off.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+        timelineReporter = TimelineReporter(player, scope) { report ->
+            plexApi.timeline(
+                clientId = sessionStore.clientId(),
+                server = report.server,
+                ratingKey = report.ratingKey,
+                state = report.state,
+                timeMs = report.timeMs,
+                durationMs = report.durationMs,
+                continuing = report.continuing,
+            )
+        }.also { it.start() }
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(SessionCallback())
             .setSessionActivity(openAppIntent())
@@ -56,6 +83,10 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        // Before releasing the player: the final report reads its position.
+        timelineReporter?.release()
+        timelineReporter = null
+        scope.cancel()
         mediaSession?.run {
             player.release()
             release()

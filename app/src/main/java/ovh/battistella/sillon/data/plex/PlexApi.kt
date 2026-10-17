@@ -7,6 +7,7 @@ import okhttp3.Callback
 import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -35,6 +36,14 @@ data class ServerEndpoint(
     val uri: String,
     val token: String,
 )
+
+/** Playback states understood by `/:/timeline`. */
+enum class TimelineState(val wire: String) {
+    Playing("playing"),
+    Paused("paused"),
+    Buffering("buffering"),
+    Stopped("stopped"),
+}
 
 /** A non-2xx answer from Plex. 401 means the token was revoked or never valid. */
 class PlexHttpException(val code: Int, message: String) : IOException("HTTP $code: $message") {
@@ -149,6 +158,41 @@ class PlexApi(
         get(clientId, server, "library/metadata/$ratingKey").metadata.firstOrNull()
 
     /**
+     * Report playback of a track. Plex expects this on every state change and
+     * every ~10 s while playing; it drives the server's "Now playing" dashboard,
+     * the play history and the play count (the server marks a track played once
+     * a report puts it near its end).
+     *
+     * [continuing] tells the server, on a `stopped` report, that another track
+     * follows straight away, so it doesn't end the listening session.
+     */
+    suspend fun timeline(
+        clientId: String,
+        server: ServerEndpoint,
+        ratingKey: String,
+        state: TimelineState,
+        timeMs: Long,
+        durationMs: Long,
+        continuing: Boolean = false,
+    ) {
+        val url = server.uri.toHttpUrl().newBuilder()
+            .addPathSegments(":/timeline")
+            .addQueryParameter("ratingKey", ratingKey)
+            .addQueryParameter("key", "/library/metadata/$ratingKey")
+            .addQueryParameter("state", state.wire)
+            .addQueryParameter("time", timeMs.coerceAtLeast(0).toString())
+            .addQueryParameter("duration", durationMs.coerceAtLeast(0).toString())
+            .apply { if (state == TimelineState.Stopped) addQueryParameter("continuing", if (continuing) "1" else "0") }
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .headers(clientId, server.token)
+            .post(FormBody.Builder().build())
+            .build()
+        client.fetch(request)
+    }
+
+    /**
      * Square cover art resized on the server, so a 3000 px scan isn't downloaded
      * to fill a 56 dp thumbnail. The token travels in the query string because
      * the image loader fetches the URL as-is.
@@ -207,6 +251,18 @@ class PlexApi(
         private const val TYPE_ARTIST = "8"
         private const val PROBE_TIMEOUT_S = 4L
     }
+}
+
+/**
+ * The server and token a stream URL from [PlexApi.streamUrl] points at. Lets the
+ * player report a track to the server it actually came from, even if the user
+ * has switched servers since it was queued.
+ */
+fun streamEndpoint(streamUrl: String): ServerEndpoint? {
+    val url = streamUrl.toHttpUrlOrNull() ?: return null
+    val token = url.queryParameter("X-Plex-Token") ?: return null
+    val base = url.newBuilder().encodedPath("/").query(null).fragment(null).build()
+    return ServerEndpoint(base.toString().trimEnd('/'), token)
 }
 
 /** Execute a call without blocking a thread, cancelling it with the coroutine. */

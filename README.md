@@ -21,17 +21,18 @@ artists and albums, and listen with the screen off.
 - 🎧 **Playback** with Media3/ExoPlayer: background playback, notification and
   lock-screen controls, Bluetooth/headset buttons, gapless album playback,
   shuffle and repeat.
+- 📊 **Plays reported to Plex**: the track shows under *Now playing* on the
+  server dashboard, lands in the history and counts as played — whether
+  playback was started from the app, the notification or a headset.
 - 🌍 English and French, Material You.
 
 ## Roadmap
 
-1. Report plays to Plex (`/:/timeline`, `/:/scrobble`) so history, play counts
-   and "Continue listening" stay in sync with other Plex apps.
-2. Search, all-albums view, playlists, choosing among several music libraries.
-3. Android Auto (a `MediaLibraryService` browse tree, as in Ondes).
-4. Offline downloads (WorkManager) and transcoding on mobile data.
-5. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
-6. A Windows desktop app (Tauri), later.
+1. Search, all-albums view, playlists, choosing among several music libraries.
+2. Android Auto (a `MediaLibraryService` browse tree, as in Ondes).
+3. Offline downloads (WorkManager) and transcoding on mobile data.
+4. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
+5. A Windows desktop app (Tauri), later.
 
 ## Tech stack
 
