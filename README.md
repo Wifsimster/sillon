@@ -17,7 +17,8 @@ artists and albums, and listen with the screen off.
   with automatic connection selection: LAN first, then internet, then the Plex
   relay. If the saved address stops answering (you left home), Sillon finds a
   working one by itself.
-- 🎤 **Browse** artists → albums → tracks, with server-resized cover art.
+- 🎤 **Browse** artists, albums and playlists, and **search** as you type, with
+  server-resized cover art. Pick the music library when the server has several.
 - 🎧 **Playback** with Media3/ExoPlayer: background playback, notification and
   lock-screen controls, Bluetooth/headset buttons, gapless album playback,
   shuffle and repeat.
@@ -30,10 +31,9 @@ artists and albums, and listen with the screen off.
 
 ## Roadmap
 
-1. Search, all-albums view, playlists, choosing among several music libraries.
-2. Offline downloads (WorkManager) and transcoding on mobile data.
-3. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
-4. A Windows desktop app (Tauri), later.
+1. Offline downloads (WorkManager) and transcoding on mobile data.
+2. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
+3. A Windows desktop app (Tauri), later.
 
 ## Tech stack
 
