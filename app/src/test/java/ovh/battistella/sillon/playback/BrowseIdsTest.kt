@@ -1,0 +1,38 @@
+package ovh.battistella.sillon.playback
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class BrowseIdsTest {
+
+    @Test
+    fun `every node survives a round trip through its id`() {
+        val nodes = listOf(
+            BrowseNode.Root,
+            BrowseNode.Artists,
+            BrowseNode.Albums,
+            BrowseNode.Playlists,
+            BrowseNode.Artist("12"),
+            BrowseNode.Album("34"),
+            BrowseNode.Playlist("56"),
+            BrowseNode.Track(BrowseNode.Album("34"), "101"),
+            BrowseNode.Track(BrowseNode.Playlist("56"), "102"),
+        )
+        nodes.forEach { assertEquals(it, BrowseIds.parse(BrowseIds.of(it))) }
+    }
+
+    @Test
+    fun `track ids keep the album they were listed in`() {
+        assertEquals("track/album/34/101", BrowseIds.of(BrowseNode.Track(BrowseNode.Album("34"), "101")))
+    }
+
+    @Test
+    fun `bare rating keys and malformed ids are not browse nodes`() {
+        assertNull(BrowseIds.parse("101"))
+        assertNull(BrowseIds.parse("artist/"))
+        assertNull(BrowseIds.parse("track/artist/12/101"))
+        assertNull(BrowseIds.parse("track/album/34"))
+        assertNull(BrowseIds.parse("genre/rock"))
+    }
+}
