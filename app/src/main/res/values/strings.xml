@@ -76,4 +76,26 @@
     <string name="settings_quality_original">Original</string>
     <string name="settings_quality_original_hint">The file as it is on the server (FLAC, MP3…)</string>
     <string name="settings_quality_kbps">%1$d kbps (AAC)</string>
+    <string name="signin_choose_title">Connect your music</string>
+    <string name="signin_choose_body">Sillon plays the music library of your own media server. Which one do you use?</string>
+    <string name="server_plex" translatable="false">Plex</string>
+    <string name="server_jellyfin" translatable="false">Jellyfin</string>
+    <string name="jellyfin_title">Sign in to Jellyfin</string>
+    <string name="jellyfin_body">Enter the address of your Jellyfin server.</string>
+    <string name="jellyfin_address">Server address</string>
+    <string name="jellyfin_address_hint">192.168.1.10:8096 or music.example.com</string>
+    <string name="action_continue">Continue</string>
+    <string name="jellyfin_server_found">Server found: %1$s</string>
+    <string name="jellyfin_username">User name</string>
+    <string name="jellyfin_password">Password</string>
+    <string name="jellyfin_sign_in">Sign in</string>
+    <string name="jellyfin_quick_connect">Use Quick Connect</string>
+    <string name="jellyfin_quick_connect_body">In another Jellyfin app signed in to this server, open Quick Connect and enter this code:</string>
+    <string name="jellyfin_error_server">No Jellyfin server answers at this address.</string>
+    <string name="jellyfin_error_credentials">Wrong user name or password.</string>
+    <string name="jellyfin_error_quick_connect">Quick Connect is turned off on this server.</string>
+    <string name="jellyfin_error_other">Sign-in failed. Check the server and try again.</string>
+    <string name="jellyfin_other_server">Another server</string>
+    <string name="five_stars_jellyfin">My favourites</string>
+    <string name="five_stars_jellyfin_hint">Every track you marked as a favourite</string>
 </resources>

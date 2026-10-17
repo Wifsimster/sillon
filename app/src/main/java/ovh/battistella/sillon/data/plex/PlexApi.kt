@@ -31,10 +31,18 @@ data class PlexDevice(
     val deviceName: String,
 )
 
-/** A chosen server connection plus the token that unlocks it. */
+/** The kind of media server Sillon talks to. */
+enum class ServerKind { PLEX, JELLYFIN }
+
+/**
+ * A chosen server connection plus the token that unlocks it. [userId] is the
+ * Jellyfin user the token belongs to (Jellyfin scopes library calls by user).
+ */
 data class ServerEndpoint(
     val uri: String,
     val token: String,
+    val kind: ServerKind = ServerKind.PLEX,
+    val userId: String? = null,
 )
 
 /** Playback states understood by `/:/timeline`. */
@@ -342,7 +350,7 @@ fun streamEndpoint(streamUrl: String): ServerEndpoint? {
 }
 
 /** Execute a call without blocking a thread, cancelling it with the coroutine. */
-private suspend fun OkHttpClient.fetch(request: Request): String =
+internal suspend fun OkHttpClient.fetch(request: Request): String =
     suspendCancellableCoroutine { cont ->
         val call = newCall(request)
         cont.invokeOnCancellation { call.cancel() }

@@ -35,7 +35,7 @@ class AlbumViewModel @Inject constructor(
     override suspend fun fetch(): TrackCollection = coroutineScope {
         val server = repository.endpoint()
         val album = async { repository.metadata(key) }
-        val tracks = repository.children(key)
+        val tracks = repository.tracksOf(key)
         val a = album.await()
         val albumArt = repository.artworkUrl(server, a?.thumb, HEADER_ART_PX)
         TrackCollection(

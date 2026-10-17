@@ -28,9 +28,7 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.MainActivity
-import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.repository.PlexRepository
-import ovh.battistella.sillon.data.session.SessionStore
 import javax.inject.Inject
 
 /**
@@ -49,8 +47,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class PlaybackService : MediaLibraryService() {
 
-    @Inject lateinit var plexApi: PlexApi
-    @Inject lateinit var sessionStore: SessionStore
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
 
@@ -77,10 +73,10 @@ class PlaybackService : MediaLibraryService() {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
         })
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
-            // A downloaded track plays from a file: report it to the current server.
+            // A downloaded track plays from a file, and a Jellyfin stream carries
+            // no Plex token: report those to the current server.
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
-            plexApi.timeline(
-                clientId = sessionStore.clientId(),
+            repository.reportPlayback(
                 server = server,
                 ratingKey = report.ratingKey,
                 state = report.state,

@@ -33,8 +33,9 @@ class SignInViewModel @Inject constructor(
 
     private var job: Job? = null
 
-    init {
-        start()
+    /** Start the Plex sign-in, unless it's already under way. */
+    fun startIfIdle() {
+        if (job == null) start()
     }
 
     fun start() {

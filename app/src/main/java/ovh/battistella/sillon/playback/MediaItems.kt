@@ -45,5 +45,6 @@ object MediaItems {
     }
 
     /** True for a server transcode (as opposed to the original file or a download). */
-    fun isTranscode(url: String): Boolean = url.contains("/transcode/universal/")
+    fun isTranscode(url: String): Boolean =
+        url.contains("/transcode/universal/") || url.substringBefore('?').endsWith(".m3u8")
 }

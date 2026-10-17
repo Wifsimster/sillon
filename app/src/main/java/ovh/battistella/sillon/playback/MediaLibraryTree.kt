@@ -134,20 +134,24 @@ class MediaLibraryTree @Inject constructor(
             repository.albums(section.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         }.orEmpty()
         BrowseNode.Playlists -> repository.playlists().map { folderFor(BrowseNode.Playlist(it.ratingKey), it) }
-        is BrowseNode.Artist -> repository.children(node.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
+        is BrowseNode.Artist -> repository.albumsOf(node.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         is BrowseNode.Album, is BrowseNode.Playlist, BrowseNode.FiveStars -> tracksOf(node).map { trackItem(node, it) }
         BrowseNode.Recent, is BrowseNode.Track, null -> emptyList()
     }
 
-    private fun topLevel(): List<MediaItem> = listOf(
-        folder(BrowseNode.FiveStars, context.getString(R.string.five_stars), MediaMetadata.MEDIA_TYPE_PLAYLIST),
+    private suspend fun topLevel(): List<MediaItem> = listOf(
+        folder(
+            BrowseNode.FiveStars,
+            context.getString(if (repository.isJellyfin.first()) R.string.five_stars_jellyfin else R.string.five_stars),
+            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+        ),
         folder(BrowseNode.Artists, context.getString(R.string.library_artists), MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS),
         folder(BrowseNode.Albums, context.getString(R.string.library_albums), MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
         folder(BrowseNode.Playlists, context.getString(R.string.library_playlists), MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS),
     )
 
     private suspend fun tracksOf(parent: BrowseNode): List<PlexMetadata> = when (parent) {
-        is BrowseNode.Album -> repository.children(parent.key)
+        is BrowseNode.Album -> repository.tracksOf(parent.key)
         is BrowseNode.Playlist -> repository.playlistItems(parent.key)
         BrowseNode.FiveStars -> repository.fiveStarTracks()
         else -> emptyList()
@@ -162,9 +166,9 @@ class MediaLibraryTree @Inject constructor(
         // album of the first matching artist.
         val album = hubs.firstOrNull { it.type == "album" }?.metadata?.firstOrNull()
             ?: hubs.firstOrNull { it.type == "artist" }?.metadata?.firstOrNull()
-                ?.let { artist -> repository.children(artist.ratingKey).firstOrNull() }
+                ?.let { artist -> repository.albumsOf(artist.ratingKey).firstOrNull() }
             ?: return emptyList()
-        return playable(repository.children(album.ratingKey))
+        return playable(repository.tracksOf(album.ratingKey))
     }
 
     private suspend fun playable(tracks: List<PlexMetadata>): List<MediaItem> =

@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import ovh.battistella.sillon.BuildConfig
+import ovh.battistella.sillon.data.jellyfin.JellyfinApi
 import ovh.battistella.sillon.data.local.DownloadDao
 import ovh.battistella.sillon.data.local.SillonDatabase
 import ovh.battistella.sillon.data.plex.PlexApi
@@ -53,4 +54,8 @@ object AppModule {
     @Provides
     @Singleton
     fun providePlexApi(client: OkHttpClient, device: PlexDevice): PlexApi = PlexApi(client, device)
+
+    @Provides
+    @Singleton
+    fun provideJellyfinApi(client: OkHttpClient, device: PlexDevice): JellyfinApi = JellyfinApi(client, device)
 }

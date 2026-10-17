@@ -74,4 +74,24 @@
     <string name="settings_quality_original">Originale</string>
     <string name="settings_quality_original_hint">Le fichier tel qu\'il est sur le serveur (FLAC, MP3…)</string>
     <string name="settings_quality_kbps">%1$d kbit/s (AAC)</string>
+    <string name="signin_choose_title">Connecte ta musique</string>
+    <string name="signin_choose_body">Sillon lit la bibliothèque musicale de ton propre serveur. Lequel utilises-tu ?</string>
+    <string name="jellyfin_title">Connexion à Jellyfin</string>
+    <string name="jellyfin_body">Saisis l\'adresse de ton serveur Jellyfin.</string>
+    <string name="jellyfin_address">Adresse du serveur</string>
+    <string name="jellyfin_address_hint">192.168.1.10:8096 ou musique.exemple.fr</string>
+    <string name="action_continue">Continuer</string>
+    <string name="jellyfin_server_found">Serveur trouvé : %1$s</string>
+    <string name="jellyfin_username">Nom d\'utilisateur</string>
+    <string name="jellyfin_password">Mot de passe</string>
+    <string name="jellyfin_sign_in">Se connecter</string>
+    <string name="jellyfin_quick_connect">Utiliser Quick Connect</string>
+    <string name="jellyfin_quick_connect_body">Dans une autre app Jellyfin connectée à ce serveur, ouvre Quick Connect et saisis ce code :</string>
+    <string name="jellyfin_error_server">Aucun serveur Jellyfin ne répond à cette adresse.</string>
+    <string name="jellyfin_error_credentials">Nom d\'utilisateur ou mot de passe incorrect.</string>
+    <string name="jellyfin_error_quick_connect">Quick Connect est désactivé sur ce serveur.</string>
+    <string name="jellyfin_error_other">La connexion a échoué. Vérifie le serveur et réessaie.</string>
+    <string name="jellyfin_other_server">Un autre serveur</string>
+    <string name="five_stars_jellyfin">Mes favoris</string>
+    <string name="five_stars_jellyfin_hint">Tous les titres que tu as mis en favoris</string>
 </resources>
