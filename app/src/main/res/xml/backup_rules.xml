@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup rules for API < 31. The DataStore holds the Plex token, which
+     must never leave the device. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore" />
+</full-backup-content>

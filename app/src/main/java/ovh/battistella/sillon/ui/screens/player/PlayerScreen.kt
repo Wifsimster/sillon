@@ -1,0 +1,142 @@
+package ovh.battistella.sillon.ui.screens.player
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
+import ovh.battistella.sillon.R
+import ovh.battistella.sillon.ui.components.Artwork
+import ovh.battistella.sillon.ui.components.formatDuration
+
+@Composable
+fun PlayerScreen(
+    onClose: () -> Unit,
+    viewModel: PlayerViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    // While dragging, the slider shows the finger, not the playhead.
+    var scrubbing by remember { mutableStateOf<Float?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(Modifier.fillMaxWidth()) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
+            }
+        }
+        Artwork(
+            state.artworkUri,
+            Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
+            cornerRadius = 16.dp,
+        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                state.title,
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        val duration = state.durationMs.coerceAtLeast(1L).toFloat()
+        Column {
+            Slider(
+                value = scrubbing ?: state.positionMs.coerceAtMost(state.durationMs).toFloat(),
+                valueRange = 0f..duration,
+                onValueChange = { scrubbing = it },
+                onValueChangeFinished = {
+                    scrubbing?.let { viewModel.seekTo(it.toLong()) }
+                    scrubbing = null
+                },
+                enabled = state.durationMs > 0,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(formatDuration(scrubbing?.toLong() ?: state.positionMs), style = MaterialTheme.typography.bodySmall)
+                Text(formatDuration(state.durationMs), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val active = MaterialTheme.colorScheme.primary
+            val inactive = MaterialTheme.colorScheme.onSurfaceVariant
+            IconButton(onClick = viewModel::toggleShuffle) {
+                Icon(Icons.Rounded.Shuffle, stringResource(R.string.album_shuffle), tint = if (state.shuffle) active else inactive)
+            }
+            IconButton(onClick = viewModel::previous) {
+                Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.player_previous), Modifier.size(36.dp))
+            }
+            FilledIconButton(onClick = viewModel::playPause, modifier = Modifier.size(72.dp)) {
+                if (state.isPlaying) {
+                    Icon(Icons.Rounded.Pause, stringResource(R.string.player_pause), Modifier.size(40.dp))
+                } else {
+                    Icon(Icons.Rounded.PlayArrow, stringResource(R.string.player_play), Modifier.size(40.dp))
+                }
+            }
+            IconButton(onClick = viewModel::next, enabled = state.hasNext) {
+                Icon(Icons.Rounded.SkipNext, stringResource(R.string.player_next), Modifier.size(36.dp))
+            }
+            IconButton(onClick = viewModel::cycleRepeat) {
+                val (icon, tint) = when (state.repeatMode) {
+                    Player.REPEAT_MODE_ONE -> Icons.Rounded.RepeatOne to active
+                    Player.REPEAT_MODE_ALL -> Icons.Rounded.Repeat to active
+                    else -> Icons.Rounded.Repeat to inactive
+                }
+                Icon(icon, contentDescription = null, tint = tint)
+            }
+        }
+    }
+}

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="signin_title">Connexion à Plex</string>
+    <string name="signin_body">Sillon lit la bibliothèque musicale de ton propre serveur Plex. Connecte-toi avec ton compte Plex pour le trouver.</string>
+    <string name="signin_open_browser">Se connecter avec Plex</string>
+    <string name="signin_or_link">Ou va sur plex.tv/link depuis un autre appareil et saisis ce code :</string>
+    <string name="signin_waiting">En attente de confirmation…</string>
+    <string name="signin_expired">Le code a expiré. Réessaie.</string>
+    <string name="signin_retry">Réessayer</string>
+
+    <string name="servers_title">Choisis un serveur</string>
+    <string name="servers_empty">Aucun serveur Plex n\'est lié à ce compte.</string>
+    <string name="servers_connecting">Connexion à %1$s…</string>
+    <string name="servers_unreachable">%1$s est injoignable pour le moment. Est-il allumé ?</string>
+    <string name="servers_owned">Ton serveur</string>
+    <string name="servers_shared">Partagé avec toi</string>
+
+    <string name="library_artists">Artistes</string>
+    <string name="library_no_music">Ce serveur n\'a pas de bibliothèque musicale.</string>
+    <string name="library_empty">Rien ici pour l\'instant.</string>
+    <string name="album_play">Lire</string>
+    <string name="album_shuffle">Aléatoire</string>
+    <string name="album_tracks">%1$d titres</string>
+
+    <string name="action_retry">Réessayer</string>
+    <string name="action_back">Retour</string>
+    <string name="action_change_server">Changer de serveur</string>
+    <string name="action_sign_out">Se déconnecter</string>
+    <string name="error_generic">Un problème est survenu : %1$s</string>
+
+    <string name="player_play">Lecture</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_next">Titre suivant</string>
+    <string name="player_previous">Titre précédent</string>
+    <string name="player_open">Ouvrir le lecteur</string>
+</resources>
