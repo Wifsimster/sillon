@@ -16,7 +16,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
@@ -28,7 +27,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,6 +82,13 @@ private fun LibraryNavHost() {
     val backStack by navController.currentBackStackEntryAsState()
     val destination = backStack?.destination
     val onPlayerScreen = destination?.route == Routes.PLAYER
+    // The tab the user is in. Detail pages (artist, album, playlist) don't belong
+    // to one tab in the graph — they're shared — so the tab is the last tab root
+    // reached, not derived from the current destination.
+    var currentTab by rememberSaveable { mutableStateOf(Routes.ARTISTS) }
+    LaunchedEffect(destination?.route) {
+        destination?.route?.takeIf { route -> tabs.any { it.route == route } }?.let { currentTab = it }
+    }
 
     Scaffold(
         bottomBar = {
@@ -98,16 +108,23 @@ private fun LibraryNavHost() {
                     }
                     NavigationBar {
                         tabs.forEach { tab ->
-                            val selected = destination?.hierarchy?.any { it.route == tab.route } == true
                             NavigationBarItem(
-                                selected = selected,
+                                selected = tab.route == currentTab,
                                 onClick = {
-                                    // Standard tab behaviour: one back stack per tab,
-                                    // restored when coming back to it.
-                                    navController.navigate(tab.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                    if (tab.route == currentTab) {
+                                        // Tapping the tab you're in goes back to its
+                                        // first page, from however deep you are.
+                                        navController.popBackStack(tab.route, inclusive = false)
+                                    } else {
+                                        // Another tab: one back stack per tab, restored
+                                        // when coming back to it — possibly on a detail
+                                        // page, hence setting the tab here.
+                                        currentTab = tab.route
+                                        navController.navigate(tab.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 },
                                 icon = { Icon(tab.icon, contentDescription = null) },
