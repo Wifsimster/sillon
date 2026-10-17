@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 108 108">
+  <!-- Same drawing as the launcher icon: a record seen from above. -->
+  <rect width="108" height="108" rx="24" fill="#1C1B1F"/>
+  <circle cx="54" cy="54" r="30" fill="none" stroke="#F5EFE6" stroke-width="2"/>
+  <circle cx="54" cy="54" r="23" fill="none" stroke="#F5EFE6" stroke-width="1.5"/>
+  <circle cx="54" cy="54" r="16.5" fill="none" stroke="#F5EFE6" stroke-width="1.2"/>
+  <circle cx="54" cy="54" r="10" fill="#E8A33D"/>
+  <circle cx="54" cy="54" r="2.5" fill="#1C1B1F"/>
+</svg>
