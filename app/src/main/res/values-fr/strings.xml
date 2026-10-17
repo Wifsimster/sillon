@@ -20,7 +20,6 @@
     <string name="library_empty">Rien ici pour l\'instant.</string>
     <string name="album_play">Lire</string>
     <string name="album_shuffle">Aléatoire</string>
-    <string name="album_tracks">%1$d titres</string>
 
     <string name="action_retry">Réessayer</string>
     <string name="action_back">Retour</string>
@@ -43,4 +42,25 @@
     <string name="search_clear">Effacer</string>
     <string name="search_no_results">Aucun résultat pour « %1$s ».</string>
     <string name="action_more">Plus d\'options</string>
+
+    <string name="library_downloads">Téléchargés</string>
+    <string name="downloads_channel">Téléchargements</string>
+    <string name="downloads_in_progress">Téléchargement de musique</string>
+    <string name="downloads_done_count">%1$d terminés</string>
+    <string name="downloads_empty">Rien de téléchargé pour l\'instant. Ouvre un album ou une playlist et touche Télécharger pour l\'écouter sans connexion.</string>
+    <string name="downloads_wifi_only">Télécharger en Wi-Fi uniquement</string>
+    <string name="downloads_retry_failed">Relancer les échecs</string>
+    <string name="download">Télécharger</string>
+    <string name="download_remove">Supprimer le téléchargement</string>
+    <string name="download_done">Téléchargé</string>
+    <string name="download_progress">Téléchargement %1$d sur %2$d</string>
+    <string name="download_failed">%1$d en échec</string>
+    <plurals name="album_tracks">
+        <item quantity="one">%1$d titre</item>
+        <item quantity="other">%1$d titres</item>
+    </plurals>
+    <plurals name="downloads_summary">
+        <item quantity="one">%1$d titre · %2$s</item>
+        <item quantity="other">%1$d titres · %2$s</item>
+    </plurals>
 </resources>

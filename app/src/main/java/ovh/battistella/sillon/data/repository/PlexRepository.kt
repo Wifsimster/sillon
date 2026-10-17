@@ -1,5 +1,6 @@
 package ovh.battistella.sillon.data.repository
 
+import android.net.Uri
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -7,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ovh.battistella.sillon.data.local.DownloadDao
+import ovh.battistella.sillon.data.local.DownloadEntity
+import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.plex.ConnectionSelector
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.plex.PlexDirectory
@@ -20,12 +24,29 @@ import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
 import ovh.battistella.sillon.playback.PlayableTrack
+import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /** The two PINs of a sign-in attempt; approving either one signs the user in. */
 data class SignInPins(val browser: PlexPin, val link: PlexPin)
+
+/** True when the download finished and its file is still there. */
+fun DownloadEntity.isPlayableOffline(): Boolean =
+    state == DownloadState.DONE && filePath != null && File(filePath).isFile
+
+/** A downloaded track as a player item, playing from its file. */
+fun DownloadEntity.toPlayable(): PlayableTrack = PlayableTrack(
+    ratingKey = ratingKey,
+    streamUrl = Uri.fromFile(File(checkNotNull(filePath))).toString(),
+    title = title,
+    artist = artist,
+    album = album,
+    trackNumber = trackNumber,
+    durationMs = durationMs,
+    artworkUrl = artworkPath?.let { Uri.fromFile(File(it)).toString() },
+)
 
 /** Cover size requested for the player and the media notification, in pixels. */
 const val PLAYER_ART_PX = 900
@@ -41,6 +62,7 @@ class NoServerException : IllegalStateException("No Plex server selected")
 class PlexRepository @Inject constructor(
     private val api: PlexApi,
     private val sessionStore: SessionStore,
+    private val downloads: DownloadDao,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -130,21 +152,29 @@ class PlexRepository @Inject constructor(
         onServer { clientId, server -> api.search(clientId, server, sectionKey, query) }
 
     /**
-     * Turn tracks into player items. Some listings (search results) may omit the
-     * media parts; those tracks are fetched in full first. Tracks with no file
-     * are left out.
+     * Turn tracks into player items. Downloaded tracks play from their file;
+     * the others stream from the server. Some listings (search results) may omit
+     * the media parts; those tracks are fetched in full first. Tracks with no
+     * file are left out.
      */
     suspend fun playable(tracks: List<PlexMetadata>, fallbackArtworkUrl: String? = null): List<PlayableTrack> {
-        val server = endpoint()
+        val server = currentServer()
+        val local = downloads.get(server.machineId, tracks.map { it.ratingKey })
+            .filter { it.isPlayableOffline() }
+            .associateBy { it.ratingKey }
         val complete = coroutineScope {
             tracks.map { track ->
                 async {
-                    if (track.partKey != null) track else runCatching { metadata(track.ratingKey) }.getOrNull()
+                    when {
+                        track.partKey != null || track.ratingKey in local -> track
+                        else -> runCatching { metadata(track.ratingKey) }.getOrNull()
+                    }
                 }
             }.awaitAll()
         }
         return complete.filterNotNull().mapNotNull { track ->
-            val url = streamUrl(server, track) ?: return@mapNotNull null
+            local[track.ratingKey]?.let { return@mapNotNull it.toPlayable() }
+            val url = streamUrl(server.endpoint, track) ?: return@mapNotNull null
             PlayableTrack(
                 ratingKey = track.ratingKey,
                 streamUrl = url,
@@ -153,10 +183,13 @@ class PlexRepository @Inject constructor(
                 album = track.parentTitle,
                 trackNumber = track.index,
                 durationMs = track.duration,
-                artworkUrl = artworkUrl(server, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
+                artworkUrl = artworkUrl(server.endpoint, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
             )
         }
     }
+
+    /** Machine identifier of the current server, which downloads are filed under. */
+    suspend fun currentServerId(): String = currentServer().machineId
 
     suspend fun musicSections(): List<PlexDirectory> =
         onServer { clientId, server -> api.sections(clientId, server).filter { it.isMusic } }
@@ -175,6 +208,8 @@ class PlexRepository @Inject constructor(
 
     fun artworkUrl(server: ServerEndpoint, thumb: String?, sizePx: Int): String? =
         api.artworkUrl(server, thumb, sizePx)
+
+    fun streamUrl(server: ServerEndpoint, partKey: String): String = api.streamUrl(server, partKey)
 
     fun streamUrl(server: ServerEndpoint, track: PlexMetadata): String? =
         track.partKey?.let { api.streamUrl(server, it) }

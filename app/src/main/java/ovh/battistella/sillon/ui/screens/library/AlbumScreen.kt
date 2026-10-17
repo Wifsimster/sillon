@@ -2,6 +2,8 @@ package ovh.battistella.sillon.ui.screens.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,9 +17,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,8 +55,15 @@ fun AlbumScreen(
     contentPadding: PaddingValues,
     viewModel: AlbumViewModel = hiltViewModel(),
 ) {
+    TrackCollectionRoute(viewModel, onBack, contentPadding)
+}
+
+/** An album or playlist page wired to its view model, with the download control. */
+@Composable
+fun TrackCollectionRoute(viewModel: TrackCollectionViewModel, onBack: () -> Unit, contentPadding: PaddingValues) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
+    val download by viewModel.downloadStatus.collectAsStateWithLifecycle()
     TrackCollectionScreen(
         state = state,
         nowPlayingKey = nowPlaying.currentKey,
@@ -59,7 +72,38 @@ fun AlbumScreen(
         onPlay = viewModel::play,
         onShuffle = viewModel::shuffle,
         contentPadding = contentPadding,
+        actions = {
+            if (state is Load.Ready) {
+                DownloadAction(download, onDownload = viewModel::download, onRemove = viewModel::removeDownload)
+            }
+        },
     )
+}
+
+/**
+ * Download control of an album or playlist: download, progress while it runs,
+ * a check once everything is on the phone (tap to remove).
+ */
+@Composable
+fun DownloadAction(status: DownloadStatus, onDownload: () -> Unit, onRemove: () -> Unit) {
+    when {
+        status.isDownloading -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                progress = { if (status.total > 0) status.done.toFloat() / status.total else 0f },
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        status.isComplete -> IconButton(onClick = onRemove) {
+            Icon(
+                Icons.Rounded.DownloadDone,
+                contentDescription = stringResource(R.string.download_remove),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        else -> IconButton(onClick = onDownload) {
+            Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.download))
+        }
+    }
 }
 
 /**
@@ -76,11 +120,13 @@ fun TrackCollectionScreen(
     onPlay: (String?) -> Unit,
     onShuffle: () -> Unit,
     contentPadding: PaddingValues,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {},
+                actions = actions,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
@@ -148,7 +194,7 @@ private fun AlbumHeader(album: AlbumUi, onPlay: () -> Unit, onShuffle: () -> Uni
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(
-            stringResource(R.string.album_tracks, album.tracks.size),
+            pluralStringResource(R.plurals.album_tracks, album.tracks.size, album.tracks.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

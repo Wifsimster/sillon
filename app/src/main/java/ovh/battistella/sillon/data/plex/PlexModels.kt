@@ -96,6 +96,8 @@ data class PlexMetadata(
     /** Track artist when it differs from the album artist (compilations, featurings). */
     val originalTitle: String? = null,
     val index: Int? = null,
+    /** For a track: the disc number. */
+    val parentIndex: Int? = null,
     val year: Int? = null,
     val duration: Long? = null,
     val leafCount: Int? = null,

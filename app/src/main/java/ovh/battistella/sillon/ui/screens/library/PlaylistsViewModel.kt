@@ -5,11 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.repository.PlexRepository
-import ovh.battistella.sillon.playback.PlayableTrack
+import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.toFailed
@@ -55,50 +56,31 @@ class PlaylistsViewModel @Inject constructor(
 class PlaylistViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: PlexRepository,
-    private val playback: PlaybackConnection,
-) : ViewModel() {
+    playback: PlaybackConnection,
+    downloads: DownloadManager,
+) : TrackCollectionViewModel(repository, playback, downloads) {
 
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
-    private val _state = MutableStateFlow<Load<AlbumUi>>(Load.Loading)
-    val state = _state.asStateFlow()
-
-    val nowPlaying = playback.state
-
-    private var playable: List<PlayableTrack> = emptyList()
-
     init {
-        load()
+        start()
     }
 
-    fun load() {
-        _state.value = Load.Loading
-        viewModelScope.launch {
-            _state.value = runCatching {
-                val server = repository.endpoint()
-                val playlist = async { repository.metadata(key) }
-                val tracks = repository.playlistItems(key)
-                val p = playlist.await()
-                playable = repository.playable(tracks)
-                Load.Ready(
-                    AlbumUi(
-                        title = p?.title.orEmpty(),
-                        artist = null,
-                        year = null,
-                        artworkUrl = repository.artworkUrl(server, p?.artwork, HEADER_ART_PX),
-                        tracks = tracks.mapIndexed { i, t ->
-                            TrackUi(t.ratingKey, i + 1, t.title, t.trackArtist, t.duration)
-                        },
-                    ),
-                )
-            }.getOrElse { it.toFailed() }
-        }
+    override suspend fun fetch(): TrackCollection = coroutineScope {
+        val server = repository.endpoint()
+        val playlist = async { repository.metadata(key) }
+        val tracks = repository.playlistItems(key)
+        val p = playlist.await()
+        TrackCollection(
+            ui = AlbumUi(
+                title = p?.title.orEmpty(),
+                artist = null,
+                year = null,
+                artworkUrl = repository.artworkUrl(server, p?.artwork, HEADER_ART_PX),
+                tracks = tracks.mapIndexed { i, t -> TrackUi(t.ratingKey, i + 1, t.title, t.trackArtist, t.duration) },
+            ),
+            tracks = tracks,
+            fallbackArtworkUrl = null,
+        )
     }
-
-    fun play(trackKey: String?) {
-        val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
-        playback.play(playable, start)
-    }
-
-    fun shuffle() = playback.play(playable, shuffle = true)
 }

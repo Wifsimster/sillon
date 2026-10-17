@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -130,7 +131,7 @@ fun TileGrid(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 val subtitle = tile.subtitle
-                    ?: tile.trackCount?.let { stringResource(R.string.album_tracks, it) }
+                    ?: tile.trackCount?.let { pluralStringResource(R.plurals.album_tracks, it, it) }
                 subtitle?.let {
                     Text(
                         it,

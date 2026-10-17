@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
@@ -16,8 +17,11 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.ui.screens.downloads.DownloadedAlbumScreen
+import ovh.battistella.sillon.ui.screens.downloads.DownloadsScreen
 import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
@@ -72,6 +76,7 @@ private val tabs = listOf(
     Tab(Routes.ALBUMS, R.string.library_albums, Icons.Rounded.Album),
     Tab(Routes.PLAYLISTS, R.string.library_playlists, Icons.AutoMirrored.Rounded.QueueMusic),
     Tab(Routes.SEARCH, R.string.library_search, Icons.Rounded.Search),
+    Tab(Routes.DOWNLOADS, R.string.library_downloads, Icons.Rounded.DownloadDone),
 )
 
 @Composable
@@ -128,7 +133,7 @@ private fun LibraryNavHost() {
                                     }
                                 },
                                 icon = { Icon(tab.icon, contentDescription = null) },
-                                label = { Text(stringResource(tab.label)) },
+                                label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             )
                         }
                     }
@@ -152,6 +157,12 @@ private fun LibraryNavHost() {
                 }
                 composable(Routes.SEARCH) {
                     SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
+                }
+                composable(Routes.DOWNLOADS) {
+                    DownloadsScreen(onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) }, contentPadding = bottom)
+                }
+                composable(Routes.DOWNLOADED_ALBUM, arguments = keyArg) {
+                    DownloadedAlbumScreen(onBack = back, contentPadding = bottom)
                 }
                 composable(Routes.ARTIST, arguments = keyArg) {
                     ArtistScreen(onAlbum = openAlbum, onBack = back, contentPadding = bottom)

@@ -53,15 +53,5 @@ fun PlaylistScreen(
     contentPadding: PaddingValues,
     viewModel: PlaylistViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
-    TrackCollectionScreen(
-        state = state,
-        nowPlayingKey = nowPlaying.currentKey,
-        onBack = onBack,
-        onRetry = viewModel::load,
-        onPlay = viewModel::play,
-        onShuffle = viewModel::shuffle,
-        contentPadding = contentPadding,
-    )
+    TrackCollectionRoute(viewModel, onBack, contentPadding)
 }

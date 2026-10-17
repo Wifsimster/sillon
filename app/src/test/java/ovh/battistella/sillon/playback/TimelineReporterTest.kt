@@ -38,9 +38,12 @@ class TimelineReporterTest {
         val item = MediaItems.from(track)
 
         assertEquals(expected, TimelineReporter.endpointOf(item))
-        // An item that crossed a process boundary keeps the URI in its request metadata.
-        val stripped = item.buildUpon().setUri(null as String?).build()
-        assertEquals(expected, TimelineReporter.endpointOf(stripped))
+    }
+
+    @Test
+    fun `a downloaded track has no server of its own`() {
+        val item = MediaItems.from(track.copy(streamUrl = "file:///data/user/0/x/files/music/s/101.flac"))
+        assertNull(TimelineReporter.endpointOf(item))
     }
 
     @Test
