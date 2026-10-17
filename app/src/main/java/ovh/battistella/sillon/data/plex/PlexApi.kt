@@ -156,6 +156,28 @@ class PlexApi(
             "type" to TYPE_ARTIST, "sort" to "titleSort",
         ).metadata
 
+    /** All albums of a music section, by title. */
+    suspend fun albums(clientId: String, server: ServerEndpoint, sectionKey: String): List<PlexMetadata> =
+        get(
+            clientId, server, "library/sections/$sectionKey/all",
+            "type" to TYPE_ALBUM, "sort" to "titleSort",
+        ).metadata
+
+    /** Audio playlists on the server (Plex playlists are server-wide, not per library). */
+    suspend fun playlists(clientId: String, server: ServerEndpoint): List<PlexMetadata> =
+        get(clientId, server, "playlists", "playlistType" to "audio").metadata
+
+    /** Tracks of a playlist, in playlist order. */
+    suspend fun playlistItems(clientId: String, server: ServerEndpoint, ratingKey: String): List<PlexMetadata> =
+        get(clientId, server, "playlists/$ratingKey/items").metadata
+
+    /** Artists, albums and tracks of a music section matching [query], grouped by type. */
+    suspend fun search(clientId: String, server: ServerEndpoint, sectionKey: String, query: String): List<PlexHub> =
+        get(
+            clientId, server, "hubs/search",
+            "query" to query, "sectionId" to sectionKey, "limit" to SEARCH_LIMIT.toString(),
+        ).hubs
+
     /** Direct children of an item: an artist's albums, or an album's tracks. */
     suspend fun children(clientId: String, server: ServerEndpoint, ratingKey: String): List<PlexMetadata> =
         get(clientId, server, "library/metadata/$ratingKey/children").metadata
@@ -256,6 +278,8 @@ class PlexApi(
     companion object {
         const val PLEX_TV = "https://plex.tv/"
         private const val TYPE_ARTIST = "8"
+        private const val TYPE_ALBUM = "9"
+        private const val SEARCH_LIMIT = 20
         private const val PROBE_TIMEOUT_S = 4L
     }
 }

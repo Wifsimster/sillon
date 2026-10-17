@@ -54,19 +54,7 @@ class AlbumViewModel @Inject constructor(
                 val tracks = repository.children(key)
                 val a = album.await()
                 val albumArt = repository.artworkUrl(server, a?.thumb, HEADER_ART_PX)
-                playable = tracks.mapNotNull { track ->
-                    val url = repository.streamUrl(server, track) ?: return@mapNotNull null
-                    PlayableTrack(
-                        ratingKey = track.ratingKey,
-                        streamUrl = url,
-                        title = track.title,
-                        artist = track.trackArtist,
-                        album = track.parentTitle ?: a?.title,
-                        trackNumber = track.index,
-                        durationMs = track.duration,
-                        artworkUrl = repository.artworkUrl(server, track.artwork, HEADER_ART_PX) ?: albumArt,
-                    )
-                }
+                playable = repository.playable(tracks, albumArt)
                 Load.Ready(
                     AlbumUi(
                         title = a?.title.orEmpty(),
@@ -82,7 +70,7 @@ class AlbumViewModel @Inject constructor(
         }
     }
 
-    fun play(trackKey: String? = null) {
+    fun play(trackKey: String?) {
         val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
         playback.play(playable, start)
     }

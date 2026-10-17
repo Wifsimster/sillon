@@ -4,6 +4,25 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import ovh.battistella.sillon.R
+import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
+import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
+import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
+import ovh.battistella.sillon.ui.screens.search.SearchScreen
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
@@ -42,56 +61,92 @@ fun SillonRoot(viewModel: RootViewModel = hiltViewModel()) {
     }
 }
 
+/** A tab of the bottom bar. */
+private data class Tab(val route: String, val label: Int, val icon: ImageVector)
+
+private val tabs = listOf(
+    Tab(Routes.ARTISTS, R.string.library_artists, Icons.Rounded.Person),
+    Tab(Routes.ALBUMS, R.string.library_albums, Icons.Rounded.Album),
+    Tab(Routes.PLAYLISTS, R.string.library_playlists, Icons.AutoMirrored.Rounded.QueueMusic),
+    Tab(Routes.SEARCH, R.string.library_search, Icons.Rounded.Search),
+)
+
 @Composable
 private fun LibraryNavHost() {
     val navController = rememberNavController()
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val player by playerViewModel.state.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
-    val onPlayerScreen = backStack?.destination?.route == Routes.PLAYER
+    val destination = backStack?.destination
+    val onPlayerScreen = destination?.route == Routes.PLAYER
 
     Scaffold(
         bottomBar = {
-            AnimatedVisibility(
-                visible = player.hasMedia && !onPlayerScreen,
-                enter = slideInVertically { it },
-                exit = slideOutVertically { it },
-            ) {
-                MiniPlayer(
-                    state = player,
-                    onOpen = { navController.navigate(Routes.PLAYER) { launchSingleTop = true } },
-                    onPlayPause = playerViewModel::playPause,
-                    onNext = playerViewModel::next,
-                )
+            if (!onPlayerScreen) {
+                Column {
+                    AnimatedVisibility(
+                        visible = player.hasMedia,
+                        enter = slideInVertically { it },
+                        exit = slideOutVertically { it },
+                    ) {
+                        MiniPlayer(
+                            state = player,
+                            onOpen = { navController.navigate(Routes.PLAYER) { launchSingleTop = true } },
+                            onPlayPause = playerViewModel::playPause,
+                            onNext = playerViewModel::next,
+                        )
+                    }
+                    NavigationBar {
+                        tabs.forEach { tab ->
+                            val selected = destination?.hierarchy?.any { it.route == tab.route } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    // Standard tab behaviour: one back stack per tab,
+                                    // restored when coming back to it.
+                                    navController.navigate(tab.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = { Icon(tab.icon, contentDescription = null) },
+                                label = { Text(stringResource(tab.label)) },
+                            )
+                        }
+                    }
+                }
             }
         },
     ) { padding ->
         // Screens draw under the top system bar themselves; only the bottom
-        // inset (mini-player) is passed down for their scrolling content.
+        // inset (mini-player + tabs) is passed down for their scrolling content.
         val bottom = PaddingValues(bottom = padding.calculateBottomPadding())
+        val keyArg = listOf(navArgument(Routes.ARG_KEY) { type = NavType.StringType })
+        val openArtist: (String) -> Unit = { navController.navigate(Routes.artist(it)) }
+        val openAlbum: (String) -> Unit = { navController.navigate(Routes.album(it)) }
+        val back: () -> Unit = { navController.popBackStack() }
         Box(Modifier.fillMaxSize()) {
             NavHost(navController = navController, startDestination = Routes.ARTISTS) {
-                composable(Routes.ARTISTS) {
-                    ArtistsScreen(onArtist = { navController.navigate(Routes.artist(it)) }, contentPadding = bottom)
+                composable(Routes.ARTISTS) { ArtistsScreen(onArtist = openArtist, contentPadding = bottom) }
+                composable(Routes.ALBUMS) { AlbumsScreen(onAlbum = openAlbum, contentPadding = bottom) }
+                composable(Routes.PLAYLISTS) {
+                    PlaylistsScreen(onPlaylist = { navController.navigate(Routes.playlist(it)) }, contentPadding = bottom)
                 }
-                composable(
-                    Routes.ARTIST,
-                    arguments = listOf(navArgument(Routes.ARG_KEY) { type = NavType.StringType }),
-                ) {
-                    ArtistScreen(
-                        onAlbum = { navController.navigate(Routes.album(it)) },
-                        onBack = { navController.popBackStack() },
-                        contentPadding = bottom,
-                    )
+                composable(Routes.SEARCH) {
+                    SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
                 }
-                composable(
-                    Routes.ALBUM,
-                    arguments = listOf(navArgument(Routes.ARG_KEY) { type = NavType.StringType }),
-                ) {
-                    AlbumScreen(onBack = { navController.popBackStack() }, contentPadding = bottom)
+                composable(Routes.ARTIST, arguments = keyArg) {
+                    ArtistScreen(onAlbum = openAlbum, onBack = back, contentPadding = bottom)
+                }
+                composable(Routes.ALBUM, arguments = keyArg) {
+                    AlbumScreen(onBack = back, contentPadding = bottom)
+                }
+                composable(Routes.PLAYLIST, arguments = keyArg) {
+                    PlaylistScreen(onBack = back, contentPadding = bottom)
                 }
                 composable(Routes.PLAYER) {
-                    PlayerScreen(onClose = { navController.popBackStack() })
+                    PlayerScreen(onClose = back)
                 }
             }
         }
