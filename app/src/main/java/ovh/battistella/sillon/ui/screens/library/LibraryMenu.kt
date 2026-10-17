@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -61,6 +62,9 @@ class LibraryMenuViewModel @Inject constructor(
     }
 }
 
+/** Opens the settings screen; provided by the navigation host. */
+val LocalOpenSettings = staticCompositionLocalOf<() -> Unit> { {} }
+
 /**
  * Overflow menu of the top-level screens: which music library to show (when
  * the server has several), change server, sign out.
@@ -89,6 +93,14 @@ fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
             }
             HorizontalDivider()
         }
+        val openSettings = LocalOpenSettings.current
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.settings)) },
+            onClick = {
+                open = false
+                openSettings()
+            },
+        )
         DropdownMenuItem(
             text = { Text(stringResource(R.string.action_change_server)) },
             onClick = {

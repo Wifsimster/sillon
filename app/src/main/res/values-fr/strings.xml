@@ -68,4 +68,10 @@
     <string name="five_stars_shuffle">Lecture aléatoire de mes 5 étoiles</string>
     <string name="track_popularity">Popularité %1$d sur %2$d</string>
     <string name="track_rating">Noté %1$.1f étoiles</string>
+    <string name="settings">Réglages</string>
+    <string name="settings_quality_wifi">Qualité en Wi-Fi</string>
+    <string name="settings_quality_mobile">Qualité en données mobiles</string>
+    <string name="settings_quality_original">Originale</string>
+    <string name="settings_quality_original_hint">Le fichier tel qu\'il est sur le serveur (FLAC, MP3…)</string>
+    <string name="settings_quality_kbps">%1$d kbit/s (AAC)</string>
 </resources>

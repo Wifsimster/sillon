@@ -27,6 +27,8 @@ artists and albums, and listen with the screen off.
   playback was started from the app, the notification or a headset.
 - ⭐ **Ratings and popularity**: star ratings and popularity bars on every
   track, and **My 5 stars**: one tap shuffles every track you rated 5 stars.
+- 📶 **Streaming quality per network**: the original file on Wi-Fi, AAC at
+  320/192/128 kbps on mobile data (transcoded by the server), set separately.
 - 💾 **Offline downloads**: download an album or a playlist (Wi-Fi only by
   default) and play it with no connection from the Downloads tab.
 - 🚗 **Android Auto**: browse artists, albums and playlists in the car, and
@@ -35,7 +37,7 @@ artists and albums, and listen with the screen off.
 
 ## Roadmap
 
-1. Transcoding on mobile data.
+1. Jellyfin servers, next to Plex.
 2. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
 3. A Windows desktop app (Tauri), later.
 
