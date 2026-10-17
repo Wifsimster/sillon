@@ -89,4 +89,42 @@ class PlexApiTest {
         assertTrue(url.startsWith("https://app.plex.tv/auth#?clientID=client-1&code=AB12"))
         assertTrue(url.contains("context%5Bdevice%5D%5Bproduct%5D=Sillon"))
     }
+
+    @Test
+    fun `reports a stopped track that hands over to the next one`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {"size": 0}}"""))
+        val endpoint = ServerEndpoint(server.url("/").toString(), "srv-token")
+
+        api.timeline("client-1", endpoint, "101", TimelineState.Stopped, 61_000, 61_000, continuing = true)
+
+        val request = server.takeRequest()
+        val url = request.requestUrl!!
+        assertEquals("POST", request.method)
+        assertEquals("/:/timeline", url.encodedPath)
+        assertEquals("101", url.queryParameter("ratingKey"))
+        assertEquals("/library/metadata/101", url.queryParameter("key"))
+        assertEquals("stopped", url.queryParameter("state"))
+        assertEquals("61000", url.queryParameter("time"))
+        assertEquals("61000", url.queryParameter("duration"))
+        assertEquals("1", url.queryParameter("continuing"))
+        assertEquals("srv-token", request.getHeader("X-Plex-Token"))
+        assertEquals("client-1", request.getHeader("X-Plex-Client-Identifier"))
+    }
+
+    @Test
+    fun `only stopped reports say whether playback continues`() = runTest {
+        server.enqueue(MockResponse().setBody("{}"))
+        api.timeline("c", ServerEndpoint(server.url("/").toString(), "t"), "1", TimelineState.Playing, 5_000, 60_000)
+        assertNull(server.takeRequest().requestUrl!!.queryParameter("continuing"))
+    }
+
+    @Test
+    fun `recovers the server and token from a stream URL`() {
+        val endpoint = ServerEndpoint("https://10-0-0-2.abc.plex.direct:32400", "t0k")
+        val url = api.streamUrl(endpoint, "/library/parts/7/1700000000/file.flac")
+
+        assertEquals(endpoint, streamEndpoint(url))
+        assertNull(streamEndpoint("https://example.com/no-token.mp3"))
+        assertNull(streamEndpoint("not a url"))
+    }
 }
