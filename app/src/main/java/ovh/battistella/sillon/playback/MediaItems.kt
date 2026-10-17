@@ -3,6 +3,7 @@ package ovh.battistella.sillon.playback
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 
 /** A track ready for the player: the Plex key, where to stream it from, and what to display. */
 data class PlayableTrack(
@@ -37,7 +38,12 @@ object MediaItems {
             // process. A controller there sends back bare ids, which the service
             // resolves by key (see MediaLibraryTree.resolveEach).
             .setUri(uri)
+            // A transcode is an HLS playlist; say so rather than rely on the extension.
+            .setMimeType(if (isTranscode(track.streamUrl)) MimeTypes.APPLICATION_M3U8 else null)
             .setMediaMetadata(metadata)
             .build()
     }
+
+    /** True for a server transcode (as opposed to the original file or a download). */
+    fun isTranscode(url: String): Boolean = url.contains("/transcode/universal/")
 }

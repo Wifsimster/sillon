@@ -24,13 +24,16 @@ import ovh.battistella.sillon.ui.screens.downloads.DownloadedAlbumScreen
 import ovh.battistella.sillon.ui.screens.downloads.DownloadsScreen
 import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
 import ovh.battistella.sillon.ui.screens.library.FiveStarsScreen
+import ovh.battistella.sillon.ui.screens.library.LocalOpenSettings
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
+import ovh.battistella.sillon.ui.screens.settings.SettingsScreen
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -150,39 +153,44 @@ private fun LibraryNavHost() {
         val openAlbum: (String) -> Unit = { navController.navigate(Routes.album(it)) }
         val back: () -> Unit = { navController.popBackStack() }
         Box(Modifier.fillMaxSize()) {
-            NavHost(navController = navController, startDestination = Routes.ARTISTS) {
-                composable(Routes.ARTISTS) { ArtistsScreen(onArtist = openArtist, contentPadding = bottom) }
-                composable(Routes.ALBUMS) { AlbumsScreen(onAlbum = openAlbum, contentPadding = bottom) }
-                composable(Routes.PLAYLISTS) {
-                    PlaylistsScreen(
-                        onPlaylist = { navController.navigate(Routes.playlist(it)) },
-                        onFiveStars = { navController.navigate(Routes.FIVE_STARS) },
-                        contentPadding = bottom,
-                    )
-                }
-                composable(Routes.SEARCH) {
-                    SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
-                }
-                composable(Routes.DOWNLOADS) {
-                    DownloadsScreen(onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) }, contentPadding = bottom)
-                }
-                composable(Routes.DOWNLOADED_ALBUM, arguments = keyArg) {
-                    DownloadedAlbumScreen(onBack = back, contentPadding = bottom)
-                }
-                composable(Routes.ARTIST, arguments = keyArg) {
-                    ArtistScreen(onAlbum = openAlbum, onBack = back, contentPadding = bottom)
-                }
-                composable(Routes.ALBUM, arguments = keyArg) {
-                    AlbumScreen(onBack = back, contentPadding = bottom)
-                }
-                composable(Routes.FIVE_STARS) {
-                    FiveStarsScreen(onBack = back, contentPadding = bottom)
-                }
-                composable(Routes.PLAYLIST, arguments = keyArg) {
-                    PlaylistScreen(onBack = back, contentPadding = bottom)
-                }
-                composable(Routes.PLAYER) {
-                    PlayerScreen(onClose = back)
+            CompositionLocalProvider(LocalOpenSettings provides { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }) {
+                NavHost(navController = navController, startDestination = Routes.ARTISTS) {
+                    composable(Routes.ARTISTS) { ArtistsScreen(onArtist = openArtist, contentPadding = bottom) }
+                    composable(Routes.ALBUMS) { AlbumsScreen(onAlbum = openAlbum, contentPadding = bottom) }
+                    composable(Routes.PLAYLISTS) {
+                        PlaylistsScreen(
+                            onPlaylist = { navController.navigate(Routes.playlist(it)) },
+                            onFiveStars = { navController.navigate(Routes.FIVE_STARS) },
+                            contentPadding = bottom,
+                        )
+                    }
+                    composable(Routes.SEARCH) {
+                        SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
+                    }
+                    composable(Routes.DOWNLOADS) {
+                        DownloadsScreen(onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) }, contentPadding = bottom)
+                    }
+                    composable(Routes.DOWNLOADED_ALBUM, arguments = keyArg) {
+                        DownloadedAlbumScreen(onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.ARTIST, arguments = keyArg) {
+                        ArtistScreen(onAlbum = openAlbum, onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.ALBUM, arguments = keyArg) {
+                        AlbumScreen(onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.FIVE_STARS) {
+                        FiveStarsScreen(onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.PLAYLIST, arguments = keyArg) {
+                        PlaylistScreen(onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.SETTINGS) {
+                        SettingsScreen(onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.PLAYER) {
+                        PlayerScreen(onClose = back)
+                    }
                 }
             }
         }

@@ -251,6 +251,38 @@ class PlexApi(
             .toString()
     }
 
+    /**
+     * The track transcoded by the server to AAC at [kbps], as an HLS stream
+     * (seekable, with a known duration). [session] identifies the transcode on
+     * the server; a new one per track.
+     */
+    fun transcodeUrl(server: ServerEndpoint, clientId: String, ratingKey: String, kbps: Int, session: String): String =
+        server.uri.toHttpUrl().newBuilder()
+            .addPathSegments("music/:/transcode/universal/start.m3u8")
+            .addQueryParameter("path", "/library/metadata/$ratingKey")
+            .addQueryParameter("mediaIndex", "0")
+            .addQueryParameter("partIndex", "0")
+            .addQueryParameter("protocol", "hls")
+            .addQueryParameter("directPlay", "0")
+            .addQueryParameter("directStream", "0")
+            .addQueryParameter("musicBitrate", kbps.toString())
+            .addQueryParameter("session", session)
+            .addQueryParameter("X-Plex-Session-Identifier", session)
+            .addQueryParameter("X-Plex-Client-Identifier", clientId)
+            .addQueryParameter("X-Plex-Product", device.product)
+            .addQueryParameter("X-Plex-Version", device.version)
+            .addQueryParameter("X-Plex-Platform", "Android")
+            .addQueryParameter("X-Plex-Device", "Android")
+            // Ask for AAC in MPEG-TS whatever profile the server picks for "Android".
+            .addQueryParameter(
+                "X-Plex-Client-Profile-Extra",
+                "add-transcode-target(type=musicProfile&context=streaming&protocol=hls&container=mpegts&audioCodec=aac)" +
+                    "+add-limitation(scope=musicCodec&scopeName=aac&type=upperBound&name=audio.bitrate&value=$kbps)",
+            )
+            .addQueryParameter("X-Plex-Token", server.token)
+            .build()
+            .toString()
+
     /** Original file of a track, played as-is (direct play, no transcoding). */
     fun streamUrl(server: ServerEndpoint, partKey: String): String =
         server.uri.toHttpUrl().newBuilder()

@@ -70,4 +70,10 @@
     <string name="five_stars_shuffle">Shuffle my 5-star tracks</string>
     <string name="track_popularity">Popularity %1$d of %2$d</string>
     <string name="track_rating">Rated %1$.1f stars</string>
+    <string name="settings">Settings</string>
+    <string name="settings_quality_wifi">Streaming quality on Wi-Fi</string>
+    <string name="settings_quality_mobile">Streaming quality on mobile data</string>
+    <string name="settings_quality_original">Original</string>
+    <string name="settings_quality_original_hint">The file as it is on the server (FLAC, MP3…)</string>
+    <string name="settings_quality_kbps">%1$d kbps (AAC)</string>
 </resources>

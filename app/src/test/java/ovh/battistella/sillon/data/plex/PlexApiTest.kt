@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.data.plex
 
 import kotlinx.coroutines.test.runTest
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -198,5 +199,22 @@ class PlexApiTest {
         assertEquals("/library/sections/3/all", url.encodedPath)
         assertEquals("10", url.queryParameter("type"))
         assertEquals("10", url.queryParameter("userRating"))
+    }
+
+    @Test
+    fun `builds an AAC transcode of a track as an HLS stream`() {
+        val endpoint = ServerEndpoint("https://10-0-0-2.abc.plex.direct:32400", "t0k")
+        val url = api.transcodeUrl(endpoint, "client-1", "101", 192, "sess-1").toHttpUrl()
+
+        assertEquals("/music/:/transcode/universal/start.m3u8", url.encodedPath)
+        assertEquals("/library/metadata/101", url.queryParameter("path"))
+        assertEquals("hls", url.queryParameter("protocol"))
+        assertEquals("0", url.queryParameter("directPlay"))
+        assertEquals("192", url.queryParameter("musicBitrate"))
+        assertEquals("sess-1", url.queryParameter("session"))
+        assertEquals("client-1", url.queryParameter("X-Plex-Client-Identifier"))
+        assertTrue(url.queryParameter("X-Plex-Client-Profile-Extra")!!.contains("audioCodec=aac"))
+        // The timeline reporter finds the server and token in it, like in a direct stream URL.
+        assertEquals(endpoint, streamEndpoint(url.toString()))
     }
 }

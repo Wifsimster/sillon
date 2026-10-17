@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ovh.battistella.sillon.data.local.DownloadDao
+import ovh.battistella.sillon.data.network.NetworkMonitor
 import ovh.battistella.sillon.data.local.DownloadEntity
 import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.plex.ConnectionSelector
@@ -23,9 +24,11 @@ import ovh.battistella.sillon.data.plex.ServerEndpoint
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
+import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.playback.PlayableTrack
 import java.io.File
 import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -63,6 +66,8 @@ class PlexRepository @Inject constructor(
     private val api: PlexApi,
     private val sessionStore: SessionStore,
     private val downloads: DownloadDao,
+    private val settings: SettingsStore,
+    private val network: NetworkMonitor,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -178,9 +183,15 @@ class PlexRepository @Inject constructor(
                 }
             }.awaitAll()
         }
+        // Original file or transcode, by the quality chosen for the current network.
+        val quality = if (network.isMetered()) settings.mobileQuality.first() else settings.wifiQuality.first()
+        val clientId = sessionStore.clientId()
         return complete.filterNotNull().mapNotNull { track ->
             local[track.ratingKey]?.let { return@mapNotNull it.toPlayable() }
-            val url = streamUrl(server.endpoint, track) ?: return@mapNotNull null
+            if (track.partKey == null) return@mapNotNull null
+            val url = quality.kbps?.let { kbps ->
+                api.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, UUID.randomUUID().toString())
+            } ?: streamUrl(server.endpoint, track) ?: return@mapNotNull null
             PlayableTrack(
                 ratingKey = track.ratingKey,
                 streamUrl = url,

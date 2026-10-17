@@ -3,11 +3,15 @@ package ovh.battistella.sillon.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -21,6 +25,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.launch
+import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.repository.PlexRepository
@@ -52,6 +58,7 @@ class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
 
+    @OptIn(UnstableApi::class) // EventLogger
     override fun onCreate() {
         super.onCreate()
         val audioAttributes = AudioAttributes.Builder()
@@ -64,6 +71,11 @@ class PlaybackService : MediaLibraryService() {
             // Keep the Wi-Fi and CPU awake while streaming with the screen off.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+        // Debug builds log formats, bitrates and errors: `adb logcat -s SillonPlayer`.
+        if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
+        player.addListener(object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
+        })
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             // A downloaded track plays from a file: report it to the current server.
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
@@ -80,6 +92,30 @@ class PlaybackService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
+    }
+
+    /** Tracks already moved from a failed transcode to their original file. */
+    private val fellBack = mutableSetOf<String>()
+
+    /**
+     * A transcode the server refused or broke off: play the original file
+     * instead of stopping the music. Once per track.
+     */
+    private fun fallBackToOriginal(player: Player, error: PlaybackException) {
+        val item = player.currentMediaItem ?: return
+        val uri = item.localConfiguration?.uri?.toString() ?: return
+        if (!MediaItems.isTranscode(uri) || !fellBack.add(item.mediaId)) return
+        Log.w(TAG, "transcode failed (${error.errorCodeName}), falling back to the original file")
+        val index = player.currentMediaItemIndex
+        scope.launch {
+            val original = runCatching {
+                repository.metadata(item.mediaId)?.let { repository.streamUrl(repository.endpoint(), it) }
+            }.getOrNull() ?: return@launch
+            if (player.currentMediaItem?.mediaId != item.mediaId) return@launch
+            player.replaceMediaItem(index, item.buildUpon().setUri(original).setMimeType(null).build())
+            player.prepare()
+            player.play()
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
