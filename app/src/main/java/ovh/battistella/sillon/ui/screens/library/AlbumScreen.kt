@@ -39,10 +39,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
+import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.formatDuration
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumScreen(
     onBack: () -> Unit,
@@ -51,7 +51,32 @@ fun AlbumScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
+    TrackCollectionScreen(
+        state = state,
+        nowPlayingKey = nowPlaying.currentKey,
+        onBack = onBack,
+        onRetry = viewModel::load,
+        onPlay = viewModel::play,
+        onShuffle = viewModel::shuffle,
+        contentPadding = contentPadding,
+    )
+}
 
+/**
+ * An album or a playlist: cover, title, Play / Shuffle, then the tracks.
+ * [onPlay] with null plays from the top, with a key from that track.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TrackCollectionScreen(
+    state: Load<AlbumUi>,
+    nowPlayingKey: String?,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    onPlay: (String?) -> Unit,
+    onShuffle: () -> Unit,
+    contentPadding: PaddingValues,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -64,44 +89,49 @@ fun AlbumScreen(
             )
         },
     ) { padding ->
-        LoadContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { album ->
+        LoadContent(state, onRetry = onRetry, modifier = Modifier.padding(padding)) { album ->
             LazyColumn(
                 modifier = Modifier.padding(top = padding.calculateTopPadding()),
                 contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + 16.dp),
             ) {
                 item {
-                    AlbumHeader(album, onPlay = { viewModel.play() }, onShuffle = viewModel::shuffle)
+                    AlbumHeader(album, onPlay = { onPlay(null) }, onShuffle = onShuffle)
                 }
                 items(album.tracks, key = { it.key }) { track ->
-                    val playing = nowPlaying.currentKey == track.key
-                    val artist = track.artist
-                    val accent = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    ListItem(
-                        leadingContent = {
-                            Text(
-                                track.number?.toString().orEmpty(),
-                                color = accent,
-                                textAlign = TextAlign.End,
-                                modifier = Modifier.widthIn(min = 24.dp),
-                            )
-                        },
-                        headlineContent = {
-                            Text(track.title, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        },
-                        supportingContent = if (artist != null) {
-                            { Text(artist, maxLines = 1) }
-                        } else {
-                            null
-                        },
-                        trailingContent = {
-                            track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
-                        },
-                        modifier = Modifier.clickable { viewModel.play(track.key) },
-                    )
+                    TrackRow(track, playing = nowPlayingKey == track.key, onClick = { onPlay(track.key) })
                 }
             }
         }
     }
+}
+
+/** One track: number, title, artist when it adds something, duration. */
+@Composable
+fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
+    val accent = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    val artist = track.artist
+    ListItem(
+        leadingContent = {
+            Text(
+                track.number?.toString().orEmpty(),
+                color = accent,
+                textAlign = TextAlign.End,
+                modifier = Modifier.widthIn(min = 24.dp),
+            )
+        },
+        headlineContent = {
+            Text(track.title, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        supportingContent = if (artist != null) {
+            { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        } else {
+            null
+        },
+        trailingContent = {
+            track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
 }
 
 @Composable

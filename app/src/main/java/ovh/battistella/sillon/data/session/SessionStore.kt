@@ -64,6 +64,13 @@ class SessionStore @Inject constructor(
      * first use and kept across sign-outs so plex.tv doesn't list a new device
      * every time.
      */
+    /** Music library chosen on the current server; null means "the first one". */
+    val musicSectionKey: Flow<String?> = store.data.map { it[MUSIC_SECTION] }
+
+    suspend fun selectMusicSection(key: String) {
+        store.edit { it[MUSIC_SECTION] = key }
+    }
+
     suspend fun clientId(): String {
         store.data.first()[CLIENT_ID]?.let { return it }
         var id = ""
@@ -92,6 +99,7 @@ class SessionStore @Inject constructor(
             it.remove(SERVER_NAME)
             it.remove(SERVER_URI)
             it.remove(SERVER_TOKEN)
+            it.remove(MUSIC_SECTION)
         }
     }
 
@@ -110,5 +118,6 @@ class SessionStore @Inject constructor(
         val SERVER_NAME = stringPreferencesKey("server_name")
         val SERVER_URI = stringPreferencesKey("server_uri")
         val SERVER_TOKEN = stringPreferencesKey("server_token")
+        val MUSIC_SECTION = stringPreferencesKey("music_section")
     }
 }

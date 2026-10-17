@@ -1,5 +1,8 @@
 package ovh.battistella.sillon.data.repository
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -7,6 +10,7 @@ import kotlinx.coroutines.sync.withLock
 import ovh.battistella.sillon.data.plex.ConnectionSelector
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.plex.PlexDirectory
+import ovh.battistella.sillon.data.plex.PlexHub
 import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPin
@@ -15,9 +19,16 @@ import ovh.battistella.sillon.data.plex.ServerEndpoint
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
+import ovh.battistella.sillon.playback.PlayableTrack
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** The two PINs of a sign-in attempt; approving either one signs the user in. */
+data class SignInPins(val browser: PlexPin, val link: PlexPin)
+
+/** Cover size requested for the player and the media notification, in pixels. */
+const val PLAYER_ART_PX = 900
 
 /** Thrown when a library call is made before a server is selected. */
 class NoServerException : IllegalStateException("No Plex server selected")
@@ -39,7 +50,13 @@ class PlexRepository @Inject constructor(
     // Sign-in
     // ---------------------------------------------------------------------
 
-    suspend fun createPin(): PlexPin = api.createPin(sessionStore.clientId())
+    /** A strong PIN for the browser sign-in and a short one for plex.tv/link. */
+    suspend fun createPins(): SignInPins = coroutineScope {
+        val clientId = sessionStore.clientId()
+        val browser = async { api.createPin(clientId, strong = true) }
+        val link = async { api.createPin(clientId, strong = false) }
+        SignInPins(browser = browser.await(), link = link.await())
+    }
 
     suspend fun authUrl(pin: PlexPin): String = api.authUrl(sessionStore.clientId(), pin)
 
@@ -87,6 +104,59 @@ class PlexRepository @Inject constructor(
     // ---------------------------------------------------------------------
     // Library
     // ---------------------------------------------------------------------
+
+    /** The chosen music library, or the server's first one. Null when the server has none. */
+    suspend fun currentMusicSection(): PlexDirectory? {
+        val sections = musicSections()
+        val chosen = sessionStore.musicSectionKey.first()
+        return sections.firstOrNull { it.key == chosen } ?: sections.firstOrNull()
+    }
+
+    /** Emits whenever the user picks another music library. */
+    val musicSectionKey: Flow<String?> = sessionStore.musicSectionKey
+
+    suspend fun selectMusicSection(key: String) = sessionStore.selectMusicSection(key)
+
+    suspend fun albums(sectionKey: String): List<PlexMetadata> =
+        onServer { clientId, server -> api.albums(clientId, server, sectionKey) }
+
+    suspend fun playlists(): List<PlexMetadata> =
+        onServer { clientId, server -> api.playlists(clientId, server) }
+
+    suspend fun playlistItems(ratingKey: String): List<PlexMetadata> =
+        onServer { clientId, server -> api.playlistItems(clientId, server, ratingKey) }
+
+    suspend fun search(sectionKey: String, query: String): List<PlexHub> =
+        onServer { clientId, server -> api.search(clientId, server, sectionKey, query) }
+
+    /**
+     * Turn tracks into player items. Some listings (search results) may omit the
+     * media parts; those tracks are fetched in full first. Tracks with no file
+     * are left out.
+     */
+    suspend fun playable(tracks: List<PlexMetadata>, fallbackArtworkUrl: String? = null): List<PlayableTrack> {
+        val server = endpoint()
+        val complete = coroutineScope {
+            tracks.map { track ->
+                async {
+                    if (track.partKey != null) track else runCatching { metadata(track.ratingKey) }.getOrNull()
+                }
+            }.awaitAll()
+        }
+        return complete.filterNotNull().mapNotNull { track ->
+            val url = streamUrl(server, track) ?: return@mapNotNull null
+            PlayableTrack(
+                ratingKey = track.ratingKey,
+                streamUrl = url,
+                title = track.title,
+                artist = track.trackArtist,
+                album = track.parentTitle,
+                trackNumber = track.index,
+                durationMs = track.duration,
+                artworkUrl = artworkUrl(server, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
+            )
+        }
+    }
 
     suspend fun musicSections(): List<PlexDirectory> =
         onServer { clientId, server -> api.sections(clientId, server).filter { it.isMusic } }

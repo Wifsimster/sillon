@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,7 +40,7 @@ fun MiniPlayer(
         tonalElevation = 3.dp,
         modifier = modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.navigationBarsPadding()) {
+        Column {
             LinearProgressIndicator(
                 progress = {
                     if (state.durationMs > 0) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f

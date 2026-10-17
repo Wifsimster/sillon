@@ -9,22 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -35,10 +26,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
+import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.Message
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArtistsScreen(
     onArtist: (String) -> Unit,
@@ -46,39 +37,47 @@ fun ArtistsScreen(
     viewModel: ArtistsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var menuOpen by remember { mutableStateOf(false) }
+    SectionGridScreen(stringResource(R.string.library_artists), state, viewModel::load, onArtist, round = true, contentPadding)
+}
 
+@Composable
+fun AlbumsScreen(
+    onAlbum: (String) -> Unit,
+    contentPadding: PaddingValues,
+    viewModel: AlbumsViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    SectionGridScreen(stringResource(R.string.library_albums), state, viewModel::load, onAlbum, round = false, contentPadding)
+}
+
+/** A top-level grid of the current music library, with the library menu. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SectionGridScreen(
+    title: String,
+    state: Load<SectionGridUi>,
+    onRetry: () -> Unit,
+    onClick: (String) -> Unit,
+    round: Boolean,
+    contentPadding: PaddingValues,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.library_artists)) },
-                actions = {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = null)
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_change_server)) },
-                            onClick = { menuOpen = false; viewModel.changeServer() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_sign_out)) },
-                            onClick = { menuOpen = false; viewModel.signOut() },
-                        )
-                    }
-                },
+                title = { Text(title) },
+                actions = { LibraryMenu() },
             )
         },
     ) { padding ->
-        LoadContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { ui ->
-            val artists = ui.artists
+        LoadContent(state, onRetry = onRetry, modifier = Modifier.padding(padding)) { ui ->
+            val tiles = ui.tiles
             when {
-                artists == null -> Message(stringResource(R.string.library_no_music), Modifier.padding(padding))
-                artists.isEmpty() -> Message(stringResource(R.string.library_empty), Modifier.padding(padding))
+                tiles == null -> Message(stringResource(R.string.library_no_music), Modifier.padding(padding))
+                tiles.isEmpty() -> Message(stringResource(R.string.library_empty), Modifier.padding(padding))
                 else -> TileGrid(
-                    tiles = artists,
-                    onClick = onArtist,
-                    round = true,
+                    tiles = tiles,
+                    onClick = onClick,
+                    round = round,
                     modifier = Modifier.padding(top = padding.calculateTopPadding()),
                     contentPadding = contentPadding,
                 )
@@ -130,7 +129,9 @@ fun TileGrid(
                     textAlign = if (round) TextAlign.Center else TextAlign.Start,
                     modifier = Modifier.padding(top = 8.dp),
                 )
-                tile.subtitle?.let {
+                val subtitle = tile.subtitle
+                    ?: tile.trackCount?.let { stringResource(R.string.album_tracks, it) }
+                subtitle?.let {
                     Text(
                         it,
                         style = MaterialTheme.typography.bodySmall,

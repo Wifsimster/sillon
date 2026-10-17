@@ -72,12 +72,19 @@ class PlexApi(
     // ---------------------------------------------------------------------
 
     /**
-     * Create a short (4-character) PIN. The user approves it either in the
-     * browser via [authUrl] or by typing it at plex.tv/link.
+     * Create a sign-in PIN. Plex has two kinds, one per way of approving it:
+     * a [strong] one (25 characters) for the browser page at [authUrl], and a
+     * short one (4 characters) to type at plex.tv/link. The browser page
+     * rejects a short PIN with "unable to respond to the request".
      */
-    suspend fun createPin(clientId: String): PlexPin {
+    suspend fun createPin(clientId: String, strong: Boolean): PlexPin {
         val request = Request.Builder()
-            .url(plexTv.newBuilder().addPathSegments("api/v2/pins").build())
+            .url(
+                plexTv.newBuilder()
+                    .addPathSegments("api/v2/pins")
+                    .apply { if (strong) addQueryParameter("strong", "true") }
+                    .build(),
+            )
             .headers(clientId)
             .post(FormBody.Builder().build())
             .build()
@@ -99,7 +106,7 @@ class PlexApi(
         return PlexJson.decodeFromString(PlexPin.serializer(), client.fetch(request))
     }
 
-    /** Browser URL where the signed-in user approves [pin] for this device. */
+    /** Browser URL where the signed-in user approves a strong [pin] for this device. */
     fun authUrl(clientId: String, pin: PlexPin): String =
         "https://app.plex.tv/auth#?" + listOf(
             "clientID" to clientId,
@@ -148,6 +155,28 @@ class PlexApi(
             clientId, server, "library/sections/$sectionKey/all",
             "type" to TYPE_ARTIST, "sort" to "titleSort",
         ).metadata
+
+    /** All albums of a music section, by title. */
+    suspend fun albums(clientId: String, server: ServerEndpoint, sectionKey: String): List<PlexMetadata> =
+        get(
+            clientId, server, "library/sections/$sectionKey/all",
+            "type" to TYPE_ALBUM, "sort" to "titleSort",
+        ).metadata
+
+    /** Audio playlists on the server (Plex playlists are server-wide, not per library). */
+    suspend fun playlists(clientId: String, server: ServerEndpoint): List<PlexMetadata> =
+        get(clientId, server, "playlists", "playlistType" to "audio").metadata
+
+    /** Tracks of a playlist, in playlist order. */
+    suspend fun playlistItems(clientId: String, server: ServerEndpoint, ratingKey: String): List<PlexMetadata> =
+        get(clientId, server, "playlists/$ratingKey/items").metadata
+
+    /** Artists, albums and tracks of a music section matching [query], grouped by type. */
+    suspend fun search(clientId: String, server: ServerEndpoint, sectionKey: String, query: String): List<PlexHub> =
+        get(
+            clientId, server, "hubs/search",
+            "query" to query, "sectionId" to sectionKey, "limit" to SEARCH_LIMIT.toString(),
+        ).hubs
 
     /** Direct children of an item: an artist's albums, or an album's tracks. */
     suspend fun children(clientId: String, server: ServerEndpoint, ratingKey: String): List<PlexMetadata> =
@@ -249,6 +278,8 @@ class PlexApi(
     companion object {
         const val PLEX_TV = "https://plex.tv/"
         private const val TYPE_ARTIST = "8"
+        private const val TYPE_ALBUM = "9"
+        private const val SEARCH_LIMIT = 20
         private const val PROBE_TIMEOUT_S = 4L
     }
 }

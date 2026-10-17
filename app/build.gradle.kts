@@ -55,6 +55,18 @@ android {
     }
 
     signingConfigs {
+        // A committed, well-known debug key (the standard Android debug
+        // passwords), so every CI build — and the debug-signed APKs on the
+        // GitHub releases — installs over the previous one. A fresh runner
+        // would otherwise generate a new key each time, and Android refuses an
+        // update signed with a different key. This key protects nothing: store
+        // builds use the upload key below.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = file(releaseStoreFile!!)

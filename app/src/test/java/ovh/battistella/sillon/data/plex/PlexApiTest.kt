@@ -31,7 +31,7 @@ class PlexApiTest {
     fun `creates a PIN with the client headers`() = runTest {
         server.enqueue(MockResponse().setBody("""{"id": 42, "code": "AB12", "expiresIn": 900, "authToken": null}"""))
 
-        val pin = api.createPin("client-1")
+        val pin = api.createPin("client-1", strong = false)
 
         assertEquals(42L, pin.id)
         assertEquals("AB12", pin.code)
@@ -39,9 +39,19 @@ class PlexApiTest {
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/api/v2/pins", request.requestUrl!!.encodedPath)
+        assertNull(request.requestUrl!!.queryParameter("strong"))
         assertEquals("client-1", request.getHeader("X-Plex-Client-Identifier"))
         assertEquals("Sillon", request.getHeader("X-Plex-Product"))
         assertEquals("application/json", request.getHeader("Accept"))
+    }
+
+    @Test
+    fun `asks for a strong PIN for the browser sign-in`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"id": 43, "code": "wwxn988ytlwh8jt7ct622327n"}"""))
+
+        api.createPin("client-1", strong = true)
+
+        assertEquals("true", server.takeRequest().requestUrl!!.queryParameter("strong"))
     }
 
     @Test
@@ -126,5 +136,44 @@ class PlexApiTest {
         assertEquals(endpoint, streamEndpoint(url))
         assertNull(streamEndpoint("https://example.com/no-token.mp3"))
         assertNull(streamEndpoint("not a url"))
+    }
+
+    @Test
+    fun `searches the music library and groups results by type`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Hub": [
+                  {"type": "artist", "title": "Artists", "Metadata": [{"ratingKey": "5", "title": "Daft Punk"}]},
+                  {"type": "track", "title": "Tracks", "Metadata": [
+                    {"ratingKey": "9", "title": "One More Time", "parentRatingKey": "8", "parentTitle": "Discovery"}]}
+                ]}}""",
+            ),
+        )
+        val endpoint = ServerEndpoint(server.url("/").toString(), "t")
+
+        val hubs = api.search("c", endpoint, "3", "daft")
+
+        assertEquals(listOf("artist", "track"), hubs.map { it.type })
+        assertEquals("8", hubs[1].metadata.single().parentRatingKey)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/hubs/search", url.encodedPath)
+        assertEquals("daft", url.queryParameter("query"))
+        assertEquals("3", url.queryParameter("sectionId"))
+    }
+
+    @Test
+    fun `lists audio playlists with their mosaic cover`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Metadata": [
+                  {"ratingKey": "77", "title": "Running", "leafCount": 42, "composite": "/playlists/77/composite/1"}]}}""",
+            ),
+        )
+
+        val playlist = api.playlists("c", ServerEndpoint(server.url("/").toString(), "t")).single()
+
+        assertEquals(42, playlist.leafCount)
+        assertEquals("/playlists/77/composite/1", playlist.artwork)
+        assertEquals("audio", server.takeRequest().requestUrl!!.queryParameter("playlistType"))
     }
 }
