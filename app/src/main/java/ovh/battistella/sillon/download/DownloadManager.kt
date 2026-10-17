@@ -43,6 +43,8 @@ class DownloadManager @Inject constructor(
         val complete = tracks.mapNotNull { track ->
             if (track.partKey != null) track else runCatching { repository.metadata(track.ratingKey) }.getOrNull()
         }
+        // Kept with the file so loudness levelling works offline.
+        val loudness = runCatching { repository.loudness(complete) }.getOrDefault(emptyMap())
         val rows = complete.mapNotNull { track ->
             val partKey = track.partKey ?: return@mapNotNull null
             DownloadEntity(
@@ -59,6 +61,8 @@ class DownloadManager @Inject constructor(
                 partKey = partKey,
                 thumb = track.parentThumb ?: track.thumb,
                 state = DownloadState.QUEUED,
+                gainDb = loudness[track.ratingKey]?.track,
+                albumGainDb = loudness[track.ratingKey]?.album,
             )
         }
         dao.insert(rows)

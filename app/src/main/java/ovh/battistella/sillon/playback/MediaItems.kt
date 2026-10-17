@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.playback
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
@@ -15,6 +16,8 @@ data class PlayableTrack(
     val trackNumber: Int?,
     val durationMs: Long?,
     val artworkUrl: String?,
+    /** Volume correction for loudness levelling, in dB; null when off or unknown. */
+    val gainDb: Float? = null,
 )
 
 object MediaItems {
@@ -30,6 +33,7 @@ object MediaItems {
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+            .setExtras(track.gainDb?.let { gain -> Bundle().apply { putFloat(EXTRA_GAIN_DB, gain) } })
             .build()
         return MediaItem.Builder()
             .setMediaId(track.ratingKey)
@@ -43,6 +47,19 @@ object MediaItems {
             .setMediaMetadata(metadata)
             .build()
     }
+
+    const val EXTRA_GAIN_DB = "ovh.battistella.sillon.GAIN_DB"
+
+    /**
+     * Player volume (0–1) for a loudness correction of [gainDb]. A track that
+     * should get louder can't: the player volume can only attenuate, so it
+     * stays at full volume.
+     */
+    fun volumeFor(gainDb: Float?): Float =
+        if (gainDb == null) 1f else Math.pow(10.0, gainDb / 20.0).toFloat().coerceIn(MIN_VOLUME, 1f)
+
+    /** Never turn a track down by more than 20 dB, whatever a broken tag says. */
+    private const val MIN_VOLUME = 0.1f
 
     /** True for a server transcode (as opposed to the original file or a download). */
     fun isTranscode(url: String): Boolean =

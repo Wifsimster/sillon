@@ -94,4 +94,9 @@
     <string name="jellyfin_other_server">Un autre serveur</string>
     <string name="five_stars_jellyfin">Mes favoris</string>
     <string name="five_stars_jellyfin_hint">Tous les titres que tu as mis en favoris</string>
+    <string name="settings_loudness">Égalisation du volume</string>
+    <string name="settings_loudness_hint">Harmonise le volume entre les titres grâce aux gains mesurés par ton serveur (ReplayGain).</string>
+    <string name="settings_loudness_off">Désactivée</string>
+    <string name="settings_loudness_track">Par titre : tous les titres au même volume</string>
+    <string name="settings_loudness_album">Par album : garde les nuances de chaque album</string>
 </resources>

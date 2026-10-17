@@ -66,6 +66,8 @@ data class JellyfinItem(
     @SerialName("ImageTags") val imageTags: Map<String, String> = emptyMap(),
     @SerialName("AlbumPrimaryImageTag") val albumPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: JellyfinUserData? = null,
+    /** dB to bring the track to the server's target loudness (Jellyfin 10.9+). */
+    @SerialName("NormalizationGain") val normalizationGain: Float? = null,
 )
 
 @Serializable
@@ -117,6 +119,7 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         parentThumb = albumImage,
         userRating = if (userData?.isFavorite == true) 10f else null,
         viewCount = userData?.playCount,
+        normalizationGain = normalizationGain,
         media = if (type == "Audio") {
             listOf(PlexMedia(container = container, parts = listOf(PlexPart(key = streamPath(id, container)))))
         } else {

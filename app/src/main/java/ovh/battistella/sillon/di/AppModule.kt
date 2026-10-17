@@ -12,6 +12,7 @@ import okhttp3.OkHttpClient
 import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.data.jellyfin.JellyfinApi
 import ovh.battistella.sillon.data.local.DownloadDao
+import ovh.battistella.sillon.data.local.MIGRATION_1_2
 import ovh.battistella.sillon.data.local.SillonDatabase
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.plex.PlexDevice
@@ -35,7 +36,9 @@ object AppModule {
     fun provideDatabase(@ApplicationContext context: Context): SillonDatabase =
         // No destructive fallback: a forgotten migration must crash loudly, not
         // silently wipe the downloads (lesson learnt in Ondes).
-        Room.databaseBuilder(context, SillonDatabase::class.java, "sillon.db").build()
+        Room.databaseBuilder(context, SillonDatabase::class.java, "sillon.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideDownloadDao(db: SillonDatabase): DownloadDao = db.downloadDao()

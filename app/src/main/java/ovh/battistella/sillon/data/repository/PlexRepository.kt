@@ -31,6 +31,7 @@ import ovh.battistella.sillon.data.plex.TimelineState
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
+import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.playback.PlayableTrack
 import java.io.File
@@ -47,7 +48,7 @@ fun DownloadEntity.isPlayableOffline(): Boolean =
     state == DownloadState.DONE && filePath != null && File(filePath).isFile
 
 /** A downloaded track as a player item, playing from its file. */
-fun DownloadEntity.toPlayable(): PlayableTrack = PlayableTrack(
+fun DownloadEntity.toPlayable(loudness: LoudnessMode = LoudnessMode.OFF): PlayableTrack = PlayableTrack(
     ratingKey = ratingKey,
     streamUrl = Uri.fromFile(File(checkNotNull(filePath))).toString(),
     title = title,
@@ -56,7 +57,21 @@ fun DownloadEntity.toPlayable(): PlayableTrack = PlayableTrack(
     trackNumber = trackNumber,
     durationMs = durationMs,
     artworkUrl = artworkPath?.let { Uri.fromFile(File(it)).toString() },
+    gainDb = when (loudness) {
+        LoudnessMode.OFF -> null
+        LoudnessMode.TRACK -> gainDb
+        LoudnessMode.ALBUM -> albumGainDb ?: gainDb
+    },
 )
+
+/** Track and album gains in dB, by track key. */
+data class Loudness(val track: Float?, val album: Float?) {
+    fun forMode(mode: LoudnessMode): Float? = when (mode) {
+        LoudnessMode.OFF -> null
+        LoudnessMode.TRACK -> track
+        LoudnessMode.ALBUM -> album ?: track
+    }
+}
 
 /** Cover size requested for the player and the media notification, in pixels. */
 const val PLAYER_ART_PX = 900
@@ -267,8 +282,14 @@ class PlexRepository @Inject constructor(
         // Original file or transcode, by the quality chosen for the current network.
         val quality = if (network.isMetered()) settings.mobileQuality.first() else settings.wifiQuality.first()
         val clientId = sessionStore.clientId()
+        val mode = settings.loudness.first()
+        val loudness = if (mode == LoudnessMode.OFF) {
+            emptyMap()
+        } else {
+            loudness(complete.filterNotNull().filter { it.ratingKey !in local })
+        }
         return complete.filterNotNull().mapNotNull { track ->
-            local[track.ratingKey]?.let { return@mapNotNull it.toPlayable() }
+            local[track.ratingKey]?.let { return@mapNotNull it.toPlayable(mode) }
             if (track.partKey == null) return@mapNotNull null
             val url = quality.kbps?.let { kbps ->
                 val session = UUID.randomUUID().toString()
@@ -286,8 +307,30 @@ class PlexRepository @Inject constructor(
                 trackNumber = track.index,
                 durationMs = track.duration,
                 artworkUrl = artworkUrl(server.endpoint, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
+                gainDb = loudness[track.ratingKey]?.forMode(mode),
             )
         }
+    }
+
+    /**
+     * Loudness gains of [tracks]. Jellyfin lists them with the tracks; Plex
+     * only gives them in full item responses, fetched here in one batched
+     * request. Best effort: no gains rather than no music.
+     */
+    suspend fun loudness(tracks: List<PlexMetadata>): Map<String, Loudness> {
+        val known = tracks.filter { it.trackGain != null }
+        val missing = tracks.filter { it.trackGain == null }.map { it.ratingKey }
+        val fetched = if (missing.isEmpty() || jellyfinServer() != null) {
+            emptyList()
+        } else {
+            runCatching {
+                onServer(
+                    plex = { clientId, server -> api.metadataBatch(clientId, server, missing) },
+                    jellyfin = { _, _ -> emptyList() },
+                )
+            }.getOrDefault(emptyList())
+        }
+        return (known + fetched).associate { it.ratingKey to Loudness(it.trackGain, it.albumGain) }
     }
 
     /** Machine identifier of the current server, which downloads are filed under. */

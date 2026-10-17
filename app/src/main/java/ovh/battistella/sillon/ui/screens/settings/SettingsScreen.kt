@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.settings.StreamQuality
 import ovh.battistella.sillon.download.DownloadManager
@@ -46,6 +47,11 @@ class SettingsViewModel @Inject constructor(
     val wifiQuality = settings.wifiQuality.stateIn(viewModelScope, SharingStarted.Eagerly, StreamQuality.ORIGINAL)
     val mobileQuality = settings.mobileQuality.stateIn(viewModelScope, SharingStarted.Eagerly, StreamQuality.KBPS_320)
     val downloadWifiOnly = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val loudness = settings.loudness.stateIn(viewModelScope, SharingStarted.Eagerly, LoudnessMode.TRACK)
+
+    fun setLoudness(value: LoudnessMode) {
+        viewModelScope.launch { settings.setLoudness(value) }
+    }
 
     fun setWifiQuality(value: StreamQuality) {
         viewModelScope.launch { settings.setWifiQuality(value) }
@@ -70,6 +76,7 @@ fun SettingsScreen(
     val wifiQuality by viewModel.wifiQuality.collectAsStateWithLifecycle()
     val mobileQuality by viewModel.mobileQuality.collectAsStateWithLifecycle()
     val downloadWifiOnly by viewModel.downloadWifiOnly.collectAsStateWithLifecycle()
+    val loudness by viewModel.loudness.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -92,6 +99,32 @@ fun SettingsScreen(
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.settings_quality_mobile)) }
             item { QualityChoices(mobileQuality, viewModel::setMobileQuality) }
+            item { HorizontalDivider() }
+            item { SectionTitle(stringResource(R.string.settings_loudness)) }
+            item {
+                Text(
+                    stringResource(R.string.settings_loudness_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+            item {
+                Choices(
+                    options = LoudnessMode.entries,
+                    selected = loudness,
+                    label = {
+                        stringResource(
+                            when (it) {
+                                LoudnessMode.OFF -> R.string.settings_loudness_off
+                                LoudnessMode.TRACK -> R.string.settings_loudness_track
+                                LoudnessMode.ALBUM -> R.string.settings_loudness_album
+                            },
+                        )
+                    },
+                    onSelect = viewModel::setLoudness,
+                )
+            }
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.library_downloads)) }
             item {
@@ -117,6 +150,21 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp),
     )
+}
+
+@Composable
+private fun <T> Choices(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+    options.forEach { option ->
+        ListItem(
+            headlineContent = { Text(label(option)) },
+            leadingContent = { RadioButton(selected = option == selected, onClick = null) },
+            modifier = Modifier.selectable(
+                selected = option == selected,
+                role = Role.RadioButton,
+                onClick = { onSelect(option) },
+            ),
+        )
+    }
 }
 
 @Composable

@@ -21,6 +21,9 @@ enum class StreamQuality(val kbps: Int?) {
     KBPS_128(128),
 }
 
+/** Loudness levelling: none, every track to the same loudness, or every album (keeping its own dynamics). */
+enum class LoudnessMode { OFF, TRACK, ALBUM }
+
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 /** User preferences that aren't tied to the account or server. */
@@ -49,6 +52,15 @@ class SettingsStore @Inject constructor(
         context.settingsDataStore.edit { it[MOBILE_QUALITY] = value.name }
     }
 
+    /** On by default, per track: shuffles and mixes jump between albums mastered years apart. */
+    val loudness: Flow<LoudnessMode> = context.settingsDataStore.data.map { prefs ->
+        LoudnessMode.entries.firstOrNull { it.name == prefs[LOUDNESS] } ?: LoudnessMode.TRACK
+    }
+
+    suspend fun setLoudness(value: LoudnessMode) {
+        context.settingsDataStore.edit { it[LOUDNESS] = value.name }
+    }
+
     private fun String?.toQuality(default: StreamQuality) =
         StreamQuality.entries.firstOrNull { it.name == this } ?: default
 
@@ -60,5 +72,6 @@ class SettingsStore @Inject constructor(
         val WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val WIFI_QUALITY = stringPreferencesKey("stream_quality_wifi")
         val MOBILE_QUALITY = stringPreferencesKey("stream_quality_mobile")
+        val LOUDNESS = stringPreferencesKey("loudness")
     }
 }

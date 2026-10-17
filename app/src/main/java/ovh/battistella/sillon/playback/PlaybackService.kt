@@ -71,6 +71,9 @@ class PlaybackService : MediaLibraryService() {
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
+
+            // Loudness levelling: each track carries its gain; set the volume as it starts.
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = applyGain(player, mediaItem)
         })
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             // A downloaded track plays from a file, and a Jellyfin stream carries
@@ -88,6 +91,14 @@ class PlaybackService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
+    }
+
+    private fun applyGain(player: Player, item: MediaItem?) {
+        val gain = item?.mediaMetadata?.extras
+            ?.takeIf { it.containsKey(MediaItems.EXTRA_GAIN_DB) }
+            ?.getFloat(MediaItems.EXTRA_GAIN_DB)
+        player.volume = MediaItems.volumeFor(gain)
+        if (BuildConfig.DEBUG) Log.d(TAG, "gain ${item?.mediaId}: $gain dB -> volume ${player.volume}")
     }
 
     /** Tracks already moved from a failed transcode to their original file. */

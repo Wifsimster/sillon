@@ -46,6 +46,9 @@ data class DownloadEntity(
     /** Absolute path of the downloaded cover, if any. */
     val artworkPath: String? = null,
     val addedAt: Long = System.currentTimeMillis(),
+    /** Loudness gains in dB, kept so levelling works offline (v2). */
+    val gainDb: Float? = null,
+    val albumGainDb: Float? = null,
 )
 
 @Dao
@@ -87,7 +90,15 @@ interface DownloadDao {
     suspend fun delete(serverId: String, keys: List<String>)
 }
 
-@Database(entities = [DownloadEntity::class], version = 1, exportSchema = true)
+@Database(entities = [DownloadEntity::class], version = 2, exportSchema = true)
 abstract class SillonDatabase : RoomDatabase() {
     abstract fun downloadDao(): DownloadDao
+}
+
+/** v2 keeps the loudness gains of downloaded tracks. */
+val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `gainDb` REAL")
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `albumGainDb` REAL")
+    }
 }
