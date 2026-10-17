@@ -25,13 +25,15 @@ artists and albums, and listen with the screen off.
 - 📊 **Plays reported to Plex**: the track shows under *Now playing* on the
   server dashboard, lands in the history and counts as played — whether
   playback was started from the app, the notification or a headset.
+- 💾 **Offline downloads**: download an album or a playlist (Wi-Fi only by
+  default) and play it with no connection from the Downloads tab.
 - 🚗 **Android Auto**: browse artists, albums and playlists in the car, and
   play by voice ("play … on Sillon").
 - 🌍 English and French, Material You.
 
 ## Roadmap
 
-1. Offline downloads (WorkManager) and transcoding on mobile data.
+1. Transcoding on mobile data.
 2. ReplayGain loudness levelling, Plex mixes/radios (Plex Pass).
 3. A Windows desktop app (Tauri), later.
 
