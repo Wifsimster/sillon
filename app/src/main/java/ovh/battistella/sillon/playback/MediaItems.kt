@@ -32,19 +32,12 @@ object MediaItems {
             .build()
         return MediaItem.Builder()
             .setMediaId(track.ratingKey)
+            // The URI (which carries the Plex token) stays in the local
+            // configuration: Media3 strips it before handing items to another
+            // process. A controller there sends back bare ids, which the service
+            // resolves by key (see MediaLibraryTree.resolveEach).
             .setUri(uri)
-            // The URI is also carried in the request metadata: a controller in
-            // another process (Bluetooth, Android Auto) has the local
-            // configuration stripped, and the service restores it from here.
-            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
             .setMediaMetadata(metadata)
             .build()
-    }
-
-    /** Rebuild the playable URI of an item that crossed a process boundary without it. */
-    fun restoreUri(item: MediaItem): MediaItem? {
-        if (item.localConfiguration != null) return item
-        val uri = item.requestMetadata.mediaUri ?: return null
-        return item.buildUpon().setUri(uri).build()
     }
 }

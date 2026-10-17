@@ -23,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.data.plex.PlexApi
+import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.session.SessionStore
 import javax.inject.Inject
 
@@ -45,6 +46,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var plexApi: PlexApi
     @Inject lateinit var sessionStore: SessionStore
     @Inject lateinit var libraryTree: MediaLibraryTree
+    @Inject lateinit var repository: PlexRepository
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -62,10 +64,12 @@ class PlaybackService : MediaLibraryService() {
             // Keep the Wi-Fi and CPU awake while streaming with the screen off.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
-        timelineReporter = TimelineReporter(player, scope) { report ->
+        timelineReporter = TimelineReporter(player, scope) send@{ report ->
+            // A downloaded track plays from a file: report it to the current server.
+            val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
             plexApi.timeline(
                 clientId = sessionStore.clientId(),
-                server = report.server,
+                server = server,
                 ratingKey = report.ratingKey,
                 state = report.state,
                 timeMs = report.timeMs,

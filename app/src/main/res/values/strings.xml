@@ -22,7 +22,6 @@
     <string name="library_empty">Nothing here yet.</string>
     <string name="album_play">Play</string>
     <string name="album_shuffle">Shuffle</string>
-    <string name="album_tracks">%1$d tracks</string>
 
     <string name="action_retry">Retry</string>
     <string name="action_back">Back</string>
@@ -45,4 +44,25 @@
     <string name="search_clear">Clear</string>
     <string name="search_no_results">Nothing found for “%1$s”.</string>
     <string name="action_more">More options</string>
+
+    <string name="library_downloads">Downloads</string>
+    <string name="downloads_channel">Downloads</string>
+    <string name="downloads_in_progress">Downloading music</string>
+    <string name="downloads_done_count">%1$d done</string>
+    <string name="downloads_empty">Nothing downloaded yet. Open an album or a playlist and tap Download to listen without a connection.</string>
+    <string name="downloads_wifi_only">Download on Wi-Fi only</string>
+    <string name="downloads_retry_failed">Retry failed downloads</string>
+    <string name="download">Download</string>
+    <string name="download_remove">Remove download</string>
+    <string name="download_done">Downloaded</string>
+    <string name="download_progress">Downloading %1$d of %2$d</string>
+    <string name="download_failed">%1$d failed</string>
+    <plurals name="album_tracks">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <plurals name="downloads_summary">
+        <item quantity="one">%1$d track · %2$s</item>
+        <item quantity="other">%1$d tracks · %2$s</item>
+    </plurals>
 </resources>

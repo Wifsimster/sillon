@@ -101,10 +101,18 @@ class MediaLibraryTree @Inject constructor(
         return MediaItemsWithStartPosition(resolved, start, startPositionMs)
     }
 
-    /** [resolve] for "add to queue": no expansion, each browsed track becomes itself. */
+    /**
+     * [resolve] for "add to queue": no expansion. Items queued by the app keep
+     * their stream URL; anything else (a browsed track, or a bare ratingKey sent
+     * back by another process) is fetched by key and made playable.
+     */
     suspend fun resolveEach(items: List<MediaItem>): List<MediaItem> {
-        val missing = items.filter { MediaItems.restoreUri(it) == null }
-            .mapNotNull { (BrowseIds.parse(it.mediaId) as? BrowseNode.Track)?.key }
+        fun keyOf(item: MediaItem): String? = when (val node = BrowseIds.parse(item.mediaId)) {
+            is BrowseNode.Track -> node.key
+            null -> item.mediaId.takeIf { it.isNotBlank() }
+            else -> null
+        }
+        val missing = items.filter { it.localConfiguration == null }.mapNotNull(::keyOf)
         val fetched = if (missing.isEmpty()) {
             emptyMap()
         } else {
@@ -112,8 +120,7 @@ class MediaLibraryTree @Inject constructor(
             playable(metadata).associateBy { it.mediaId }
         }
         return items.mapNotNull { item ->
-            MediaItems.restoreUri(item)
-                ?: (BrowseIds.parse(item.mediaId) as? BrowseNode.Track)?.let { fetched[it.key] }
+            if (item.localConfiguration != null) item else keyOf(item)?.let { fetched[it] }
         }
     }
 

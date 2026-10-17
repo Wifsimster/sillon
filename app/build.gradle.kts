@@ -132,6 +132,12 @@ android {
     }
 }
 
+// Export a JSON schema per database version into app/schemas, the reference
+// future migrations are checked against (same setup as Ondes).
+ksp {
+    arg("room.schemaLocation", layout.projectDirectory.dir("schemas").asFile.path)
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -155,6 +161,12 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     implementation(libs.coil.compose)
     implementation(libs.okhttp)
@@ -168,4 +180,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.androidx.room.testing)
 }

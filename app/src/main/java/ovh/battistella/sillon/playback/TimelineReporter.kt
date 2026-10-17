@@ -18,7 +18,8 @@ import ovh.battistella.sillon.data.plex.streamEndpoint
 
 /** One `/:/timeline` call to make. */
 data class TimelineReport(
-    val server: ServerEndpoint,
+    /** The server the track streams from; null for a downloaded file (the sender uses the current server). */
+    val server: ServerEndpoint?,
     val ratingKey: String,
     val state: TimelineState,
     val timeMs: Long,
@@ -119,9 +120,9 @@ class TimelineReporter(
     }
 
     private fun enqueue(item: MediaItem, state: TimelineState, timeMs: Long, continuing: Boolean) {
-        val server = endpointOf(item) ?: return
+        if (item.mediaId.isBlank()) return
         val report = TimelineReport(
-            server = server,
+            server = endpointOf(item),
             ratingKey = item.mediaId,
             state = state,
             timeMs = timeMs.coerceAtLeast(0),
@@ -169,9 +170,9 @@ class TimelineReporter(
             else -> TimelineState.Paused
         }
 
-        /** The server a queued item streams from (the URI is in either place, see [MediaItems]). */
+        /** The server a queued item streams from, or null when it plays from a file. */
         fun endpointOf(item: MediaItem): ServerEndpoint? {
-            val uri = item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: return null
+            val uri = item.localConfiguration?.uri ?: return null
             return streamEndpoint(uri.toString())
         }
     }
