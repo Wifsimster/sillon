@@ -69,8 +69,9 @@ class MediaLibraryTree @Inject constructor(
 
     suspend fun item(mediaId: String): MediaItem? = when (val node = BrowseIds.parse(mediaId)) {
         BrowseNode.Root -> root()
-        BrowseNode.Artists, BrowseNode.Albums, BrowseNode.Playlists, BrowseNode.FiveStars ->
+        BrowseNode.Artists, BrowseNode.Albums, BrowseNode.Playlists, BrowseNode.FiveStars, BrowseNode.Radios ->
             topLevel().firstOrNull { it.mediaId == mediaId }
+        is BrowseNode.Station -> children(BrowseIds.RADIOS, 0, Int.MAX_VALUE).firstOrNull { it.mediaId == mediaId }
         is BrowseNode.Artist, is BrowseNode.Album, is BrowseNode.Playlist ->
             repository.metadata(keyOf(node))?.let { folderFor(node, it) }
         is BrowseNode.Track -> repository.metadata(node.key)?.let { trackItem(node.parent, it) }
@@ -92,6 +93,10 @@ class MediaLibraryTree @Inject constructor(
             return MediaItemsWithStartPosition(searchTracks(query), 0, C.TIME_UNSET)
         }
         val node = single?.let { BrowseIds.parse(it.mediaId) }
+        if (node is BrowseNode.Station) {
+            val tracks = playable(repository.stationTracks(ovh.battistella.sillon.data.repository.Station(node.key, null)))
+            return MediaItemsWithStartPosition(tracks, 0, C.TIME_UNSET)
+        }
         if (node is BrowseNode.Track) {
             val tracks = playable(tracksOf(node.parent))
             val index = tracks.indexOfFirst { it.mediaId == node.key }.coerceAtLeast(0)
@@ -134,9 +139,18 @@ class MediaLibraryTree @Inject constructor(
             repository.albums(section.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         }.orEmpty()
         BrowseNode.Playlists -> repository.playlists().map { folderFor(BrowseNode.Playlist(it.ratingKey), it) }
+        BrowseNode.Radios -> repository.stations().map { station ->
+            val metadata = MediaMetadata.Builder()
+                .setTitle(station.title ?: context.getString(R.string.radio_library))
+                .setIsBrowsable(false)
+                .setIsPlayable(true)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+                .build()
+            MediaItem.Builder().setMediaId(BrowseIds.of(BrowseNode.Station(station.key))).setMediaMetadata(metadata).build()
+        }
         is BrowseNode.Artist -> repository.albumsOf(node.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         is BrowseNode.Album, is BrowseNode.Playlist, BrowseNode.FiveStars -> tracksOf(node).map { trackItem(node, it) }
-        BrowseNode.Recent, is BrowseNode.Track, null -> emptyList()
+        BrowseNode.Recent, is BrowseNode.Track, is BrowseNode.Station, null -> emptyList()
     }
 
     private suspend fun topLevel(): List<MediaItem> = listOf(
@@ -148,6 +162,7 @@ class MediaLibraryTree @Inject constructor(
         folder(BrowseNode.Artists, context.getString(R.string.library_artists), MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS),
         folder(BrowseNode.Albums, context.getString(R.string.library_albums), MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
         folder(BrowseNode.Playlists, context.getString(R.string.library_playlists), MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS),
+        folder(BrowseNode.Radios, context.getString(R.string.radios), MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS),
     )
 
     private suspend fun tracksOf(parent: BrowseNode): List<PlexMetadata> = when (parent) {

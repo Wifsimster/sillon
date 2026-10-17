@@ -103,4 +103,7 @@
     <string name="settings_loudness_off">Off</string>
     <string name="settings_loudness_track">Per track: every track at the same loudness</string>
     <string name="settings_loudness_album">Per album: keeps each album\'s own dynamics</string>
+    <string name="radios">Radios</string>
+    <string name="radio_library">Library radio</string>
+    <string name="artist_radio">Artist radio</string>
 </resources>

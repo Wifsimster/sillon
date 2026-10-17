@@ -217,4 +217,48 @@ class PlexApiTest {
         // The timeline reporter finds the server and token in it, like in a direct stream URL.
         assertEquals(endpoint, streamEndpoint(url.toString()))
     }
+
+    @Test
+    fun `plays a station through a play queue`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {"playQueueID": 977, "Metadata": [{"ratingKey": "1", "title": "First"}]}}"""))
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"playQueueID": 977, "Metadata": [{"ratingKey": "1", "title": "First"}, {"ratingKey": "2", "title": "Second"}]}}""",
+            ),
+        )
+        val endpoint = ServerEndpoint(server.url("/").toString(), "t")
+
+        val tracks = api.stationTracks("c", endpoint, "machine-1", "/library/sections/3/stations/1", count = 100)
+
+        assertEquals(listOf("First", "Second"), tracks.map { it.title })
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/playQueues", create.requestUrl!!.encodedPath)
+        assertEquals(
+            "server://machine-1/com.plexapp.plugins.library/library/sections/3/stations/1",
+            create.requestUrl!!.queryParameter("uri"),
+        )
+        val window = server.takeRequest().requestUrl!!
+        assertEquals("/playQueues/977", window.encodedPath)
+        assertEquals("100", window.queryParameter("window"))
+    }
+
+    @Test
+    fun `finds the library radios in the station hub`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Hub": [
+                  {"hubIdentifier": "music.recent.played.3", "Metadata": [{"ratingKey": "9", "title": "AC/DC"}]},
+                  {"hubIdentifier": "music.stations.3", "type": "station", "Metadata": [
+                    {"key": "/library/sections/3/stations/1", "type": "playlist", "title": "Library Radio", "radio": "1"}]}
+                ]}}""",
+            ),
+        )
+
+        val stations = api.stations("c", ServerEndpoint(server.url("/").toString(), "t"), "3")
+
+        assertEquals(listOf("Library Radio"), stations.map { it.title })
+        assertEquals("/library/sections/3/stations/1", stations.single().key)
+        assertEquals("1", server.takeRequest().requestUrl!!.queryParameter("includeStations"))
+    }
 }

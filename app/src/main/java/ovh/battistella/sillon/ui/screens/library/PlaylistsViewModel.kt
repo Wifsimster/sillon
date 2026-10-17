@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
@@ -37,6 +38,24 @@ class PlaylistsViewModel @Inject constructor(
     private val _startingFiveStars = MutableStateFlow(false)
     val startingFiveStars = _startingFiveStars.asStateFlow()
 
+    /** The library's radios, shown under the 5-star card. */
+    private val _stations = MutableStateFlow<List<Station>>(emptyList())
+    val stations = _stations.asStateFlow()
+
+    /** Key of the radio being started, for a spinner on its card. */
+    private val _startingStation = MutableStateFlow<String?>(null)
+    val startingStation = _startingStation.asStateFlow()
+
+    fun playStation(station: Station) {
+        if (_startingStation.value != null) return
+        _startingStation.value = station.key
+        viewModelScope.launch {
+            runCatching { repository.playable(repository.stationTracks(station)) }
+                .onSuccess { if (it.isNotEmpty()) playback.play(it) }
+            _startingStation.value = null
+        }
+    }
+
     /** One tap: every 5-star track of the library, shuffled. */
     fun shuffleFiveStars() {
         if (_startingFiveStars.value) return
@@ -57,6 +76,9 @@ class PlaylistsViewModel @Inject constructor(
 
     fun load() {
         _state.value = Load.Loading
+        viewModelScope.launch {
+            _stations.value = runCatching { repository.stations() }.getOrDefault(emptyList())
+        }
         viewModelScope.launch {
             _state.value = runCatching {
                 val server = repository.endpoint()

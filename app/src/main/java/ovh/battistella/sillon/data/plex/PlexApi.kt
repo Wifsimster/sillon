@@ -182,6 +182,52 @@ class PlexApi(
             "type" to TYPE_TRACK, "userRating" to "10", "sort" to "titleSort",
         ).metadata.filter { (it.userRating ?: 0f) >= FIVE_STARS }
 
+    /**
+     * The library's radios (Library Radio, Deep Cuts, Time Travel…): the
+     * station hub of the music section. Each item's key is a station path.
+     */
+    suspend fun stations(clientId: String, server: ServerEndpoint, sectionKey: String): List<PlexMetadata> =
+        get(clientId, server, "hubs/sections/$sectionKey", "includeStations" to "1", "count" to "20")
+            .hubs.filter { it.hubIdentifier.startsWith("music.stations") }
+            .flatMap { it.metadata }
+
+    /** Every track of an artist, across albums. */
+    suspend fun artistTracks(clientId: String, server: ServerEndpoint, artistKey: String): List<PlexMetadata> =
+        get(clientId, server, "library/metadata/$artistKey/allLeaves").metadata
+
+    /** The station path of an artist's radio, if the server offers one. */
+    suspend fun artistStation(clientId: String, server: ServerEndpoint, artistKey: String): String? =
+        get(clientId, server, "library/metadata/$artistKey", "includeStations" to "1")
+            .metadata.firstOrNull()?.stations?.metadata?.firstOrNull()?.key
+
+    /**
+     * Tracks of a radio. Plex plays stations through a play queue it fills as
+     * it goes: create one for the station, then read a window of [count]
+     * tracks from it (the creation answer only holds the first ~20).
+     */
+    suspend fun stationTracks(
+        clientId: String,
+        server: ServerEndpoint,
+        machineId: String,
+        stationPath: String,
+        count: Int = RADIO_TRACKS,
+    ): List<PlexMetadata> {
+        val url = server.uri.toHttpUrl().newBuilder()
+            .addPathSegment("playQueues")
+            .addQueryParameter("type", "audio")
+            .addQueryParameter("uri", "server://$machineId/com.plexapp.plugins.library$stationPath")
+            .addQueryParameter("repeat", "0")
+            .addQueryParameter("shuffle", "0")
+            .build()
+        val created = PlexJson.decodeFromString(
+            PlexResponse.serializer(),
+            client.fetch(Request.Builder().url(url).headers(clientId, server.token).post(FormBody.Builder().build()).build()),
+        ).container
+        val id = created.playQueueID ?: return created.metadata
+        return get(clientId, server, "playQueues/$id", "window" to count.toString()).metadata
+            .ifEmpty { created.metadata }
+    }
+
     /** Audio playlists on the server (Plex playlists are server-wide, not per library). */
     suspend fun playlists(clientId: String, server: ServerEndpoint): List<PlexMetadata> =
         get(clientId, server, "playlists", "playlistType" to "audio").metadata
@@ -344,6 +390,7 @@ class PlexApi(
         private const val FIVE_STARS = 9.5f
         private const val SEARCH_LIMIT = 20
         private const val BATCH_SIZE = 50
+        const val RADIO_TRACKS = 100
         private const val PROBE_TIMEOUT_S = 4L
     }
 }

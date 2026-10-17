@@ -137,6 +137,18 @@ class JellyfinApi(
             "filters" to "IsFavorite", "sortBy" to "SortName",
         ).map { it.toMetadata() }
 
+    /** Jellyfin's "Instant Mix" from an item (an artist here): similar tracks. */
+    suspend fun instantMix(server: ServerEndpoint, deviceId: String, itemId: String): List<PlexMetadata> =
+        items(server, deviceId, "Items/$itemId/InstantMix", "limit" to RADIO_TRACKS.toString()).map { it.toMetadata() }
+
+    /** A shuffle of the whole music library: Jellyfin's stand-in for Plex's Library Radio. */
+    suspend fun randomTracks(server: ServerEndpoint, deviceId: String, sectionKey: String): List<PlexMetadata> =
+        items(
+            server, deviceId, "Items",
+            "parentId" to sectionKey, "includeItemTypes" to "Audio", "recursive" to "true",
+            "sortBy" to "Random", "limit" to RADIO_TRACKS.toString(),
+        ).map { it.toMetadata() }
+
     // ---------------------------------------------------------------------
     // Media
     // ---------------------------------------------------------------------
@@ -252,6 +264,7 @@ class JellyfinApi(
 
     private companion object {
         const val SEARCH_LIMIT = 60
+        const val RADIO_TRACKS = 100
     }
 }
 

@@ -73,6 +73,15 @@ data class Loudness(val track: Float?, val album: Float?) {
     }
 }
 
+/**
+ * A radio to play: a Plex station (its path is the key), or Jellyfin's
+ * library shuffle. A null [title] means "the library radio", named by the UI.
+ */
+data class Station(val key: String, val title: String?)
+
+/** Key of the one Jellyfin "station": the whole library, shuffled. */
+const val LIBRARY_SHUFFLE_STATION = "jellyfin:library-shuffle"
+
 /** Cover size requested for the player and the media notification, in pixels. */
 const val PLAYER_ART_PX = 900
 
@@ -235,6 +244,49 @@ class PlexRepository @Inject constructor(
         return onServer(
             plex = { clientId, server -> api.fiveStarTracks(clientId, server, section.key) },
             jellyfin = { deviceId, server -> jellyfin.favouriteTracks(server, deviceId, section.key) },
+        )
+    }
+
+    /** The library's radios. */
+    suspend fun stations(): List<Station> {
+        val section = currentMusicSection() ?: return emptyList()
+        return onServer(
+            plex = { clientId, server ->
+                api.stations(clientId, server, section.key).map { Station(it.key ?: "", it.title) }.filter { it.key.isNotBlank() }
+            },
+            jellyfin = { _, _ -> listOf(Station(LIBRARY_SHUFFLE_STATION, null)) },
+        )
+    }
+
+    /** About a hundred tracks of [station], in the order the server picked. */
+    suspend fun stationTracks(station: Station): List<PlexMetadata> {
+        val machineId = currentServer().machineId
+        return onServer(
+            plex = { clientId, server -> api.stationTracks(clientId, server, machineId, station.key) },
+            jellyfin = { deviceId, server ->
+                val section = currentMusicSection() ?: return@onServer emptyList()
+                jellyfin.randomTracks(server, deviceId, section.key)
+            },
+        )
+    }
+
+    /**
+     * An artist's radio: Plex's artist station, or Jellyfin's Instant Mix.
+     * Plex only has stations for some artists; for the others, the artist's
+     * own tracks, shuffled.
+     */
+    suspend fun artistRadioTracks(artistKey: String): List<PlexMetadata> {
+        val machineId = currentServer().machineId
+        return onServer(
+            plex = { clientId, server ->
+                val station = api.artistStation(clientId, server, artistKey)
+                if (station != null) {
+                    api.stationTracks(clientId, server, machineId, station)
+                } else {
+                    api.artistTracks(clientId, server, artistKey).shuffled()
+                }
+            },
+            jellyfin = { deviceId, server -> jellyfin.instantMix(server, deviceId, artistKey) },
         )
     }
 

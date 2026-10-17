@@ -38,6 +38,8 @@ go, with no ads, no tracking and no subscription.
 
 - 🎧 **Made for music.** Albums, artists, playlists and search, gapless playback,
   big covers, a mini-player always within reach.
+- 📻 **Radios.** Your server's library radios (Library, Deep Cuts, Time
+  Travel…) and a radio for every artist, one tap away.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
@@ -88,7 +90,8 @@ is rebuilt on every push.
 | **Library** | Artists, albums, playlists; search as you type; choice of music library when the server has several |
 | **Playback** | Background play, notification and lock-screen controls, Bluetooth and headset buttons, gapless albums, shuffle, repeat, loudness levelling (per track or album) |
 | **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
-| **Car** | Android Auto browsing (Artists, Albums, Playlists, My 5 stars) and voice requests |
+| **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), also in the car |
+| **Car** | Android Auto browsing (Artists, Albums, Playlists, Radios, My 5 stars) and voice requests |
 | **Offline** | Album and playlist downloads with covers, a Downloads tab that works with no network |
 | **Data** | Streaming quality per network (Original / 320 / 192 / 128 kbps AAC), Wi-Fi-only downloads |
 | **Plex** | PIN sign-in, owned and shared servers, automatic reconnection, play reports to the server |
@@ -96,7 +99,7 @@ is rebuilt on every push.
 
 ## Roadmap
 
-1. Plex mixes and radios (Plex Pass).
+1. Sonically similar tracks and *Mixes for you* (Plex Pass sonic analysis).
 2. A Windows desktop app.
 
 Ideas and bug reports are welcome in the

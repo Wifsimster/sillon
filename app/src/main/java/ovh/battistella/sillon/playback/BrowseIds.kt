@@ -1,5 +1,7 @@
 package ovh.battistella.sillon.playback
 
+import java.util.Base64
+
 /**
  * Media ids of the Android Auto browse tree. Folders and tracks carry their
  * Plex keys; a track also carries the album or playlist it was listed in, so
@@ -16,6 +18,10 @@ sealed interface BrowseNode {
     data object Playlists : BrowseNode
     /** Every track the user rated 5 stars. */
     data object FiveStars : BrowseNode
+    /** The library's radios. */
+    data object Radios : BrowseNode
+    /** One radio, played by tapping it; [key] is the station key. */
+    data class Station(val key: String) : BrowseNode
     data class Artist(val key: String) : BrowseNode
     data class Album(val key: String) : BrowseNode
     data class Playlist(val key: String) : BrowseNode
@@ -25,12 +31,14 @@ sealed interface BrowseNode {
 }
 
 object BrowseIds {
+
     const val ROOT = "root"
     const val RECENT = "recent"
     const val ARTISTS = "artists"
     const val ALBUMS = "albums"
     const val PLAYLISTS = "playlists"
     const val FIVE_STARS = "five-stars"
+    const val RADIOS = "radios"
 
     fun of(node: BrowseNode): String = when (node) {
         BrowseNode.Root -> ROOT
@@ -39,6 +47,9 @@ object BrowseIds {
         BrowseNode.Albums -> ALBUMS
         BrowseNode.Playlists -> PLAYLISTS
         BrowseNode.FiveStars -> FIVE_STARS
+        BrowseNode.Radios -> RADIOS
+        // Station keys are server paths (slashes, queries): encoded to stay one segment.
+        is BrowseNode.Station -> "station/" + Base64.getUrlEncoder().withoutPadding().encodeToString(node.key.toByteArray())
         is BrowseNode.Artist -> "artist/${node.key}"
         is BrowseNode.Album -> "album/${node.key}"
         is BrowseNode.Playlist -> "playlist/${node.key}"
@@ -54,6 +65,11 @@ object BrowseIds {
             ALBUMS -> return BrowseNode.Albums
             PLAYLISTS -> return BrowseNode.Playlists
             FIVE_STARS -> return BrowseNode.FiveStars
+            RADIOS -> return BrowseNode.Radios
+        }
+        if (id.startsWith("station/")) {
+            val key = runCatching { String(Base64.getUrlDecoder().decode(id.removePrefix("station/"))) }.getOrNull()
+            return key?.takeIf { it.isNotBlank() }?.let { BrowseNode.Station(it) }
         }
         val parts = id.split('/')
         return when {

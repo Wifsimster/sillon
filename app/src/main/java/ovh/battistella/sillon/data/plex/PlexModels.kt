@@ -56,6 +56,8 @@ data class MediaContainer(
     @SerialName("Directory") val directories: List<PlexDirectory> = emptyList(),
     @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
     @SerialName("Hub") val hubs: List<PlexHub> = emptyList(),
+    /** Set on a play queue response (radios). */
+    val playQueueID: Long? = null,
 )
 
 /** A group of search results of one [type] (`artist`, `album`, `track`…). */
@@ -63,6 +65,7 @@ data class MediaContainer(
 data class PlexHub(
     val type: String = "",
     val title: String = "",
+    val hubIdentifier: String = "",
     @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
 )
 
@@ -87,7 +90,10 @@ data class PlexDirectory(
  */
 @Serializable
 data class PlexMetadata(
-    val ratingKey: String,
+    /** Empty for stations, which only have a [key]. */
+    val ratingKey: String = "",
+    /** Server path of the item; for a station, the path to play it from. */
+    val key: String? = null,
     val type: String = "",
     val title: String = "",
     val parentRatingKey: String? = null,
@@ -107,6 +113,8 @@ data class PlexMetadata(
     val ratingCount: Long? = null,
     /** How many times the user played it. */
     val viewCount: Int? = null,
+    /** An artist's radio, with `includeStations=1`. */
+    @SerialName("Stations") val stations: PlexStations? = null,
     /** Track gain in dB from servers that give it directly (Jellyfin's NormalizationGain). */
     val normalizationGain: Float? = null,
     val thumb: String? = null,
@@ -166,4 +174,9 @@ data class PlexStream(
     val albumGain: Float? = null,
     val peak: Float? = null,
     val albumPeak: Float? = null,
+)
+
+@Serializable
+data class PlexStations(
+    @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
 )
