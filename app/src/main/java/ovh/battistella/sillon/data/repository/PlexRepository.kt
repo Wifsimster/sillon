@@ -142,6 +142,12 @@ class PlexRepository @Inject constructor(
     suspend fun albums(sectionKey: String): List<PlexMetadata> =
         onServer { clientId, server -> api.albums(clientId, server, sectionKey) }
 
+    /** Tracks rated 5 stars in the current music library. */
+    suspend fun fiveStarTracks(): List<PlexMetadata> {
+        val section = currentMusicSection() ?: return emptyList()
+        return onServer { clientId, server -> api.fiveStarTracks(clientId, server, section.key) }
+    }
+
     suspend fun playlists(): List<PlexMetadata> =
         onServer { clientId, server -> api.playlists(clientId, server) }
 

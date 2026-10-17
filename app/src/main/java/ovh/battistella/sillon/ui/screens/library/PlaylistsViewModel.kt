@@ -1,14 +1,17 @@
 package ovh.battistella.sillon.ui.screens.library
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
@@ -21,7 +24,23 @@ import javax.inject.Inject
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
     private val repository: PlexRepository,
+    private val playback: PlaybackConnection,
 ) : ViewModel() {
+
+    /** True while the 5-star tracks are being fetched for [shuffleFiveStars]. */
+    private val _startingFiveStars = MutableStateFlow(false)
+    val startingFiveStars = _startingFiveStars.asStateFlow()
+
+    /** One tap: every 5-star track of the library, shuffled. */
+    fun shuffleFiveStars() {
+        if (_startingFiveStars.value) return
+        _startingFiveStars.value = true
+        viewModelScope.launch {
+            runCatching { repository.playable(repository.fiveStarTracks()) }
+                .onSuccess { playback.play(it, shuffle = true) }
+            _startingFiveStars.value = false
+        }
+    }
 
     private val _state = MutableStateFlow<Load<List<TileUi>>>(Load.Loading)
     val state = _state.asStateFlow()
@@ -77,7 +96,37 @@ class PlaylistViewModel @Inject constructor(
                 artist = null,
                 year = null,
                 artworkUrl = repository.artworkUrl(server, p?.artwork, HEADER_ART_PX),
-                tracks = tracks.mapIndexed { i, t -> TrackUi(t.ratingKey, i + 1, t.title, t.trackArtist, t.duration) },
+                tracks = popularityOf(tracks).let { pop -> tracks.mapIndexed { i, t -> t.toTrackUi(i + 1, t.trackArtist, pop) } },
+            ),
+            tracks = tracks,
+            fallbackArtworkUrl = null,
+        )
+    }
+}
+
+/** The tracks rated 5 stars, shown and played like a playlist. */
+@HiltViewModel
+class FiveStarsViewModel @Inject constructor(
+    private val repository: PlexRepository,
+    playback: PlaybackConnection,
+    downloads: DownloadManager,
+    @ApplicationContext private val context: Context,
+) : TrackCollectionViewModel(repository, playback, downloads) {
+
+    init {
+        start()
+    }
+
+    override suspend fun fetch(): TrackCollection {
+        val tracks = repository.fiveStarTracks()
+        val pop = popularityOf(tracks)
+        return TrackCollection(
+            ui = AlbumUi(
+                title = context.getString(R.string.five_stars),
+                artist = null,
+                year = null,
+                artworkUrl = null,
+                tracks = tracks.map { it.toTrackUi(null, listOfNotNull(it.trackArtist, it.parentTitle).joinToString(" · "), pop) },
             ),
             tracks = tracks,
             fallbackArtworkUrl = null,

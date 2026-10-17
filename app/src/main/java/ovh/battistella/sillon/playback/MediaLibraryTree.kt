@@ -69,7 +69,8 @@ class MediaLibraryTree @Inject constructor(
 
     suspend fun item(mediaId: String): MediaItem? = when (val node = BrowseIds.parse(mediaId)) {
         BrowseNode.Root -> root()
-        BrowseNode.Artists, BrowseNode.Albums, BrowseNode.Playlists -> topLevel().firstOrNull { it.mediaId == mediaId }
+        BrowseNode.Artists, BrowseNode.Albums, BrowseNode.Playlists, BrowseNode.FiveStars ->
+            topLevel().firstOrNull { it.mediaId == mediaId }
         is BrowseNode.Artist, is BrowseNode.Album, is BrowseNode.Playlist ->
             repository.metadata(keyOf(node))?.let { folderFor(node, it) }
         is BrowseNode.Track -> repository.metadata(node.key)?.let { trackItem(node.parent, it) }
@@ -134,11 +135,12 @@ class MediaLibraryTree @Inject constructor(
         }.orEmpty()
         BrowseNode.Playlists -> repository.playlists().map { folderFor(BrowseNode.Playlist(it.ratingKey), it) }
         is BrowseNode.Artist -> repository.children(node.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
-        is BrowseNode.Album, is BrowseNode.Playlist -> tracksOf(node).map { trackItem(node, it) }
+        is BrowseNode.Album, is BrowseNode.Playlist, BrowseNode.FiveStars -> tracksOf(node).map { trackItem(node, it) }
         BrowseNode.Recent, is BrowseNode.Track, null -> emptyList()
     }
 
     private fun topLevel(): List<MediaItem> = listOf(
+        folder(BrowseNode.FiveStars, context.getString(R.string.five_stars), MediaMetadata.MEDIA_TYPE_PLAYLIST),
         folder(BrowseNode.Artists, context.getString(R.string.library_artists), MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS),
         folder(BrowseNode.Albums, context.getString(R.string.library_albums), MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
         folder(BrowseNode.Playlists, context.getString(R.string.library_playlists), MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS),
@@ -147,6 +149,7 @@ class MediaLibraryTree @Inject constructor(
     private suspend fun tracksOf(parent: BrowseNode): List<PlexMetadata> = when (parent) {
         is BrowseNode.Album -> repository.children(parent.key)
         is BrowseNode.Playlist -> repository.playlistItems(parent.key)
+        BrowseNode.FiveStars -> repository.fiveStarTracks()
         else -> emptyList()
     }
 

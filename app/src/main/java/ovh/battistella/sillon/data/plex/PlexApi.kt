@@ -163,6 +163,17 @@ class PlexApi(
             "type" to TYPE_ALBUM, "sort" to "titleSort",
         ).metadata
 
+    /**
+     * Tracks of a music section the user rated 5 stars. The server filters on
+     * `userRating=10`; the result is filtered again here so a server that
+     * ignored the filter can never turn this into "every track".
+     */
+    suspend fun fiveStarTracks(clientId: String, server: ServerEndpoint, sectionKey: String): List<PlexMetadata> =
+        get(
+            clientId, server, "library/sections/$sectionKey/all",
+            "type" to TYPE_TRACK, "userRating" to "10", "sort" to "titleSort",
+        ).metadata.filter { (it.userRating ?: 0f) >= FIVE_STARS }
+
     /** Audio playlists on the server (Plex playlists are server-wide, not per library). */
     suspend fun playlists(clientId: String, server: ServerEndpoint): List<PlexMetadata> =
         get(clientId, server, "playlists", "playlistType" to "audio").metadata
@@ -279,6 +290,8 @@ class PlexApi(
         const val PLEX_TV = "https://plex.tv/"
         private const val TYPE_ARTIST = "8"
         private const val TYPE_ALBUM = "9"
+        private const val TYPE_TRACK = "10"
+        private const val FIVE_STARS = 9.5f
         private const val SEARCH_LIMIT = 20
         private const val PROBE_TIMEOUT_S = 4L
     }

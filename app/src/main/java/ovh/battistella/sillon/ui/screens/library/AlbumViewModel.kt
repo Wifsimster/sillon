@@ -44,7 +44,7 @@ class AlbumViewModel @Inject constructor(
                 artist = a?.parentTitle,
                 year = a?.year,
                 artworkUrl = albumArt,
-                tracks = tracks.map { TrackUi(it.ratingKey, it.index, it.title, it.originalTitle, it.duration) },
+                tracks = popularityOf(tracks).let { pop -> tracks.map { it.toTrackUi(it.index, it.originalTitle, pop) } },
             ),
             tracks = tracks,
             fallbackArtworkUrl = albumArt,

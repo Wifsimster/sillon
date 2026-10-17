@@ -176,4 +176,27 @@ class PlexApiTest {
         assertEquals("/playlists/77/composite/1", playlist.artwork)
         assertEquals("audio", server.takeRequest().requestUrl!!.queryParameter("playlistType"))
     }
+
+    @Test
+    fun `five-star tracks are filtered by the server and checked again here`() = runTest {
+        // A server ignoring the filter must not turn "5 stars" into "everything".
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Metadata": [
+                  {"ratingKey": "1", "title": "Loved", "userRating": 10.0, "ratingCount": 1200000},
+                  {"ratingKey": "2", "title": "Liked", "userRating": 8.0},
+                  {"ratingKey": "3", "title": "Unrated"}]}}""",
+            ),
+        )
+
+        val tracks = api.fiveStarTracks("c", ServerEndpoint(server.url("/").toString(), "t"), "3")
+
+        assertEquals(listOf("1"), tracks.map { it.ratingKey })
+        assertEquals(5f, tracks.single().stars)
+        assertEquals(1_200_000L, tracks.single().ratingCount)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/library/sections/3/all", url.encodedPath)
+        assertEquals("10", url.queryParameter("type"))
+        assertEquals("10", url.queryParameter("userRating"))
+    }
 }

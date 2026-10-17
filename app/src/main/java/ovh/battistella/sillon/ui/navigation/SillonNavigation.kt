@@ -23,6 +23,7 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.screens.downloads.DownloadedAlbumScreen
 import ovh.battistella.sillon.ui.screens.downloads.DownloadsScreen
 import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
+import ovh.battistella.sillon.ui.screens.library.FiveStarsScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
@@ -153,7 +154,11 @@ private fun LibraryNavHost() {
                 composable(Routes.ARTISTS) { ArtistsScreen(onArtist = openArtist, contentPadding = bottom) }
                 composable(Routes.ALBUMS) { AlbumsScreen(onAlbum = openAlbum, contentPadding = bottom) }
                 composable(Routes.PLAYLISTS) {
-                    PlaylistsScreen(onPlaylist = { navController.navigate(Routes.playlist(it)) }, contentPadding = bottom)
+                    PlaylistsScreen(
+                        onPlaylist = { navController.navigate(Routes.playlist(it)) },
+                        onFiveStars = { navController.navigate(Routes.FIVE_STARS) },
+                        contentPadding = bottom,
+                    )
                 }
                 composable(Routes.SEARCH) {
                     SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
@@ -169,6 +174,9 @@ private fun LibraryNavHost() {
                 }
                 composable(Routes.ALBUM, arguments = keyArg) {
                     AlbumScreen(onBack = back, contentPadding = bottom)
+                }
+                composable(Routes.FIVE_STARS) {
+                    FiveStarsScreen(onBack = back, contentPadding = bottom)
                 }
                 composable(Routes.PLAYLIST, arguments = keyArg) {
                     PlaylistScreen(onBack = back, contentPadding = bottom)
