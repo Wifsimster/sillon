@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android / IntelliJ
+*.iml
+.idea/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystores & signing secrets (keep out of VCS)
+*.jks
+*.keystore
+keystore.properties
+
+# OS
+.DS_Store
