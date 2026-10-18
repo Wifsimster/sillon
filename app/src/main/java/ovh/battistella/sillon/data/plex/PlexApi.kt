@@ -163,6 +163,10 @@ class PlexApi(
             .flatMap { it.metadata }
             .filter { !it.key.isNullOrBlank() }
 
+    suspend fun artistNamed(clientId: String, server: ServerEndpoint, sectionKey: String, name: String): PlexMetadata? =
+        get(clientId, server, "library/sections/$sectionKey/all", "type" to TYPE_ARTIST, "title" to name)
+            .metadata.firstOrNull { it.title.equals(name, ignoreCase = true) }
+
     suspend fun artistTracks(clientId: String, server: ServerEndpoint, artistKey: String): List<PlexMetadata> =
         get(clientId, server, "library/metadata/$artistKey/allLeaves").metadata
 
