@@ -1,6 +1,5 @@
 package ovh.battistella.sillon.ui.components
 
-/** 3:07, or 1:02:45 past an hour. */
 fun formatDuration(ms: Long): String {
     val totalSeconds = (ms / 1_000).coerceAtLeast(0)
     val hours = totalSeconds / 3_600

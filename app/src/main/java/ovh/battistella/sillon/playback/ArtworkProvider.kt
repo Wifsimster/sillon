@@ -22,17 +22,7 @@ import java.io.FileNotFoundException
 import java.security.MessageDigest
 import java.util.Base64
 
-/**
- * Serves cover art to Android Auto and other media browsers, which only load
- * browse-item artwork from `content://` URIs.
- *
- * A URI names a cover by its server reference (a Plex thumb path or a
- * Jellyfin item), never by a URL: the token stays in the app, which builds the
- * real URL and downloads the image here. The provider isn't exported; the
- * library service grants each URI to the browser it hands it to.
- */
 class ArtworkProvider : ContentProvider() {
-
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface Dependencies {
@@ -80,7 +70,6 @@ class ArtworkProvider : ContentProvider() {
 
     override fun getType(uri: Uri): String = "image/jpeg"
 
-    // Read-only: covers can only be opened.
     override fun query(uri: Uri, p: Array<out String>?, s: String?, a: Array<out String>?, o: String?): Cursor? = null
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun update(uri: Uri, values: ContentValues?, s: String?, a: Array<out String>?): Int = 0
@@ -90,10 +79,8 @@ class ArtworkProvider : ContentProvider() {
         private const val TAG = "SillonArtwork"
         const val AUTHORITY = "${BuildConfig.APPLICATION_ID}.artwork"
 
-        /** Covers in the car are small; one size keeps the cache simple. */
         private const val SIZE_PX = 400
 
-        /** A content URI for a cover reference, or null when there's none. */
         fun uriFor(thumb: String?): Uri? {
             if (thumb.isNullOrBlank()) return null
             val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(thumb.toByteArray())
@@ -105,7 +92,6 @@ class ArtworkProvider : ContentProvider() {
             return runCatching { String(Base64.getUrlDecoder().decode(uri.pathSegments[1])) }.getOrNull()
         }
 
-        /** Let [packageName] (a trusted media browser) open the covers of [items]. */
         fun grant(context: Context, packageName: String, uris: List<Uri>) {
             uris.filter { it.authority == AUTHORITY }.forEach {
                 context.grantUriPermission(packageName, it, Intent.FLAG_GRANT_READ_URI_PERMISSION)

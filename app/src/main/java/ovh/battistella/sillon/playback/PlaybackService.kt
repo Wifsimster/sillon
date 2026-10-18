@@ -36,22 +36,8 @@ import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
 import javax.inject.Inject
 
-/**
- * Foreground media service owning the ExoPlayer and its MediaSession: playback
- * keeps going with the screen off, and the notification, lock screen and
- * Bluetooth/headset buttons all control it.
- *
- * Tracks queued together play gaplessly when the files carry gapless metadata
- * (MP3 LAME/iTunes headers, AAC/M4A); FLAC is sample-exact by nature.
- *
- * Playback is reported to the Plex server by [TimelineReporter].
- *
- * A [MediaLibraryService] so Android Auto (and other media browsers) can
- * navigate the library through [MediaLibraryTree].
- */
 @AndroidEntryPoint
 class PlaybackService : MediaLibraryService() {
-
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
@@ -60,7 +46,7 @@ class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
 
-    @OptIn(UnstableApi::class) // EventLogger
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         val audioAttributes = AudioAttributes.Builder()
@@ -68,17 +54,14 @@ class PlaybackService : MediaLibraryService() {
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
         val player = ExoPlayer.Builder(this)
-            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
+            .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
-            // Keep the Wi-Fi and CPU awake while streaming with the screen off.
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
-        // Debug builds log formats, bitrates and errors: `adb logcat -s SillonPlayer`.
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
 
-            // Loudness levelling: each track carries its gain; set the volume as it starts.
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 applyGain(player, mediaItem)
                 saveQueue(player)
@@ -89,8 +72,6 @@ class PlaybackService : MediaLibraryService() {
             }
         })
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
-            // A downloaded track plays from a file, and a Jellyfin stream carries
-            // no Plex token: report those to the current server.
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
             repository.reportPlayback(
                 server = server,
@@ -116,7 +97,6 @@ class PlaybackService : MediaLibraryService() {
 
     private var queueSaver: Job? = null
 
-    /** While playing, remember the position every so often, so a resume lands close by. */
     private fun startQueueSaver(player: Player) {
         if (queueSaver?.isActive == true) return
         queueSaver = scope.launch {
@@ -127,7 +107,6 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    /** Remember the queue and position, to resume after the app was closed. */
     private fun saveQueue(player: Player) {
         val queue = snapshot(player) ?: return
         scope.launch(Dispatchers.IO) { runCatching { playbackState.save(queue) } }
@@ -148,20 +127,14 @@ class PlaybackService : MediaLibraryService() {
         )
     }
 
-    /** Covers of browse items are served by [ArtworkProvider]; let this browser open them. */
     private fun grantArtwork(browser: MediaSession.ControllerInfo, items: List<MediaItem>) {
         val uris = items.mapNotNull { it.mediaMetadata.artworkUri }
         runCatching { ArtworkProvider.grant(this, browser.packageName, uris) }
             .onFailure { Log.w(TAG, "artwork grant to ${browser.packageName} failed", it) }
     }
 
-    /** Tracks already moved from a failed transcode to their original file. */
     private val fellBack = mutableSetOf<String>()
 
-    /**
-     * A transcode the server refused or broke off: play the original file
-     * instead of stopping the music. Once per track.
-     */
     private fun fallBackToOriginal(player: Player, error: PlaybackException) {
         val item = player.currentMediaItem ?: return
         val uri = item.localConfiguration?.uri?.toString() ?: return
@@ -182,7 +155,6 @@ class PlaybackService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // Keep playing in the background when music is on; otherwise stop.
         val player = mediaSession?.player
         if (player == null || !player.playWhenReady || player.mediaItemCount == 0 ||
             player.playbackState == Player.STATE_ENDED
@@ -192,11 +164,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
-        // Last chance to remember where the music stopped (before the scope goes).
         mediaSession?.player?.let { player ->
             snapshot(player)?.let { queue -> runBlocking { runCatching { playbackState.save(queue) } } }
         }
-        // Before releasing the player: the final report reads its position.
         timelineReporter?.release()
         timelineReporter = null
         scope.cancel()
@@ -219,12 +189,7 @@ class PlaybackService : MediaLibraryService() {
         )
     }
 
-    /**
-     * Bridges the Media3 library callbacks to [MediaLibraryTree]: the caller
-     * gate, coroutine-to-future plumbing, and errors mapped to [LibraryResult].
-     */
     private inner class LibraryCallback : MediaLibrarySession.Callback {
-
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
@@ -235,7 +200,6 @@ class PlaybackService : MediaLibraryService() {
                     Log.w(TAG, "browse root denied to ${browser.packageName}")
                     LibraryResult.ofError(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
                 }
-                // The "recent" root feeds the car's resume card with the saved queue.
                 params?.isRecent == true -> libraryTree.recentRoot()
                     ?.let { LibraryResult.ofItem(it, libraryTree.rootParams()) }
                     ?: LibraryResult.ofError(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
@@ -298,7 +262,6 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
-        /** "Play" from a headset, Bluetooth or the car after the app was closed: resume the saved queue. */
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -324,7 +287,6 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private companion object {
-        /** `adb logcat -s SillonAuto` for Android Auto diagnostics. */
         const val TAG = "SillonAuto"
         const val SESSION_ACTIVITY_REQUEST_CODE = 3_001
         const val QUEUE_SAVE_INTERVAL_MS = 15_000L

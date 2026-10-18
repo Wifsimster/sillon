@@ -23,7 +23,6 @@ class ArtistViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
 ) : ViewModel() {
-
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     private val _state = MutableStateFlow<Load<ArtistUi>>(Load.Loading)
@@ -33,11 +32,9 @@ class ArtistViewModel @Inject constructor(
         load()
     }
 
-    /** True while the artist's radio is being started. */
     private val _startingRadio = MutableStateFlow(false)
     val startingRadio = _startingRadio.asStateFlow()
 
-    /** Play the artist's radio (Plex station or Jellyfin Instant Mix). */
     fun playRadio() {
         if (_startingRadio.value) return
         _startingRadio.value = true

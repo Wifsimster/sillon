@@ -15,11 +15,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * Sillon's mark: one continuous groove spiralling to the amber label (the
- * launcher icon's drawing, in a 108-unit box). [groove] follows the theme;
- * the label stays amber unless [label] says otherwise.
- */
 @Composable
 fun SillonMark(
     modifier: Modifier = Modifier,
@@ -44,7 +39,6 @@ fun SillonMark(
 private const val VIEWPORT = 108f
 private const val CENTER = 54f
 
-/** The same Archimedean spiral as docs/brand/logo.svg: rim to label in 2¾ turns. */
 private fun spiralPoints(): List<Pair<Float, Float>> {
     val outer = 31.0
     val inner = 15.5

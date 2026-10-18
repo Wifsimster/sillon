@@ -15,14 +15,11 @@ import javax.inject.Singleton
 
 private val Context.playbackDataStore: DataStore<Preferences> by preferencesDataStore(name = "playback")
 
-/** The queue as it was last heard, to resume it after the app was closed. */
 @Serializable
 data class SavedQueue(
-    /** Track keys, in queue order. */
     val keys: List<String>,
     val index: Int,
     val positionMs: Long,
-    /** What the car's resume card shows. */
     val title: String = "",
     val artist: String = "",
 )

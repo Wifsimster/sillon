@@ -5,7 +5,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BrowseIdsTest {
-
     @Test
     fun `every node survives a round trip through its id`() {
         val nodes = listOf(

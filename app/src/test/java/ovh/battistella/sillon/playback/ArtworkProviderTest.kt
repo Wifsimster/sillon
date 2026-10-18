@@ -9,7 +9,6 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class ArtworkProviderTest {
-
     @Test
     fun `a cover URI names the cover, never a URL with the token`() {
         val thumb = "/library/metadata/100/thumb/1700000000"

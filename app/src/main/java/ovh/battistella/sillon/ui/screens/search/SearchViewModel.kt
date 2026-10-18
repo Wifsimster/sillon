@@ -27,24 +27,20 @@ data class SearchResults(
 }
 
 sealed interface SearchState {
-    /** Fewer than [MIN_QUERY_LENGTH] characters typed. */
     data object Idle : SearchState
     data object Loading : SearchState
     data class Failed(val message: String) : SearchState
     data class Ready(val results: SearchResults) : SearchState
 }
 
-/** Searches the current music library as the user types. */
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
 ) : ViewModel() {
-
     private val _query = MutableStateFlow("")
     val query = _query.asStateFlow()
 
-    /** Bumped by [retry] to run the same query again. */
     private val retries = MutableStateFlow(0)
 
     private val _state = MutableStateFlow<SearchState>(SearchState.Idle)
@@ -52,12 +48,10 @@ class SearchViewModel @Inject constructor(
 
     val nowPlaying = playback.state
 
-    /** Track results as returned by Plex, kept to build the play queue. */
     private var trackResults: List<PlexMetadata> = emptyList()
 
     init {
         viewModelScope.launch {
-            // collectLatest cancels the pending search when another key is typed.
             combine(_query, retries) { q, _ -> q }.collectLatest { raw ->
                 val q = raw.trim()
                 if (q.length < MIN_QUERY_LENGTH) {
@@ -80,7 +74,6 @@ class SearchViewModel @Inject constructor(
         retries.value++
     }
 
-    /** Play the track results, starting with the one tapped. */
     fun playTrack(key: String) {
         viewModelScope.launch {
             val tracks = runCatching { repository.playable(trackResults) }.getOrDefault(emptyList())

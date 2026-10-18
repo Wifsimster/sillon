@@ -14,11 +14,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
-/*
- * Sillon's palette (see DESIGN.md): a record and its sleeve. Vinyl black and
- * groove brown for surfaces at night, sleeve cream by day, the amber of the
- * label as the accent, and rust as the second colour.
- */
 object Brand {
     val Vinyl = Color(0xFF15120F)
     val Groove = Color(0xFF2A241E)
@@ -28,11 +23,11 @@ object Brand {
 }
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF8A5100), // label amber, darkened to read on cream
+    primary = Color(0xFF8A5100),
     onPrimary = Color.White,
     primaryContainer = Color(0xFFFFDDB3),
     onPrimaryContainer = Color(0xFF2C1600),
-    secondary = Color(0xFFA0401C), // rust
+    secondary = Color(0xFFA0401C),
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFFFDBCF),
     onSecondaryContainer = Color(0xFF3A0B00),
@@ -61,7 +56,7 @@ private val DarkColors = darkColorScheme(
     onPrimary = Color(0xFF2C1600),
     primaryContainer = Color(0xFF6A3D00),
     onPrimaryContainer = Color(0xFFFFDDB3),
-    secondary = Color(0xFFFFB59E), // rust, lightened for the dark
+    secondary = Color(0xFFFFB59E),
     onSecondary = Color(0xFF5A1900),
     secondaryContainer = Color(0xFF7A2C0E),
     onSecondaryContainer = Color(0xFFFFDBCF),
@@ -93,10 +88,6 @@ private val SillonShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
-/**
- * Sillon's own colours by default. [wallpaperColors] switches to Material You
- * (Android 12+) for those who prefer the app to follow their wallpaper.
- */
 @Composable
 fun SillonTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

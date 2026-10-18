@@ -24,9 +24,8 @@ import ovh.battistella.sillon.ui.theme.SillonTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     private val notificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     @Inject lateinit var settings: SettingsStore
 
@@ -45,7 +44,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** The playback notification (and its controls) needs this on Android 13+. */
     private fun maybeRequestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val granted = ContextCompat.checkSelfPermission(

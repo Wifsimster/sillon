@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
-/** Square cover art with a record placeholder while it loads or when there is none. */
 @Composable
 fun Artwork(
     url: String?,
@@ -27,7 +26,6 @@ fun Artwork(
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        // No cover (yet): the groove, faint, as a placeholder.
         SillonMark(
             modifier = Modifier.fillMaxSize(0.62f),
             groove = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),

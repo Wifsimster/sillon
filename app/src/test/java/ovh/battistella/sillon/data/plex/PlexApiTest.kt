@@ -14,7 +14,6 @@ import org.junit.Before
 import org.junit.Test
 
 class PlexApiTest {
-
     private val server = MockWebServer()
     private val device = PlexDevice("Sillon", "1.0.0", "15", "Pixel")
     private lateinit var api: PlexApi
@@ -180,7 +179,6 @@ class PlexApiTest {
 
     @Test
     fun `five-star tracks are filtered by the server and checked again here`() = runTest {
-        // A server ignoring the filter must not turn "5 stars" into "everything".
         server.enqueue(
             MockResponse().setBody(
                 """{"MediaContainer": {"Metadata": [
@@ -214,7 +212,6 @@ class PlexApiTest {
         assertEquals("sess-1", url.queryParameter("session"))
         assertEquals("client-1", url.queryParameter("X-Plex-Client-Identifier"))
         assertTrue(url.queryParameter("X-Plex-Client-Profile-Extra")!!.contains("audioCodec=aac"))
-        // The timeline reporter finds the server and token in it, like in a direct stream URL.
         assertEquals(endpoint, streamEndpoint(url.toString()))
     }
 

@@ -15,11 +15,8 @@ import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.repository.PlexRepository
 import javax.inject.Inject
 
-/** Where the Jellyfin sign-in stands. */
 data class JellyfinSignInState(
-    /** The server found at the address typed, once found. */
     val server: Pair<String, JellyfinPublicInfo>? = null,
-    /** The Quick Connect code to enter in another Jellyfin app, while waiting for it. */
     val quickConnectCode: String? = null,
     val busy: Boolean = false,
     val error: JellyfinSignInError? = null,
@@ -27,16 +24,10 @@ data class JellyfinSignInState(
 
 enum class JellyfinSignInError { SERVER_NOT_FOUND, WRONG_CREDENTIALS, QUICK_CONNECT_UNAVAILABLE, OTHER }
 
-/**
- * Jellyfin sign-in: find the server from its address, then sign in with a
- * user name and password, or with Quick Connect. Once signed in, the session
- * moves the app on by itself.
- */
 @HiltViewModel
 class JellyfinSignInViewModel @Inject constructor(
     private val repository: PlexRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(JellyfinSignInState())
     val state = _state.asStateFlow()
 
@@ -80,7 +71,6 @@ class JellyfinSignInViewModel @Inject constructor(
                 return@launch
             }
             _state.update { it.copy(quickConnectCode = request.code, error = null) }
-            // Quick Connect requests expire after a few minutes on the server.
             repeat(QUICK_CONNECT_POLLS) {
                 delay(POLL_MS)
                 val done = runCatching { repository.completeQuickConnectIfApproved(url, info, request.secret) }
@@ -91,7 +81,6 @@ class JellyfinSignInViewModel @Inject constructor(
         }
     }
 
-    /** Back to the address field. */
     fun changeServer() {
         quickConnect?.cancel()
         _state.value = JellyfinSignInState()
@@ -111,6 +100,6 @@ class JellyfinSignInViewModel @Inject constructor(
 
     private companion object {
         const val POLL_MS = 3_000L
-        const val QUICK_CONNECT_POLLS = 100 // 5 minutes
+        const val QUICK_CONNECT_POLLS = 100
     }
 }

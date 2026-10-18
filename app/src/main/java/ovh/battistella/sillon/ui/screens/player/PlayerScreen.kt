@@ -62,10 +62,8 @@ fun PlayerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
-    // While dragging, the slider shows the finger, not the playhead.
     var scrubbing by remember { mutableStateOf<Float?>(null) }
 
-    // The cover's colour washes down the screen, like light through a sleeve.
     val tint by animateColorAsState(
         coverColor(state.artworkUri) ?: MaterialTheme.colorScheme.background,
         animationSpec = tween(600),
@@ -85,7 +83,6 @@ fun PlayerScreen(
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
             }
-            // Follow this track with tracks that sound like it.
             if (startingRadio) {
                 CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
             } else {
@@ -170,10 +167,6 @@ fun PlayerScreen(
     }
 }
 
-/**
- * The average colour of the cover at [uri], for the player's background; null
- * until it's known (or without a cover).
- */
 @Composable
 private fun coverColor(uri: String?): Color? {
     val context = LocalContext.current

@@ -11,13 +11,11 @@ import ovh.battistella.sillon.data.repository.Loudness
 import ovh.battistella.sillon.data.settings.LoudnessMode
 
 class LoudnessTest {
-
     @Test
     fun `a negative gain turns the volume down, a positive one can't turn it up`() {
         assertEquals(1f, MediaItems.volumeFor(null), 0f)
         assertEquals(0.5f, MediaItems.volumeFor(-6.02f), 0.01f)
         assertEquals(1f, MediaItems.volumeFor(3f), 0f)
-        // A broken tag never silences a track.
         assertEquals(0.1f, MediaItems.volumeFor(-60f), 0f)
     }
 
@@ -38,7 +36,7 @@ class LoudnessTest {
     fun `takes Jellyfin's normalization gain as the track gain`() {
         val track = JellyfinItem(id = "t1", type = "Audio", normalizationGain = -4.4f).toMetadata()
         assertEquals(-4.4f, track.trackGain)
-        assertEquals(-4.4f, track.albumGain) // no album gain: falls back to the track's
+        assertEquals(-4.4f, track.albumGain)
     }
 
     @Test

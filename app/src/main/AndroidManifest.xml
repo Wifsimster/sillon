@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <!-- Album downloads run as a foreground WorkManager job on Android 14+. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -25,7 +24,6 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="33">
 
-        <!-- Declares Android Auto support (browsable media app). -->
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
@@ -38,8 +36,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <!-- Lets the lock screen, OEM media capsules and car head units
-                     resolve "open the player" to Sillon (see Ondes). -->
                 <category android:name="android.intent.category.APP_MUSIC" />
             </intent-filter>
         </activity>
@@ -50,14 +46,10 @@
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />
-                <!-- Lets Android Auto and Wear OS discover and browse the library. -->
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
 
-        <!-- Keeps Sillon as the owner of the media buttons once its session is
-             gone, so a headset or Bluetooth "play" after process death comes
-             back here instead of to another player. -->
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"
             android:exported="true">
@@ -66,20 +58,17 @@
             </intent-filter>
         </receiver>
 
-        <!-- Cover art for Android Auto browse lists, granted per URI (not exported). -->
         <provider
             android:name=".playback.ArtworkProvider"
             android:authorities="${applicationId}.artwork"
             android:exported="false"
             android:grantUriPermissions="true" />
 
-        <!-- WorkManager runs downloads as a foreground service; declare its type. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
-        <!-- WorkManager is initialised by SillonApp with the Hilt worker factory. -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

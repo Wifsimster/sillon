@@ -21,28 +21,15 @@ import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * The content Android Auto (and other media browsers) can navigate:
- * Artists → albums → tracks, Albums → tracks, Playlists → tracks.
- *
- * Browse items carry no stream URL (it holds the Plex token, and has no
- * business in another app's process). A track is turned into a playable item
- * only when the car asks to play it, in [resolve].
- */
 @Singleton
 class MediaLibraryTree @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: PlexRepository,
     private val playbackState: PlaybackStateStore,
 ) {
-    /** Listings are re-requested on every page and every back navigation: keep them a few minutes. */
     private val cache = mutableMapOf<String, Pair<Long, List<MediaItem>>>()
     private val cacheLock = Mutex()
 
-    /**
-     * Only the system and known media surfaces may browse the library. Other
-     * apps can still connect (transport controls work) but see nothing.
-     */
     fun isCallerTrusted(caller: MediaSession.ControllerInfo): Boolean {
         if (caller.uid == Process.myUid() || caller.uid == Process.SYSTEM_UID) return true
         return caller.packageName in TRUSTED_BROWSER_PACKAGES
@@ -50,7 +37,6 @@ class MediaLibraryTree @Inject constructor(
 
     fun root(): MediaItem = folder(BrowseNode.Root, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
 
-    /** List rows: titles stay readable at a glance while driving; covers show as row icons. */
     fun rootParams(): LibraryParams = LibraryParams.Builder()
         .setExtras(
             Bundle().apply {
@@ -60,9 +46,7 @@ class MediaLibraryTree @Inject constructor(
         )
         .build()
 
-    /** One page of [parentId]'s children. */
     suspend fun children(parentId: String, page: Int, pageSize: Int): List<MediaItem> {
-        // Keyed on server and library too, so switching either never shows stale lists.
         val scope = runCatching { repository.endpoint().uri }.getOrDefault("") + "|" + repository.musicSectionKey.first()
         val all = cached("$scope|$parentId") { listChildren(BrowseIds.parse(parentId)) }
         if (pageSize <= 0 || pageSize == Int.MAX_VALUE) return all
@@ -81,14 +65,6 @@ class MediaLibraryTree @Inject constructor(
         BrowseNode.Recent, null -> null
     }
 
-    /**
-     * Turn what a controller asked to play into playable items.
-     *
-     * - Items that already have a stream URL (queued by the app) are kept.
-     * - A single browsed track becomes its whole album or playlist, starting at it.
-     * - A voice request ("play Daft Punk on Sillon") arrives as an empty item with
-     *   a search query, and plays the matching tracks.
-     */
     suspend fun resolve(items: List<MediaItem>, startIndex: Int, startPositionMs: Long): MediaItemsWithStartPosition {
         val single = items.singleOrNull()
         val query = single?.requestMetadata?.searchQuery
@@ -111,14 +87,9 @@ class MediaLibraryTree @Inject constructor(
         return MediaItemsWithStartPosition(resolved, start, startPositionMs)
     }
 
-    /** Root of the car's resume card, when there is something to resume. */
     suspend fun recentRoot(): MediaItem? =
         playbackState.load()?.let { folder(BrowseNode.Recent, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED) }
 
-    /**
-     * The saved queue, ready to play from where it stopped: the answer to
-     * "resume" from the car, a headset or Bluetooth after the app was closed.
-     */
     suspend fun resumption(): MediaItemsWithStartPosition {
         val saved = playbackState.load() ?: return MediaItemsWithStartPosition(emptyList(), 0, 0L)
         val items = repository.restoreQueue(saved.keys).map(MediaItems::from)
@@ -143,11 +114,6 @@ class MediaLibraryTree @Inject constructor(
         return MediaItem.Builder().setMediaId(BrowseIds.RESUME).setMediaMetadata(metadata).build()
     }
 
-    /**
-     * [resolve] for "add to queue": no expansion. Items queued by the app keep
-     * their stream URL; anything else (a browsed track, or a bare ratingKey sent
-     * back by another process) is fetched by key and made playable.
-     */
     suspend fun resolveEach(items: List<MediaItem>): List<MediaItem> {
         fun keyOf(item: MediaItem): String? = when (val node = BrowseIds.parse(item.mediaId)) {
             is BrowseNode.Track -> node.key
@@ -186,7 +152,6 @@ class MediaLibraryTree @Inject constructor(
         }
         is BrowseNode.Artist -> repository.albumsOf(node.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         is BrowseNode.Album, is BrowseNode.Playlist, BrowseNode.FiveStars -> tracksOf(node).map { trackItem(node, it) }
-        // The car's resume card: the saved queue, as one playable item.
         BrowseNode.Recent -> listOfNotNull(resumeItem())
         BrowseNode.Resume, is BrowseNode.Track, is BrowseNode.Station, null -> emptyList()
     }
@@ -215,8 +180,6 @@ class MediaLibraryTree @Inject constructor(
         val hubs = repository.search(section.key, query)
         val tracks = hubs.filter { it.type == "track" }.flatMap { it.metadata }
         if (tracks.isNotEmpty()) return playable(tracks)
-        // No track matched by name: play the first matching album, or the first
-        // album of the first matching artist.
         val album = hubs.firstOrNull { it.type == "album" }?.metadata?.firstOrNull()
             ?: hubs.firstOrNull { it.type == "artist" }?.metadata?.firstOrNull()
                 ?.let { artist -> repository.albumsOf(artist.ratingKey).firstOrNull() }
@@ -295,13 +258,13 @@ class MediaLibraryTree @Inject constructor(
         const val CACHE_MS = 5 * 60_000L
 
         val TRUSTED_BROWSER_PACKAGES = setOf(
-            "com.google.android.projection.gearhead", // Android Auto
-            "com.google.android.autosimulator", // Android Auto head-unit simulator
-            "com.google.android.carassistant", // Automotive assistant
-            "com.google.android.googlequicksearchbox", // Google Assistant
-            "com.google.android.wearable.app", // Wear OS companion
-            "com.android.systemui", // System media controls
-            "com.google.android.bluetooth", // Bluetooth media controls
+            "com.google.android.projection.gearhead",
+            "com.google.android.autosimulator",
+            "com.google.android.carassistant",
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.wearable.app",
+            "com.android.systemui",
+            "com.google.android.bluetooth",
         )
     }
 }

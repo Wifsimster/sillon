@@ -28,11 +28,6 @@ import java.io.File
 import java.io.IOException
 import kotlin.coroutines.coroutineContext
 
-/**
- * Downloads queued tracks one after the other, until the queue is empty. Runs
- * as a foreground worker with a progress notification so a long album isn't
- * cut short when the app goes to the background.
- */
 @HiltWorker
 class DownloadWorker @AssistedInject constructor(
     @Assisted appContext: Context,
@@ -41,7 +36,6 @@ class DownloadWorker @AssistedInject constructor(
     private val repository: PlexRepository,
     private val client: OkHttpClient,
 ) : CoroutineWorker(appContext, params) {
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val server = runCatching { repository.endpoint() }.getOrNull() ?: return@withContext Result.success()
         val serverId = repository.currentServerId()
@@ -50,7 +44,6 @@ class DownloadWorker @AssistedInject constructor(
             coroutineContext.ensureActive()
             val download = dao.next() ?: break
             if (download.serverId != serverId) {
-                // Queued from another server: it can't be fetched from this one.
                 dao.setState(download.serverId, download.ratingKey, DownloadState.FAILED, 0)
                 continue
             }
@@ -59,11 +52,8 @@ class DownloadWorker @AssistedInject constructor(
                 fetch(download, server)
                 done++
             } catch (e: PlexHttpException) {
-                // The server refused (track removed, access revoked): retrying won't help.
                 dao.setState(download.serverId, download.ratingKey, DownloadState.FAILED, 0)
             } catch (e: IOException) {
-                // Network trouble. If the worker was stopped (Wi-Fi lost), this
-                // rethrows the cancellation; otherwise retry the queue later.
                 coroutineContext.ensureActive()
                 dao.setState(download.serverId, download.ratingKey, DownloadState.QUEUED, 0)
                 return@withContext if (runAttemptCount < MAX_ATTEMPTS) {
@@ -113,7 +103,6 @@ class DownloadWorker @AssistedInject constructor(
                     }
                 }
             }
-            // A connection closed early must not pass for a complete file.
             if (total > 0 && written != total) throw IOException("Truncated: $written of $total bytes")
         }
         if (!part.renameTo(target)) throw IOException("Could not move ${part.name}")
@@ -124,7 +113,6 @@ class DownloadWorker @AssistedInject constructor(
         dao.complete(download.serverId, download.ratingKey, target.absolutePath, target.length(), artwork?.absolutePath)
     }
 
-    /** Best effort: a missing cover never fails the track. */
     private fun fetchArtwork(download: DownloadEntity, server: ServerEndpoint, file: File): Boolean {
         val url = repository.artworkUrl(server, download.thumb, ARTWORK_PX) ?: return false
         return runCatching {

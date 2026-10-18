@@ -7,7 +7,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ConnectionSelectorTest {
-
     private val relay = PlexConnection(uri = "https://relay.plex.direct:8443", relay = true)
     private val remote = PlexConnection(uri = "https://1-2-3-4.abc.plex.direct:32400")
     private val local = PlexConnection(uri = "https://192-168-1-10.abc.plex.direct:32400", local = true)

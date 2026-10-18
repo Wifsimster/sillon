@@ -7,7 +7,6 @@ import org.junit.Test
 import ovh.battistella.sillon.data.plex.PlexMetadata
 
 class PopularityTest {
-
     private fun track(key: String, listeners: Long?) = PlexMetadata(ratingKey = key, title = key, ratingCount = listeners)
 
     @Test
@@ -17,7 +16,6 @@ class PopularityTest {
         )
 
         assertEquals(1f, pop.getValue("hit"), 0.001f)
-        // Halfway between 1 000 and 1 000 000 on a log scale.
         assertEquals(0.5f, pop.getValue("single"), 0.01f)
         assertEquals(0f, pop.getValue("intro"), 0.001f)
         assertNull(pop["unknown"])

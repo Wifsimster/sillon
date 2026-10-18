@@ -45,7 +45,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 
-/** First screen: pick the kind of server, then sign in to it. */
 @Composable
 fun SignInScreen() {
     var kind by rememberSaveable { mutableStateOf<ServerKind?>(null) }
@@ -85,7 +84,6 @@ private fun ServerKindChoice(onChoose: (ServerKind) -> Unit) {
     }
 }
 
-/** A server type, with its logo in its own colours. */
 @Composable
 private fun ServerButton(@DrawableRes logo: Int, label: String, onClick: () -> Unit) {
     OutlinedButton(
@@ -159,4 +157,3 @@ private fun PlexSignIn(onBack: () -> Unit, viewModel: SignInViewModel = hiltView
         TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
     }
 }
-

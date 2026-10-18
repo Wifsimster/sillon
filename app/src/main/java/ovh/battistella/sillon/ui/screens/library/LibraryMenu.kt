@@ -35,7 +35,6 @@ data class LibraryMenuUi(val sections: List<PlexDirectory> = emptyList(), val cu
 class LibraryMenuViewModel @Inject constructor(
     private val repository: PlexRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow(LibraryMenuUi())
     val state = _state.asStateFlow()
 
@@ -62,13 +61,8 @@ class LibraryMenuViewModel @Inject constructor(
     }
 }
 
-/** Opens the settings screen; provided by the navigation host. */
 val LocalOpenSettings = staticCompositionLocalOf<() -> Unit> { {} }
 
-/**
- * Overflow menu of the top-level screens: which music library to show (when
- * the server has several), change server, sign out.
- */
 @Composable
 fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()

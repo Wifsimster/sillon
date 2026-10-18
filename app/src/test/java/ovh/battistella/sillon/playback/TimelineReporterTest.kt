@@ -11,7 +11,6 @@ import ovh.battistella.sillon.data.plex.TimelineState
 
 @RunWith(RobolectricTestRunner::class)
 class TimelineReporterTest {
-
     private val track = PlayableTrack(
         ratingKey = "101",
         streamUrl = "https://10-0-0-2.abc.plex.direct:32400/library/parts/7/1/file.flac?X-Plex-Token=t0k",

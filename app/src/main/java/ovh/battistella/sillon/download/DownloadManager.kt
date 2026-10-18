@@ -22,11 +22,6 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Keeps tracks on the phone: queues them in the database and lets a single
- * [DownloadWorker] work through the queue, on Wi-Fi only unless the user
- * allowed mobile data.
- */
 @Singleton
 class DownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -36,14 +31,11 @@ class DownloadManager @Inject constructor(
 ) {
     fun observe(serverId: String): Flow<List<DownloadEntity>> = dao.observe(serverId)
 
-    /** Queue [tracks] (an album or a playlist) for download. Already known tracks are left alone. */
     suspend fun download(tracks: List<PlexMetadata>) {
         val serverId = repository.currentServerId()
-        // Listings normally carry the media parts; fetch the few that don't.
         val complete = tracks.mapNotNull { track ->
             if (track.partKey != null) track else runCatching { repository.metadata(track.ratingKey) }.getOrNull()
         }
-        // Kept with the file so loudness levelling works offline.
         val loudness = runCatching { repository.loudness(complete) }.getOrDefault(emptyMap())
         val rows = complete.mapNotNull { track ->
             val partKey = track.partKey ?: return@mapNotNull null
@@ -69,7 +61,6 @@ class DownloadManager @Inject constructor(
         schedule()
     }
 
-    /** Remove tracks from the phone. */
     suspend fun delete(serverId: String, ratingKeys: List<String>) {
         if (ratingKeys.isEmpty()) return
         dao.get(serverId, ratingKeys).forEach { download ->
@@ -77,20 +68,13 @@ class DownloadManager @Inject constructor(
             DownloadFiles.partFile(context, serverId, download.ratingKey).delete()
         }
         dao.delete(serverId, ratingKeys)
-        // Covers no remaining track uses are left behind; they're small and
-        // reused if the album is downloaded again.
     }
 
-    /** Put failed downloads back in the queue. */
     suspend fun retryFailed() {
         dao.retryFailed()
         schedule()
     }
 
-    /**
-     * Start (or resume) the worker. [replace] restarts it, e.g. after the
-     * Wi-Fi-only preference changed, so it runs under the new constraints.
-     */
     suspend fun schedule(replace: Boolean = false) {
         val wifiOnly = settings.downloadOnWifiOnly.first()
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
@@ -102,8 +86,6 @@ class DownloadManager @Inject constructor(
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .apply { if (!wifiOnly) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) }
             .build()
-        // APPEND_OR_REPLACE: a worker finishing its loop just as new tracks are
-        // queued is followed by another run that picks them up.
         val policy = if (replace) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, policy, request)
     }
@@ -118,7 +100,6 @@ class DownloadManager @Inject constructor(
     }
 }
 
-/** Where downloaded files live: app-private storage, removed with the app. */
 object DownloadFiles {
     fun musicDir(context: Context, serverId: String): File =
         File(context.filesDir, "music/${safe(serverId)}")

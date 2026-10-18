@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.playback.PlayerUiState
 
-/** Bottom bar showing the current track; tap to open the full player. */
 @Composable
 fun MiniPlayer(
     state: PlayerUiState,

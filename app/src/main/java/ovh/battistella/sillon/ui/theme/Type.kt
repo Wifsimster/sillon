@@ -8,10 +8,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import ovh.battistella.sillon.R
 
-/** Fraunces: a warm serif with the feel of a record sleeve, for titles. */
 val Fraunces = FontFamily(Font(R.font.fraunces_semibold, FontWeight.SemiBold))
 
-/** DM Sans: a clean, friendly sans for everything else. */
 val DmSans = FontFamily(
     Font(R.font.dmsans_regular, FontWeight.Normal),
     Font(R.font.dmsans_medium, FontWeight.Medium),
@@ -23,7 +21,6 @@ private val base = Typography()
 private fun TextStyle.display() = copy(fontFamily = Fraunces, fontWeight = FontWeight.SemiBold)
 private fun TextStyle.text(weight: FontWeight = FontWeight.Normal) = copy(fontFamily = DmSans, fontWeight = weight)
 
-/** Titles of screens, albums and the track playing in Fraunces; the rest in DM Sans. */
 val SillonTypography = Typography(
     displayLarge = base.displayLarge.display(),
     displayMedium = base.displayMedium.display(),

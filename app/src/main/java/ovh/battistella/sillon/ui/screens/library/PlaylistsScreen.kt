@@ -70,7 +70,6 @@ fun PlaylistsScreen(
         },
     ) { padding ->
         LoadContent(state, onRetry = viewModel::load, modifier = Modifier.padding(padding)) { playlists ->
-            // The 5-star mix is always there, even on a server without playlists.
             TileGrid(
                 tiles = playlists,
                 onClick = onPlaylist,
@@ -91,10 +90,6 @@ fun PlaylistScreen(
     TrackCollectionRoute(viewModel, onBack, contentPadding)
 }
 
-/**
- * "My 5 stars": tap the shuffle button to play every 5-star track at once, or
- * the card to see the list.
- */
 @Composable
 private fun FiveStarsCard(favourites: Boolean, starting: Boolean, onOpen: () -> Unit, onShuffle: () -> Unit) {
     Card(
@@ -125,7 +120,6 @@ private fun FiveStarsCard(favourites: Boolean, starting: Boolean, onOpen: () -> 
     }
 }
 
-/** The library's radios: one tap starts one. */
 @Composable
 private fun StationsRow(stations: List<Station>, starting: String?, onPlay: (Station) -> Unit) {
     Text(

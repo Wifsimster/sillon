@@ -6,7 +6,6 @@
         <item name="android:windowBackground">@color/seed_background</item>
     </style>
 
-    <!-- Cold start: the spiral on vinyl black, then the app's theme. -->
     <style name="Theme.Sillon.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>

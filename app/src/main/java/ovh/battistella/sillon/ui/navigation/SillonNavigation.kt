@@ -59,7 +59,6 @@ import ovh.battistella.sillon.ui.screens.player.PlayerViewModel
 import ovh.battistella.sillon.ui.screens.servers.ServersScreen
 import ovh.battistella.sillon.ui.screens.signin.SignInScreen
 
-/** Sign-in, then server choice, then the library — driven by the stored session. */
 @Composable
 fun SillonRoot(viewModel: RootViewModel = hiltViewModel()) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -67,12 +66,10 @@ fun SillonRoot(viewModel: RootViewModel = hiltViewModel()) {
         null -> Unit
         Session.SignedOut -> SignInScreen()
         is Session.NeedsServer -> ServersScreen()
-        // Keyed on the server so switching servers starts from a fresh back stack.
         is Session.Ready -> key(s.server.machineId) { LibraryNavHost() }
     }
 }
 
-/** A tab of the bottom bar. */
 private data class Tab(val route: String, val label: Int, val icon: ImageVector)
 
 private val tabs = listOf(
@@ -91,9 +88,6 @@ private fun LibraryNavHost() {
     val backStack by navController.currentBackStackEntryAsState()
     val destination = backStack?.destination
     val onPlayerScreen = destination?.route == Routes.PLAYER
-    // The tab the user is in. Detail pages (artist, album, playlist) don't belong
-    // to one tab in the graph — they're shared — so the tab is the last tab root
-    // reached, not derived from the current destination.
     var currentTab by rememberSaveable { mutableStateOf(Routes.ARTISTS) }
     LaunchedEffect(destination?.route) {
         destination?.route?.takeIf { route -> tabs.any { it.route == route } }?.let { currentTab = it }
@@ -121,13 +115,8 @@ private fun LibraryNavHost() {
                                 selected = tab.route == currentTab,
                                 onClick = {
                                     if (tab.route == currentTab) {
-                                        // Tapping the tab you're in goes back to its
-                                        // first page, from however deep you are.
                                         navController.popBackStack(tab.route, inclusive = false)
                                     } else {
-                                        // Another tab: one back stack per tab, restored
-                                        // when coming back to it — possibly on a detail
-                                        // page, hence setting the tab here.
                                         currentTab = tab.route
                                         navController.navigate(tab.route) {
                                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -145,8 +134,6 @@ private fun LibraryNavHost() {
             }
         },
     ) { padding ->
-        // Screens draw under the top system bar themselves; only the bottom
-        // inset (mini-player + tabs) is passed down for their scrolling content.
         val bottom = PaddingValues(bottom = padding.calculateBottomPadding())
         val keyArg = listOf(navArgument(Routes.ARG_KEY) { type = NavType.StringType })
         val openArtist: (String) -> Unit = { navController.navigate(Routes.artist(it)) }
