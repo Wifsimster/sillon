@@ -247,6 +247,28 @@ class PlexRepository @Inject constructor(
         )
     }
 
+    /**
+     * Rebuild a saved queue for playback: fetch the tracks in one go (Plex
+     * batch, Jellyfin ids), keep the saved order, and fall back to the
+     * downloaded tracks when the server can't be reached.
+     */
+    suspend fun restoreQueue(keys: List<String>): List<PlayableTrack> {
+        val fetched = runCatching {
+            onServer(
+                plex = { clientId, server -> api.metadataBatch(clientId, server, keys) },
+                jellyfin = { deviceId, server -> jellyfin.itemsByIds(server, deviceId, keys) },
+            )
+        }.getOrNull()
+        if (fetched != null) {
+            val byKey = fetched.associateBy { it.ratingKey }
+            return playable(keys.mapNotNull { byKey[it] })
+        }
+        // Offline: whatever of the queue is on the phone.
+        val mode = settings.loudness.first()
+        val local = downloads.get(currentServer().machineId, keys).filter { it.isPlayableOffline() }.associateBy { it.ratingKey }
+        return keys.mapNotNull { local[it]?.toPlayable(mode) }
+    }
+
     /** The library's radios. */
     suspend fun stations(): List<Station> {
         val section = currentMusicSection() ?: return emptyList()

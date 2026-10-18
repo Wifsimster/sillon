@@ -22,13 +22,18 @@ import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.settings.PlaybackStateStore
+import ovh.battistella.sillon.data.settings.SavedQueue
 import javax.inject.Inject
 
 /**
@@ -49,6 +54,7 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
+    @Inject lateinit var playbackState: PlaybackStateStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -73,7 +79,14 @@ class PlaybackService : MediaLibraryService() {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
 
             // Loudness levelling: each track carries its gain; set the volume as it starts.
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = applyGain(player, mediaItem)
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                applyGain(player, mediaItem)
+                saveQueue(player)
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) startQueueSaver(player) else saveQueue(player)
+            }
         })
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             // A downloaded track plays from a file, and a Jellyfin stream carries
@@ -99,6 +112,47 @@ class PlaybackService : MediaLibraryService() {
             ?.getFloat(MediaItems.EXTRA_GAIN_DB)
         player.volume = MediaItems.volumeFor(gain)
         if (BuildConfig.DEBUG) Log.d(TAG, "gain ${item?.mediaId}: $gain dB -> volume ${player.volume}")
+    }
+
+    private var queueSaver: Job? = null
+
+    /** While playing, remember the position every so often, so a resume lands close by. */
+    private fun startQueueSaver(player: Player) {
+        if (queueSaver?.isActive == true) return
+        queueSaver = scope.launch {
+            while (player.isPlaying) {
+                delay(QUEUE_SAVE_INTERVAL_MS)
+                saveQueue(player)
+            }
+        }
+    }
+
+    /** Remember the queue and position, to resume after the app was closed. */
+    private fun saveQueue(player: Player) {
+        val queue = snapshot(player) ?: return
+        scope.launch(Dispatchers.IO) { runCatching { playbackState.save(queue) } }
+    }
+
+    private fun snapshot(player: Player): SavedQueue? {
+        if (player.mediaItemCount == 0) return null
+        val count = player.mediaItemCount.coerceAtMost(MAX_SAVED_TRACKS)
+        val keys = (0 until count).map { player.getMediaItemAt(it).mediaId }.filter { it.isNotBlank() }
+        if (keys.isEmpty()) return null
+        val current = player.currentMediaItem
+        return SavedQueue(
+            keys = keys,
+            index = player.currentMediaItemIndex.coerceIn(0, keys.lastIndex),
+            positionMs = player.currentPosition.coerceAtLeast(0),
+            title = current?.mediaMetadata?.title?.toString().orEmpty(),
+            artist = current?.mediaMetadata?.artist?.toString().orEmpty(),
+        )
+    }
+
+    /** Covers of browse items are served by [ArtworkProvider]; let this browser open them. */
+    private fun grantArtwork(browser: MediaSession.ControllerInfo, items: List<MediaItem>) {
+        val uris = items.mapNotNull { it.mediaMetadata.artworkUri }
+        runCatching { ArtworkProvider.grant(this, browser.packageName, uris) }
+            .onFailure { Log.w(TAG, "artwork grant to ${browser.packageName} failed", it) }
     }
 
     /** Tracks already moved from a failed transcode to their original file. */
@@ -138,6 +192,10 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        // Last chance to remember where the music stopped (before the scope goes).
+        mediaSession?.player?.let { player ->
+            snapshot(player)?.let { queue -> runBlocking { runCatching { playbackState.save(queue) } } }
+        }
         // Before releasing the player: the final report reads its position.
         timelineReporter?.release()
         timelineReporter = null
@@ -177,8 +235,10 @@ class PlaybackService : MediaLibraryService() {
                     Log.w(TAG, "browse root denied to ${browser.packageName}")
                     LibraryResult.ofError(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
                 }
-                // The "recent" root feeds a resume card; there is no play history to offer yet.
-                params?.isRecent == true -> LibraryResult.ofError(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
+                // The "recent" root feeds the car's resume card with the saved queue.
+                params?.isRecent == true -> libraryTree.recentRoot()
+                    ?.let { LibraryResult.ofItem(it, libraryTree.rootParams()) }
+                    ?: LibraryResult.ofError(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
                 else -> LibraryResult.ofItem(libraryTree.root(), libraryTree.rootParams())
             }
         }
@@ -193,6 +253,7 @@ class PlaybackService : MediaLibraryService() {
             }
             runCatching { libraryTree.item(mediaId) }.fold(
                 onSuccess = { item ->
+                    item?.let { grantArtwork(browser, listOf(it)) }
                     item?.let { LibraryResult.ofItem(it, null) }
                         ?: LibraryResult.ofError(SessionResult.RESULT_ERROR_BAD_VALUE)
                 },
@@ -215,7 +276,10 @@ class PlaybackService : MediaLibraryService() {
                 return@future LibraryResult.ofItemList(ImmutableList.of<MediaItem>(), null)
             }
             runCatching { libraryTree.children(parentId, page, pageSize) }.fold(
-                onSuccess = { LibraryResult.ofItemList(ImmutableList.copyOf(it), null) },
+                onSuccess = {
+                    grantArtwork(browser, it)
+                    LibraryResult.ofItemList(ImmutableList.copyOf(it), null)
+                },
                 onFailure = {
                     Log.w(TAG, "onGetChildren failed", it)
                     LibraryResult.ofError(SessionResult.RESULT_ERROR_IO)
@@ -231,6 +295,17 @@ class PlaybackService : MediaLibraryService() {
             runCatching { libraryTree.resolveEach(mediaItems) }.getOrElse {
                 Log.w(TAG, "onAddMediaItems failed", it)
                 emptyList()
+            }
+        }
+
+        /** "Play" from a headset, Bluetooth or the car after the app was closed: resume the saved queue. */
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): ListenableFuture<MediaItemsWithStartPosition> = scope.future {
+            runCatching { libraryTree.resumption() }.getOrElse {
+                Log.w(TAG, "onPlaybackResumption failed", it)
+                MediaItemsWithStartPosition(emptyList(), 0, 0L)
             }
         }
 
@@ -252,5 +327,7 @@ class PlaybackService : MediaLibraryService() {
         /** `adb logcat -s SillonAuto` for Android Auto diagnostics. */
         const val TAG = "SillonAuto"
         const val SESSION_ACTIVITY_REQUEST_CODE = 3_001
+        const val QUEUE_SAVE_INTERVAL_MS = 15_000L
+        const val MAX_SAVED_TRACKS = 500
     }
 }

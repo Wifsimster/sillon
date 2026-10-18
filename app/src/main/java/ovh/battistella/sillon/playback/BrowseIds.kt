@@ -13,6 +13,8 @@ import java.util.Base64
 sealed interface BrowseNode {
     data object Root : BrowseNode
     data object Recent : BrowseNode
+    /** The saved queue, as the car's "resume" card. */
+    data object Resume : BrowseNode
     data object Artists : BrowseNode
     data object Albums : BrowseNode
     data object Playlists : BrowseNode
@@ -34,6 +36,7 @@ object BrowseIds {
 
     const val ROOT = "root"
     const val RECENT = "recent"
+    const val RESUME = "resume"
     const val ARTISTS = "artists"
     const val ALBUMS = "albums"
     const val PLAYLISTS = "playlists"
@@ -43,6 +46,7 @@ object BrowseIds {
     fun of(node: BrowseNode): String = when (node) {
         BrowseNode.Root -> ROOT
         BrowseNode.Recent -> RECENT
+        BrowseNode.Resume -> RESUME
         BrowseNode.Artists -> ARTISTS
         BrowseNode.Albums -> ALBUMS
         BrowseNode.Playlists -> PLAYLISTS
@@ -61,6 +65,7 @@ object BrowseIds {
         when (id) {
             ROOT -> return BrowseNode.Root
             RECENT -> return BrowseNode.Recent
+            RESUME -> return BrowseNode.Resume
             ARTISTS -> return BrowseNode.Artists
             ALBUMS -> return BrowseNode.Albums
             PLAYLISTS -> return BrowseNode.Playlists

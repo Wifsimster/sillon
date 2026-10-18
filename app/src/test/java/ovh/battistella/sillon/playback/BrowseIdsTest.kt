@@ -21,6 +21,7 @@ class BrowseIdsTest {
             BrowseNode.FiveStars,
             BrowseNode.Track(BrowseNode.FiveStars, "103"),
             BrowseNode.Radios,
+            BrowseNode.Resume,
             BrowseNode.Station("/library/metadata/35167/station/96f069ae-8d3d-4430-82f7-26621535e9d2?type=10"),
             BrowseNode.Station("jellyfin:library-shuffle"),
         )

@@ -66,6 +66,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- Cover art for Android Auto browse lists, granted per URI (not exported). -->
+        <provider
+            android:name=".playback.ArtworkProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <!-- WorkManager runs downloads as a foreground service; declare its type. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

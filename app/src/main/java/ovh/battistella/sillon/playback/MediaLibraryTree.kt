@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,6 +33,7 @@ import javax.inject.Singleton
 class MediaLibraryTree @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: PlexRepository,
+    private val playbackState: PlaybackStateStore,
 ) {
     /** Listings are re-requested on every page and every back navigation: keep them a few minutes. */
     private val cache = mutableMapOf<String, Pair<Long, List<MediaItem>>>()
@@ -48,7 +50,7 @@ class MediaLibraryTree @Inject constructor(
 
     fun root(): MediaItem = folder(BrowseNode.Root, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
 
-    /** List rows rather than a grid: the browse items have no artwork for the car to show. */
+    /** List rows: titles stay readable at a glance while driving; covers show as row icons. */
     fun rootParams(): LibraryParams = LibraryParams.Builder()
         .setExtras(
             Bundle().apply {
@@ -75,6 +77,7 @@ class MediaLibraryTree @Inject constructor(
         is BrowseNode.Artist, is BrowseNode.Album, is BrowseNode.Playlist ->
             repository.metadata(keyOf(node))?.let { folderFor(node, it) }
         is BrowseNode.Track -> repository.metadata(node.key)?.let { trackItem(node.parent, it) }
+        BrowseNode.Resume -> resumeItem()
         BrowseNode.Recent, null -> null
     }
 
@@ -93,6 +96,7 @@ class MediaLibraryTree @Inject constructor(
             return MediaItemsWithStartPosition(searchTracks(query), 0, C.TIME_UNSET)
         }
         val node = single?.let { BrowseIds.parse(it.mediaId) }
+        if (node == BrowseNode.Resume) return resumption()
         if (node is BrowseNode.Station) {
             val tracks = playable(repository.stationTracks(ovh.battistella.sillon.data.repository.Station(node.key, null)))
             return MediaItemsWithStartPosition(tracks, 0, C.TIME_UNSET)
@@ -105,6 +109,38 @@ class MediaLibraryTree @Inject constructor(
         val resolved = resolveEach(items)
         val start = if (startIndex == C.INDEX_UNSET) 0 else startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
         return MediaItemsWithStartPosition(resolved, start, startPositionMs)
+    }
+
+    /** Root of the car's resume card, when there is something to resume. */
+    suspend fun recentRoot(): MediaItem? =
+        playbackState.load()?.let { folder(BrowseNode.Recent, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED) }
+
+    /**
+     * The saved queue, ready to play from where it stopped: the answer to
+     * "resume" from the car, a headset or Bluetooth after the app was closed.
+     */
+    suspend fun resumption(): MediaItemsWithStartPosition {
+        val saved = playbackState.load() ?: return MediaItemsWithStartPosition(emptyList(), 0, 0L)
+        val items = repository.restoreQueue(saved.keys).map(MediaItems::from)
+        val current = saved.keys.getOrNull(saved.index)
+        val index = items.indexOfFirst { it.mediaId == current }
+        return if (index >= 0) {
+            MediaItemsWithStartPosition(items, index, saved.positionMs)
+        } else {
+            MediaItemsWithStartPosition(items, 0, 0L)
+        }
+    }
+
+    private suspend fun resumeItem(): MediaItem? {
+        val saved = playbackState.load() ?: return null
+        val metadata = MediaMetadata.Builder()
+            .setTitle(saved.title.ifBlank { context.getString(R.string.app_name) })
+            .setArtist(saved.artist)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+            .build()
+        return MediaItem.Builder().setMediaId(BrowseIds.RESUME).setMediaMetadata(metadata).build()
     }
 
     /**
@@ -150,7 +186,9 @@ class MediaLibraryTree @Inject constructor(
         }
         is BrowseNode.Artist -> repository.albumsOf(node.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         is BrowseNode.Album, is BrowseNode.Playlist, BrowseNode.FiveStars -> tracksOf(node).map { trackItem(node, it) }
-        BrowseNode.Recent, is BrowseNode.Track, is BrowseNode.Station, null -> emptyList()
+        // The car's resume card: the saved queue, as one playable item.
+        BrowseNode.Recent -> listOfNotNull(resumeItem())
+        BrowseNode.Resume, is BrowseNode.Track, is BrowseNode.Station, null -> emptyList()
     }
 
     private suspend fun topLevel(): List<MediaItem> = listOf(
@@ -199,13 +237,20 @@ class MediaLibraryTree @Inject constructor(
             is BrowseNode.Album -> listOfNotNull(item.parentTitle, item.year?.toString()).joinToString(" · ")
             else -> null
         }
-        return folder(node, item.title, type, subtitle)
+        return folder(node, item.title, type, subtitle, ArtworkProvider.uriFor(item.artwork))
     }
 
-    private fun folder(node: BrowseNode, title: String, type: Int, subtitle: String? = null): MediaItem {
+    private fun folder(
+        node: BrowseNode,
+        title: String,
+        type: Int,
+        subtitle: String? = null,
+        artwork: android.net.Uri? = null,
+    ): MediaItem {
         val metadata = MediaMetadata.Builder()
             .setTitle(title)
             .setSubtitle(subtitle?.takeIf { it.isNotBlank() })
+            .setArtworkUri(artwork)
             .setIsBrowsable(true)
             .setIsPlayable(false)
             .setMediaType(type)
@@ -219,6 +264,7 @@ class MediaLibraryTree @Inject constructor(
             .setArtist(track.trackArtist)
             .setAlbumTitle(track.parentTitle)
             .setTrackNumber(track.index)
+            .setArtworkUri(ArtworkProvider.uriFor(track.artwork))
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)

@@ -107,6 +107,12 @@ class JellyfinApi(
         return PlexJson.decodeFromString(JellyfinItem.serializer(), body).toMetadata()
     }
 
+    /** Several items by id, in one request. */
+    suspend fun itemsByIds(server: ServerEndpoint, deviceId: String, ids: List<String>): List<PlexMetadata> =
+        ids.chunked(BATCH_SIZE).flatMap { chunk ->
+            items(server, deviceId, "Items", "ids" to chunk.joinToString(",")).map { it.toMetadata() }
+        }
+
     /** Audio playlists. */
     suspend fun playlists(server: ServerEndpoint, deviceId: String): List<PlexMetadata> =
         items(
@@ -265,6 +271,7 @@ class JellyfinApi(
     private companion object {
         const val SEARCH_LIMIT = 60
         const val RADIO_TRACKS = 100
+        const val BATCH_SIZE = 100
     }
 }
 

@@ -43,7 +43,8 @@ go, with no ads, no tracking and no subscription.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
-- 🚗 **In the car.** Android Auto: browse your library on the dashboard, or say
+- 🚗 **In the car.** Android Auto: browse your library with its covers on the
+  dashboard, pick up where you stopped from the resume card, or say
   *"play … on Sillon"*.
 - 💾 **Offline.** Download albums and playlists, Wi-Fi only by default, and
   listen with no connection at all.
@@ -91,7 +92,8 @@ is rebuilt on every push.
 | **Playback** | Background play, notification and lock-screen controls, Bluetooth and headset buttons, gapless albums, shuffle, repeat, loudness levelling (per track or album) |
 | **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
 | **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), also in the car |
-| **Car** | Android Auto browsing (Artists, Albums, Playlists, Radios, My 5 stars) and voice requests |
+| **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |
+| **Resume** | The queue and position are remembered: *play* on a headset, Bluetooth or in the car resumes where the music stopped, even after the app was closed |
 | **Offline** | Album and playlist downloads with covers, a Downloads tab that works with no network |
 | **Data** | Streaming quality per network (Original / 320 / 192 / 128 kbps AAC), Wi-Fi-only downloads |
 | **Plex** | PIN sign-in, owned and shared servers, automatic reconnection, play reports to the server |
