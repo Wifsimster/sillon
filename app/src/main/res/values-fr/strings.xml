@@ -103,4 +103,7 @@
     <string name="radio_library">Radio de la bibliothèque</string>
     <string name="artist_radio">Radio de l\'artiste</string>
     <string name="track_radio">Radio de ce titre : la suite sonne comme lui</string>
+    <string name="settings_appearance">Apparence</string>
+    <string name="settings_wallpaper_colors">Couleurs du fond d\'écran</string>
+    <string name="settings_wallpaper_colors_hint">Suivre ton fond d\'écran (Material You) plutôt que les couleurs de Sillon</string>
 </resources>

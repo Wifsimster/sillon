@@ -1,5 +1,15 @@
 package ovh.battistella.sillon.ui.screens.player
 
+import android.graphics.drawable.BitmapDrawable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import coil.imageLoader
+import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,9 +65,17 @@ fun PlayerScreen(
     // While dragging, the slider shows the finger, not the playhead.
     var scrubbing by remember { mutableStateOf<Float?>(null) }
 
+    // The cover's colour washes down the screen, like light through a sleeve.
+    val tint by animateColorAsState(
+        coverColor(state.artworkUri) ?: MaterialTheme.colorScheme.background,
+        animationSpec = tween(600),
+        label = "cover tint",
+    )
+    val background = MaterialTheme.colorScheme.background
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Brush.verticalGradient(0f to tint.copy(alpha = 0.55f), 0.75f to background))
             .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -150,4 +168,32 @@ fun PlayerScreen(
             }
         }
     }
+}
+
+/**
+ * The average colour of the cover at [uri], for the player's background; null
+ * until it's known (or without a cover).
+ */
+@Composable
+private fun coverColor(uri: String?): Color? {
+    val context = LocalContext.current
+    var color by remember(uri) { mutableStateOf<Color?>(null) }
+    LaunchedEffect(uri) {
+        if (uri == null) return@LaunchedEffect
+        val request = ImageRequest.Builder(context).data(uri).size(24).allowHardware(false).build()
+        val bitmap = (context.imageLoader.execute(request).drawable as? BitmapDrawable)?.bitmap ?: return@LaunchedEffect
+        var r = 0L
+        var g = 0L
+        var b = 0L
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        pixels.forEach { p ->
+            r += (p shr 16) and 0xFF
+            g += (p shr 8) and 0xFF
+            b += p and 0xFF
+        }
+        val n = pixels.size.coerceAtLeast(1)
+        color = Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
+    }
+    return color
 }

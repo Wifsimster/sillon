@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="docs/logo.svg" width="112" alt="Sillon logo: a record seen from above" />
+  <img src="docs/brand/logo-animation.gif" width="640" alt="Sillon: a single groove spirals to an amber record label, then the name Sillon and the tagline appear" />
 </p>
-
-<h1 align="center">Sillon</h1>
 
 <p align="center">
   <strong>Your own music, the way a music app should feel.</strong><br/>
@@ -11,8 +9,8 @@
 
 <p align="center">
   <a href="https://github.com/Wifsimster/sillon/releases/latest/download/app-release.apk"><img src="https://img.shields.io/badge/Download-APK-E8A33D?style=for-the-badge&logo=android&logoColor=white" alt="Download the Sillon APK" /></a>
-  <a href="https://github.com/Wifsimster/sillon/releases/latest"><img src="https://img.shields.io/github/v/release/Wifsimster/sillon?style=for-the-badge&label=version&color=1C1B1F" alt="Latest release" /></a>
-  <img src="https://img.shields.io/badge/Android-8.0%2B-1C1B1F?style=for-the-badge" alt="Android 8.0 and later" />
+  <a href="https://github.com/Wifsimster/sillon/releases/latest"><img src="https://img.shields.io/github/v/release/Wifsimster/sillon?style=for-the-badge&label=version&color=15120F" alt="Latest release" /></a>
+  <img src="https://img.shields.io/badge/Android-8.0%2B-15120F?style=for-the-badge" alt="Android 8.0 and later" />
 </p>
 
 <p align="center">
@@ -25,12 +23,13 @@
 <p align="center">
   <img src="docs/screenshots/01-albums.jpg" width="19%" alt="Albums: a grid of covers" />
   <img src="docs/screenshots/02-album.jpg" width="19%" alt="An album with popularity bars on each track" />
-  <img src="docs/screenshots/03-player.jpg" width="19%" alt="Now playing, full-screen cover" />
-  <img src="docs/screenshots/04-playlists.jpg" width="19%" alt="Playlists and the My 5 stars mix" />
+  <img src="docs/screenshots/03-player.jpg" width="19%" alt="Now playing, the background tinted by the cover" />
+  <img src="docs/screenshots/04-playlists.jpg" width="19%" alt="Playlists, the My 5 stars mix and the radios" />
   <img src="docs/screenshots/05-search.jpg" width="19%" alt="Search as you type: artists, albums, tracks" />
 </p>
 
-*Sillon* is French for the groove of a record. You keep your music on your own
+*Sillon* is French for the groove of a record — hence the logo: one continuous
+groove spiralling to the label (see [DESIGN.md](DESIGN.md)). You keep your music on your own
 server; Sillon makes it a pleasure to play on your phone, in the car and on the
 go, with no ads, no tracking and no subscription.
 
@@ -59,7 +58,10 @@ go, with no ads, no tracking and no subscription.
   your server, lands in the history and counts as played, like the official apps.
 - 🔒 **Private.** No account but your server's, no analytics, no ads. Your
   server token never leaves the app.
-- 🌍 **Open source**, in English and French, with Material You colours.
+- 🎨 **A look of its own.** Vinyl blacks, sleeve cream and label amber, titles in
+  Fraunces, and a player tinted by the cover playing. Wallpaper colours
+  (Material You) are one switch away. See [DESIGN.md](DESIGN.md).
+- 🌍 **Open source**, in English and French.
 
 ## Get it
 
@@ -99,6 +101,18 @@ is rebuilt on every push.
 | **Data** | Streaming quality per network (Original / 320 / 192 / 128 kbps AAC), Wi-Fi-only downloads |
 | **Plex** | PIN sign-in, owned and shared servers, automatic reconnection, play reports to the server |
 | **Jellyfin** | Password or Quick Connect sign-in, HTTP or HTTPS servers, transcoding, play reports to the server |
+
+## Identity
+
+<p align="center">
+  <img src="docs/brand/board.png" width="720" alt="Sillon brand board: logo, palette and typography" />
+</p>
+
+One continuous groove spiralling to an amber label; vinyl black `#15120F`,
+groove `#2A241E`, sleeve cream `#F6EFE4`, label amber `#E8A33D` and rust
+`#C2552B`; Fraunces for titles, DM Sans for text. Logo files, the animated logo
+(GIF and MP4, made with [Remotion](https://www.remotion.dev/) in
+[`brand/animation`](brand/animation)) and the rules are in [DESIGN.md](DESIGN.md).
 
 ## Roadmap
 

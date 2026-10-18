@@ -4,9 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,10 +27,11 @@ fun Artwork(
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            Icons.Rounded.Album,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        // No cover (yet): the groove, faint, as a placeholder.
+        SillonMark(
+            modifier = Modifier.fillMaxSize(0.62f),
+            groove = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+            label = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
         )
         if (url != null) {
             AsyncImage(

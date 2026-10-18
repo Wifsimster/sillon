@@ -61,6 +61,13 @@ class SettingsStore @Inject constructor(
         context.settingsDataStore.edit { it[LOUDNESS] = value.name }
     }
 
+    /** Follow the wallpaper (Material You) instead of Sillon's own colours. Off by default. */
+    val wallpaperColors: Flow<Boolean> = context.settingsDataStore.data.map { it[WALLPAPER_COLORS] ?: false }
+
+    suspend fun setWallpaperColors(value: Boolean) {
+        context.settingsDataStore.edit { it[WALLPAPER_COLORS] = value }
+    }
+
     private fun String?.toQuality(default: StreamQuality) =
         StreamQuality.entries.firstOrNull { it.name == this } ?: default
 
@@ -73,5 +80,6 @@ class SettingsStore @Inject constructor(
         val WIFI_QUALITY = stringPreferencesKey("stream_quality_wifi")
         val MOBILE_QUALITY = stringPreferencesKey("stream_quality_mobile")
         val LOUDNESS = stringPreferencesKey("loudness")
+        val WALLPAPER_COLORS = booleanPreferencesKey("wallpaper_colors")
     }
 }

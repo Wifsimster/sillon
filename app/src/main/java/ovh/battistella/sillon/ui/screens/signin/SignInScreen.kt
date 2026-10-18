@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import ovh.battistella.sillon.data.plex.ServerKind
+import ovh.battistella.sillon.ui.components.SillonMark
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,7 +67,13 @@ private fun ServerKindChoice(onChoose: (ServerKind) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(stringResource(R.string.signin_choose_title), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+        SillonMark(Modifier.size(96.dp), groove = MaterialTheme.colorScheme.onBackground)
+        Text(
+            stringResource(R.string.app_name),
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(stringResource(R.string.signin_choose_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         Text(
             stringResource(R.string.signin_choose_body),
             style = MaterialTheme.typography.bodyLarge,
