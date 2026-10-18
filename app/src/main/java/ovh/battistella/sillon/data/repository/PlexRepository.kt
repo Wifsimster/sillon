@@ -269,12 +269,16 @@ class PlexRepository @Inject constructor(
         return keys.mapNotNull { local[it]?.toPlayable(mode) }
     }
 
-    /** The library's radios. */
+    /** The library's radios, and the mixes Plex built from its sonic analysis, if any. */
     suspend fun stations(): List<Station> {
         val section = currentMusicSection() ?: return emptyList()
         return onServer(
             plex = { clientId, server ->
-                api.stations(clientId, server, section.key).map { Station(it.key ?: "", it.title) }.filter { it.key.isNotBlank() }
+                val mixes = runCatching { api.mixes(clientId, server, section.key) }.getOrDefault(emptyList())
+                (mixes + api.stations(clientId, server, section.key))
+                    .map { Station(it.key ?: "", it.title) }
+                    .filter { it.key.isNotBlank() }
+                    .distinctBy { it.key }
             },
             jellyfin = { _, _ -> listOf(Station(LIBRARY_SHUFFLE_STATION, null)) },
         )
@@ -291,6 +295,24 @@ class PlexRepository @Inject constructor(
             },
         )
     }
+
+    /**
+     * A radio from a track: the tracks that sound like it (Plex sonic
+     * analysis), or Jellyfin's Instant Mix. Before Plex has analysed the
+     * library, the track's artist radio instead.
+     */
+    suspend fun trackRadioTracks(trackKey: String): List<PlexMetadata> = onServer(
+        plex = { clientId, server ->
+            val similar = runCatching { api.sonicallySimilar(clientId, server, trackKey) }.getOrDefault(emptyList())
+            if (similar.isNotEmpty()) {
+                similar
+            } else {
+                val artist = api.metadata(clientId, server, trackKey)?.grandparentRatingKey
+                if (artist != null) artistRadioTracks(artist) else emptyList()
+            }
+        },
+        jellyfin = { deviceId, server -> jellyfin.instantMix(server, deviceId, trackKey) },
+    )
 
     /**
      * An artist's radio: Plex's artist station, or Jellyfin's Instant Mix.

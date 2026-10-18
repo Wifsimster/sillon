@@ -99,6 +99,8 @@ data class PlexMetadata(
     val parentRatingKey: String? = null,
     val parentTitle: String? = null,
     val grandparentTitle: String? = null,
+    /** For a track: its artist. */
+    val grandparentRatingKey: String? = null,
     /** Track artist when it differs from the album artist (compilations, featurings). */
     val originalTitle: String? = null,
     val index: Int? = null,

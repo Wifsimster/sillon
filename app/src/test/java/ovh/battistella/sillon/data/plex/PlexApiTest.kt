@@ -261,4 +261,34 @@ class PlexApiTest {
         assertEquals("/library/sections/3/stations/1", stations.single().key)
         assertEquals("1", server.takeRequest().requestUrl!!.queryParameter("includeStations"))
     }
+
+    @Test
+    fun `asks for sonically similar tracks`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {"Metadata": [{"ratingKey": "7", "title": "Close"}]}}"""))
+
+        val similar = api.sonicallySimilar("c", ServerEndpoint(server.url("/").toString(), "t"), "50155", limit = 50)
+
+        assertEquals(listOf("Close"), similar.map { it.title })
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/library/metadata/50155/nearest", url.encodedPath)
+        assertEquals("50", url.queryParameter("limit"))
+        assertEquals("0.25", url.queryParameter("maxDistance"))
+    }
+
+    @Test
+    fun `keeps only mix hubs as mixes`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Hub": [
+                  {"hubIdentifier": "music.stations.3", "Metadata": [{"key": "/library/sections/3/stations/1", "title": "Library Radio"}]},
+                  {"hubIdentifier": "music.mixes.3", "Metadata": [
+                    {"key": "/library/sections/3/mixes/1", "title": "Chill Mix"}, {"title": "No key"}]}
+                ]}}""",
+            ),
+        )
+
+        val mixes = api.mixes("c", ServerEndpoint(server.url("/").toString(), "t"), "3")
+
+        assertEquals(listOf("Chill Mix"), mixes.map { it.title })
+    }
 }

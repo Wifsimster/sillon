@@ -102,4 +102,5 @@
     <string name="radios">Radios</string>
     <string name="radio_library">Radio de la bibliothèque</string>
     <string name="artist_radio">Radio de l\'artiste</string>
+    <string name="track_radio">Radio de ce titre : la suite sonne comme lui</string>
 </resources>

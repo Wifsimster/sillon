@@ -191,6 +191,32 @@ class PlexApi(
             .hubs.filter { it.hubIdentifier.startsWith("music.stations") }
             .flatMap { it.metadata }
 
+    /**
+     * Tracks that sound like [trackKey], closest first: Plex's sonic analysis
+     * (Plex Pass). Empty until the library has been analysed.
+     */
+    suspend fun sonicallySimilar(
+        clientId: String,
+        server: ServerEndpoint,
+        trackKey: String,
+        limit: Int = RADIO_TRACKS,
+    ): List<PlexMetadata> =
+        get(
+            clientId, server, "library/metadata/$trackKey/nearest",
+            "limit" to limit.toString(), "maxDistance" to SONIC_MAX_DISTANCE,
+        ).metadata
+
+    /**
+     * The mixes Plex builds from the sonic analysis ("Mixes for you"): hubs of
+     * the music section whose identifier names a mix. Each item plays like a
+     * station, through its key.
+     */
+    suspend fun mixes(clientId: String, server: ServerEndpoint, sectionKey: String): List<PlexMetadata> =
+        get(clientId, server, "hubs/sections/$sectionKey", "includeStations" to "1", "count" to "20")
+            .hubs.filter { it.hubIdentifier.contains("mix", ignoreCase = true) }
+            .flatMap { it.metadata }
+            .filter { !it.key.isNullOrBlank() }
+
     /** Every track of an artist, across albums. */
     suspend fun artistTracks(clientId: String, server: ServerEndpoint, artistKey: String): List<PlexMetadata> =
         get(clientId, server, "library/metadata/$artistKey/allLeaves").metadata
@@ -391,6 +417,8 @@ class PlexApi(
         private const val SEARCH_LIMIT = 20
         private const val BATCH_SIZE = 50
         const val RADIO_TRACKS = 100
+        /** How far "similar" may stretch (0 = identical); Plexamp's default range. */
+        private const val SONIC_MAX_DISTANCE = "0.25"
         private const val PROBE_TIMEOUT_S = 4L
     }
 }

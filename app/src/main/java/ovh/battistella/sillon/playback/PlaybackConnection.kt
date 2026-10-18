@@ -136,6 +136,21 @@ class PlaybackConnection @Inject constructor(
         }
     }
 
+    /**
+     * Keep the current track playing and replace what comes after it with
+     * [tracks] (a radio started from the track playing).
+     */
+    fun replaceUpcoming(tracks: List<PlayableTrack>) {
+        withController {
+            val items = tracks.map(MediaItems::from).filter { it.mediaId != currentMediaItem?.mediaId }
+            if (items.isEmpty()) return@withController
+            val next = currentMediaItemIndex + 1
+            if (next < mediaItemCount) removeMediaItems(next, mediaItemCount)
+            shuffleModeEnabled = false
+            addMediaItems(items)
+        }
+    }
+
     fun playPause() = withController {
         if (isPlaying) {
             pause()

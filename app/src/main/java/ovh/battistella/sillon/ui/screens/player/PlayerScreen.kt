@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -49,6 +51,7 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
     // While dragging, the slider shows the finger, not the playhead.
     var scrubbing by remember { mutableStateOf<Float?>(null) }
 
@@ -60,9 +63,17 @@ fun PlayerScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
+            }
+            // Follow this track with tracks that sound like it.
+            if (startingRadio) {
+                CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+            } else {
+                IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
+                    Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
+                }
             }
         }
         Artwork(

@@ -39,7 +39,8 @@ go, with no ads, no tracking and no subscription.
 - 🎧 **Made for music.** Albums, artists, playlists and search, gapless playback,
   big covers, a mini-player always within reach.
 - 📻 **Radios.** Your server's library radios (Library, Deep Cuts, Time
-  Travel…) and a radio for every artist, one tap away.
+  Travel…), Plex's *Mixes for you*, a radio for every artist, and from the
+  player, a radio of tracks that sound like the one playing.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
@@ -101,8 +102,7 @@ is rebuilt on every push.
 
 ## Roadmap
 
-1. Sonically similar tracks and *Mixes for you* (Plex Pass sonic analysis).
-2. A Windows desktop app.
+1. A Windows desktop app.
 
 Ideas and bug reports are welcome in the
 [issues](https://github.com/Wifsimster/sillon/issues).
@@ -164,6 +164,9 @@ in GitHub Actions; pushes to `main` are released with semantic-release
 - On Wi-Fi with *Original* quality, tracks play as the original files. Formats
   Android can't decode natively (ALAC on older devices, for example) play once a
   transcoded quality is chosen.
+- Sonic features (*Mixes for you*, tracks that sound alike) need Plex Pass and
+  *Sonic analysis* enabled on the music library; until the analysis has run,
+  the track radio falls back to the artist's radio.
 - Loudness levelling only turns tracks down (the player can't amplify), as
   ReplayGain targets a quieter reference than most modern masters: with it on,
   turn the phone volume up a little. Plex needs *loudness analysis* enabled on
