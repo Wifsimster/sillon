@@ -1,5 +1,15 @@
 package ovh.battistella.sillon.ui.screens.player
 
+import android.graphics.drawable.BitmapDrawable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import coil.imageLoader
+import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -49,20 +61,34 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // While dragging, the slider shows the finger, not the playhead.
+    val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
 
+    val tint by animateColorAsState(
+        coverColor(state.artworkUri) ?: MaterialTheme.colorScheme.background,
+        animationSpec = tween(600),
+        label = "cover tint",
+    )
+    val background = MaterialTheme.colorScheme.background
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Brush.verticalGradient(0f to tint.copy(alpha = 0.55f), 0.75f to background))
             .safeDrawingPadding()
             .padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
+            }
+            if (startingRadio) {
+                CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+            } else {
+                IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
+                    Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
+                }
             }
         }
         Artwork(
@@ -139,4 +165,28 @@ fun PlayerScreen(
             }
         }
     }
+}
+
+@Composable
+private fun coverColor(uri: String?): Color? {
+    val context = LocalContext.current
+    var color by remember(uri) { mutableStateOf<Color?>(null) }
+    LaunchedEffect(uri) {
+        if (uri == null) return@LaunchedEffect
+        val request = ImageRequest.Builder(context).data(uri).size(24).allowHardware(false).build()
+        val bitmap = (context.imageLoader.execute(request).drawable as? BitmapDrawable)?.bitmap ?: return@LaunchedEffect
+        var r = 0L
+        var g = 0L
+        var b = 0L
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        pixels.forEach { p ->
+            r += (p shr 16) and 0xFF
+            g += (p shr 8) and 0xFF
+            b += p and 0xFF
+        }
+        val n = pixels.size.coerceAtLeast(1)
+        color = Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
+    }
+    return color
 }

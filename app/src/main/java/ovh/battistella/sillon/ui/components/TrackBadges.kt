@@ -24,7 +24,6 @@ import ovh.battistella.sillon.R
 import kotlin.math.ceil
 import kotlin.math.floor
 
-/** Five rising bars, as many lit as the track is popular (like Plexamp). */
 @Composable
 fun PopularityBars(popularity: Float, modifier: Modifier = Modifier) {
     val lit = ceil(popularity.coerceIn(0f, 1f) * BARS).toInt().coerceAtLeast(1)
@@ -47,7 +46,6 @@ fun PopularityBars(popularity: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** The user's rating as small stars (halves included). */
 @Composable
 fun RatingStars(stars: Float, modifier: Modifier = Modifier) {
     val full = floor(stars).toInt().coerceIn(0, 5)

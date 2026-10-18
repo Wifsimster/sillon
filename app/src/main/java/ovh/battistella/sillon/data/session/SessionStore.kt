@@ -18,27 +18,18 @@ import javax.inject.Singleton
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
 
-/** The server the user picked, and how it was last reached. */
 data class SelectedServer(
     val machineId: String,
     val name: String,
     val endpoint: ServerEndpoint,
 )
 
-/**
- * Where the user is in the setup: signed out, signed in without a server yet,
- * or ready to browse.
- */
 sealed interface Session {
     data object SignedOut : Session
     data class NeedsServer(val userToken: String) : Session
     data class Ready(val userToken: String, val server: SelectedServer) : Session
 }
 
-/**
- * Persists the Plex account token and the chosen server in a private DataStore,
- * which is excluded from backups (see res/xml/data_extraction_rules.xml).
- */
 @Singleton
 class SessionStore @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -65,12 +56,6 @@ class SessionStore @Inject constructor(
         }
     }
 
-    /**
-     * Stable per-install identifier Plex uses to tell devices apart. Created on
-     * first use and kept across sign-outs so plex.tv doesn't list a new device
-     * every time.
-     */
-    /** Music library chosen on the current server; null means "the first one". */
     val musicSectionKey: Flow<String?> = store.data.map { it[MUSIC_SECTION] }
 
     suspend fun selectMusicSection(key: String) {
@@ -94,10 +79,6 @@ class SessionStore @Inject constructor(
         store.edit { it.putServer(server) }
     }
 
-    /**
-     * A Jellyfin sign-in names the server and the token at once: there is no
-     * account-wide server list to pick from as with Plex.
-     */
     suspend fun signInJellyfin(server: SelectedServer) {
         store.edit {
             it[USER_TOKEN] = server.endpoint.token

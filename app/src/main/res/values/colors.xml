@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Cold-start splash background; matches the Compose light surface.
-         A dark variant lives in values-night/colors.xml. -->
-    <color name="seed_background">#FFFFF8F3</color>
-    <color name="ic_launcher_background">#FF1C1B1F</color>
-    <color name="ic_launcher_accent">#FFE8A33D</color>
+    <color name="seed_background">#FFFBF6EE</color>
+    <color name="ic_launcher_background">#FF15120F</color>
 </resources>

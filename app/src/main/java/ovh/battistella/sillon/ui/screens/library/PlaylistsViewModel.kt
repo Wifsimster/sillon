@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
@@ -23,21 +24,32 @@ import ovh.battistella.sillon.ui.components.toFailed
 import ovh.battistella.sillon.ui.navigation.Routes
 import javax.inject.Inject
 
-/** All audio playlists on the server. */
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
 ) : ViewModel() {
-
-    /** On Jellyfin, favourites stand in for 5-star ratings, and the card says so. */
     val isJellyfin = repository.isJellyfin.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    /** True while the 5-star tracks are being fetched for [shuffleFiveStars]. */
     private val _startingFiveStars = MutableStateFlow(false)
     val startingFiveStars = _startingFiveStars.asStateFlow()
 
-    /** One tap: every 5-star track of the library, shuffled. */
+    private val _stations = MutableStateFlow<List<Station>>(emptyList())
+    val stations = _stations.asStateFlow()
+
+    private val _startingStation = MutableStateFlow<String?>(null)
+    val startingStation = _startingStation.asStateFlow()
+
+    fun playStation(station: Station) {
+        if (_startingStation.value != null) return
+        _startingStation.value = station.key
+        viewModelScope.launch {
+            runCatching { repository.playable(repository.stationTracks(station)) }
+                .onSuccess { if (it.isNotEmpty()) playback.play(it) }
+            _startingStation.value = null
+        }
+    }
+
     fun shuffleFiveStars() {
         if (_startingFiveStars.value) return
         _startingFiveStars.value = true
@@ -58,6 +70,9 @@ class PlaylistsViewModel @Inject constructor(
     fun load() {
         _state.value = Load.Loading
         viewModelScope.launch {
+            _stations.value = runCatching { repository.stations() }.getOrDefault(emptyList())
+        }
+        viewModelScope.launch {
             _state.value = runCatching {
                 val server = repository.endpoint()
                 Load.Ready(
@@ -76,7 +91,6 @@ class PlaylistsViewModel @Inject constructor(
     }
 }
 
-/** One playlist's tracks, shown like an album. */
 @HiltViewModel
 class PlaylistViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -84,7 +98,6 @@ class PlaylistViewModel @Inject constructor(
     playback: PlaybackConnection,
     downloads: DownloadManager,
 ) : TrackCollectionViewModel(repository, playback, downloads) {
-
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     init {
@@ -110,7 +123,6 @@ class PlaylistViewModel @Inject constructor(
     }
 }
 
-/** The tracks rated 5 stars, shown and played like a playlist. */
 @HiltViewModel
 class FiveStarsViewModel @Inject constructor(
     private val repository: PlexRepository,
@@ -118,7 +130,6 @@ class FiveStarsViewModel @Inject constructor(
     downloads: DownloadManager,
     @ApplicationContext private val context: Context,
 ) : TrackCollectionViewModel(repository, playback, downloads) {
-
     init {
         start()
     }
@@ -134,7 +145,6 @@ class FiveStarsViewModel @Inject constructor(
                 ),
                 artist = null,
                 year = null,
-                // The cover of a 5-star track rather than an empty square.
                 artworkUrl = tracks.firstNotNullOfOrNull { repository.artworkUrl(server, it.artwork, HEADER_ART_PX) },
                 tracks = tracks.map { it.toTrackUi(null, listOfNotNull(it.trackArtist, it.parentTitle).joinToString(" · "), pop) },
             ),

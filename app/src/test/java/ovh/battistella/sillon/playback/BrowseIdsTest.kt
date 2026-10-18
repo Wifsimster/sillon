@@ -5,7 +5,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BrowseIdsTest {
-
     @Test
     fun `every node survives a round trip through its id`() {
         val nodes = listOf(
@@ -20,6 +19,10 @@ class BrowseIdsTest {
             BrowseNode.Track(BrowseNode.Playlist("56"), "102"),
             BrowseNode.FiveStars,
             BrowseNode.Track(BrowseNode.FiveStars, "103"),
+            BrowseNode.Radios,
+            BrowseNode.Resume,
+            BrowseNode.Station("/library/metadata/35167/station/96f069ae-8d3d-4430-82f7-26621535e9d2?type=10"),
+            BrowseNode.Station("jellyfin:library-shuffle"),
         )
         nodes.forEach { assertEquals(it, BrowseIds.parse(BrowseIds.of(it))) }
     }

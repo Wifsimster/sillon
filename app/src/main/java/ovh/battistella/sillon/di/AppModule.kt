@@ -22,7 +22,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
@@ -34,8 +33,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SillonDatabase =
-        // No destructive fallback: a forgotten migration must crash loudly, not
-        // silently wipe the downloads (lesson learnt in Ondes).
         Room.databaseBuilder(context, SillonDatabase::class.java, "sillon.db")
             .addMigrations(MIGRATION_1_2)
             .build()

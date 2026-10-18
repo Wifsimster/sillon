@@ -8,7 +8,6 @@ import ovh.battistella.sillon.data.local.DownloadEntity
 import ovh.battistella.sillon.data.local.DownloadState
 
 class DownloadStatusTest {
-
     private fun row(key: String, state: DownloadState) = DownloadEntity(
         serverId = "s", ratingKey = key, title = key, artist = null, album = null, albumKey = "a",
         albumArtist = null, trackNumber = null, discNumber = null, durationMs = null,
@@ -23,7 +22,7 @@ class DownloadStatusTest {
                 row("1", DownloadState.DONE),
                 row("2", DownloadState.DOWNLOADING),
                 row("3", DownloadState.FAILED),
-                row("99", DownloadState.DONE), // another album's track
+                row("99", DownloadState.DONE),
             ),
         )
         assertEquals(DownloadStatus(total = 4, done = 1, active = 1, failed = 1), status)

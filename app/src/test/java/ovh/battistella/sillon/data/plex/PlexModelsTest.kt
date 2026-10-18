@@ -8,7 +8,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlexModelsTest {
-
     @Test
     fun `parses an album's tracks with their part keys`() {
         val json = """

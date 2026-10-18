@@ -25,7 +25,6 @@ class AlbumViewModel @Inject constructor(
     playback: PlaybackConnection,
     downloads: DownloadManager,
 ) : TrackCollectionViewModel(repository, playback, downloads) {
-
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     init {

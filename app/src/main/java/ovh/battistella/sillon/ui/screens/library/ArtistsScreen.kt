@@ -51,7 +51,6 @@ fun AlbumsScreen(
     SectionGridScreen(stringResource(R.string.library_albums), state, viewModel::load, onAlbum, round = false, contentPadding)
 }
 
-/** A top-level grid of the current music library, with the library menu. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SectionGridScreen(
@@ -87,7 +86,6 @@ private fun SectionGridScreen(
     }
 }
 
-/** Adaptive grid of covers; [round] for artists, square for albums. */
 @Composable
 fun TileGrid(
     tiles: List<TileUi>,

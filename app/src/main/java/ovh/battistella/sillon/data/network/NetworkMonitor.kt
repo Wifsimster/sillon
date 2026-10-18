@@ -11,7 +11,6 @@ import javax.inject.Singleton
 class NetworkMonitor @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    /** True on mobile data and other metered networks (a phone hotspot counts too). */
     fun isMetered(): Boolean {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
         val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false

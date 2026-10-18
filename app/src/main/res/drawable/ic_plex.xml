@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Plex logo (simple-icons, CC0; the trademark belongs to its owner), used to
-     name the server type on the sign-in screen. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

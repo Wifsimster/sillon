@@ -7,11 +7,6 @@ import ovh.battistella.sillon.data.plex.PlexMedia
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
 
-/*
- * Wire models for the Jellyfin API, and their mapping onto the models the rest
- * of the app already uses (named after Plex, which Sillon supported first).
- */
-
 @Serializable
 data class JellyfinPublicInfo(
     @SerialName("ServerName") val serverName: String = "",
@@ -32,7 +27,6 @@ data class JellyfinUser(
     @SerialName("Name") val name: String = "",
 )
 
-/** A Quick Connect request: show [code] to the user, poll with [secret]. */
 @Serializable
 data class JellyfinQuickConnect(
     @SerialName("Secret") val secret: String,
@@ -66,7 +60,6 @@ data class JellyfinItem(
     @SerialName("ImageTags") val imageTags: Map<String, String> = emptyMap(),
     @SerialName("AlbumPrimaryImageTag") val albumPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: JellyfinUserData? = null,
-    /** dB to bring the track to the server's target loudness (Jellyfin 10.9+). */
     @SerialName("NormalizationGain") val normalizationGain: Float? = null,
 )
 
@@ -76,21 +69,14 @@ data class JellyfinUserData(
     @SerialName("PlayCount") val playCount: Int = 0,
 )
 
-/** Prefix marking an artwork reference as a Jellyfin item id (see [JellyfinApi.artworkUrl]). */
 const val JELLYFIN_IMAGE = "jellyfin-item:"
 
-/** A music library ("view" with the music collection type). */
 fun JellyfinItem.toDirectory() = PlexDirectory(
     key = id,
     title = name,
     type = if (collectionType == "music") PlexDirectory.TYPE_MUSIC_SECTION else collectionType.orEmpty(),
 )
 
-/**
- * An artist, album, track or playlist in the app's model. Jellyfin has no
- * star ratings: a favourite counts as 5 stars, so "My 5 stars" lists the
- * favourites. Jellyfin has no popularity figure either (no bars).
- */
 fun JellyfinItem.toMetadata(): PlexMetadata {
     val ownImage = if (imageTags.containsKey("Primary")) "$JELLYFIN_IMAGE$id" else null
     val albumImage = if (albumPrimaryImageTag != null && albumId != null) "$JELLYFIN_IMAGE$albumId" else null
@@ -106,7 +92,6 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         },
         title = name,
         parentRatingKey = albumId,
-        // For an album, the "parent" is its artist (as in Plex); for a track, its album.
         parentTitle = if (type == "MusicAlbum") albumArtist else album,
         grandparentTitle = albumArtist,
         originalTitle = trackArtist,
@@ -128,11 +113,9 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
     )
 }
 
-/** Server path of a track's original file; the container in the name gives downloads their extension. */
 fun streamPath(id: String, container: String?): String {
     val ext = container?.substringBefore(',')?.takeIf { it.isNotBlank() && it.all(Char::isLetterOrDigit) }
     return if (ext != null) "/Audio/$id/stream.$ext?static=true" else "/Audio/$id/stream?static=true"
 }
 
-/** Jellyfin durations are in 100 ns ticks. */
 const val TICKS_PER_MS = 10_000L

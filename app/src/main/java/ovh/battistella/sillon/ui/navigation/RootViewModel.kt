@@ -14,7 +14,6 @@ import javax.inject.Inject
 class RootViewModel @Inject constructor(
     repository: PlexRepository,
 ) : ViewModel() {
-    /** Null while the stored session is still being read. */
     val session: StateFlow<Session?> = repository.session
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 }

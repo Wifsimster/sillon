@@ -17,17 +17,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ovh.battistella.sillon.R
 
-/** The three states of anything fetched from the server. */
 sealed interface Load<out T> {
     data object Loading : Load<Nothing>
     data class Failed(val message: String) : Load<Nothing>
     data class Ready<T>(val value: T) : Load<T>
 }
 
-/** Turn a failed call into a [Load.Failed] with something readable. */
 fun Throwable.toFailed(): Load.Failed = Load.Failed(message ?: javaClass.simpleName)
 
-/** Spinner while loading, message + retry on failure, [content] once ready. */
 @Composable
 fun <T> LoadContent(
     load: Load<T>,
@@ -48,7 +45,6 @@ fun <T> LoadContent(
     }
 }
 
-/** A centred message, optionally with one action button. */
 @Composable
 fun Message(
     text: String,

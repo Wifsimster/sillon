@@ -14,9 +14,7 @@ import javax.inject.Inject
 
 data class ServersUi(
     val servers: List<PlexResource>,
-    /** Name of the server being probed, if any. */
     val connecting: String? = null,
-    /** Name of the last server that didn't answer on any address. */
     val unreachable: String? = null,
 )
 
@@ -24,7 +22,6 @@ data class ServersUi(
 class ServersViewModel @Inject constructor(
     private val repository: PlexRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow<Load<ServersUi>>(Load.Loading)
     val state = _state.asStateFlow()
 
@@ -40,7 +37,6 @@ class ServersViewModel @Inject constructor(
         }
     }
 
-    /** Probe [server]; on success the session moves the app to the library on its own. */
     fun select(server: PlexResource) {
         val current = (_state.value as? Load.Ready)?.value ?: return
         if (current.connecting != null) return

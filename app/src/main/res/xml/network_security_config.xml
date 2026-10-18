@@ -1,9 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Clear-text HTTP is allowed for Jellyfin servers on a home network, which
-  usually answer on http://<lan-address>:8096 with no certificate. Plex is
-  only ever reached over HTTPS (*.plex.direct certificates), whatever this says.
--->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>

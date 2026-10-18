@@ -48,6 +48,11 @@ class SettingsViewModel @Inject constructor(
     val mobileQuality = settings.mobileQuality.stateIn(viewModelScope, SharingStarted.Eagerly, StreamQuality.KBPS_320)
     val downloadWifiOnly = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val loudness = settings.loudness.stateIn(viewModelScope, SharingStarted.Eagerly, LoudnessMode.TRACK)
+    val wallpaperColors = settings.wallpaperColors.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setWallpaperColors(value: Boolean) {
+        viewModelScope.launch { settings.setWallpaperColors(value) }
+    }
 
     fun setLoudness(value: LoudnessMode) {
         viewModelScope.launch { settings.setLoudness(value) }
@@ -77,6 +82,7 @@ fun SettingsScreen(
     val mobileQuality by viewModel.mobileQuality.collectAsStateWithLifecycle()
     val downloadWifiOnly by viewModel.downloadWifiOnly.collectAsStateWithLifecycle()
     val loudness by viewModel.loudness.collectAsStateWithLifecycle()
+    val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -126,6 +132,22 @@ fun SettingsScreen(
                 )
             }
             item { HorizontalDivider() }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                item { SectionTitle(stringResource(R.string.settings_appearance)) }
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.settings_wallpaper_colors)) },
+                        supportingContent = { Text(stringResource(R.string.settings_wallpaper_colors_hint)) },
+                        trailingContent = { Switch(checked = wallpaperColors, onCheckedChange = null) },
+                        modifier = Modifier.toggleable(
+                            value = wallpaperColors,
+                            role = Role.Switch,
+                            onValueChange = viewModel::setWallpaperColors,
+                        ),
+                    )
+                }
+                item { HorizontalDivider() }
+            }
             item { SectionTitle(stringResource(R.string.library_downloads)) }
             item {
                 ListItem(

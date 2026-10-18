@@ -119,7 +119,6 @@ private fun SectionTitle(text: String) {
     )
 }
 
-/** A horizontal strip of covers for artist or album results. */
 @Composable
 private fun TileRow(tiles: List<TileUi>, round: Boolean, onClick: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 12.dp)) {

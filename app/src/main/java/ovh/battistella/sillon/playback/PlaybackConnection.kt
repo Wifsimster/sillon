@@ -40,11 +40,6 @@ data class PlayerUiState(
     val hasMedia: Boolean get() = currentKey != null
 }
 
-/**
- * App-wide bridge to [PlaybackService]: connects a [MediaController] and exposes
- * one [PlayerUiState] flow for the mini-player and the full player. Same shape
- * as Ondes' PlaybackConnection, without the podcast-specific resume logic.
- */
 @Singleton
 class PlaybackConnection @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -57,7 +52,6 @@ class PlaybackConnection @Inject constructor(
     private var controller: MediaController? = null
     private var tickerJob: Job? = null
 
-    /** A play request made before the controller finished connecting. */
     private var pending: (MediaController.() -> Unit)? = null
 
     private val controllerListener = object : MediaController.Listener {
@@ -69,7 +63,6 @@ class PlaybackConnection @Inject constructor(
     }
 
     init {
-        // Tick the position only while someone is watching the player state.
         scope.launch {
             _state.subscriptionCount.collect { count ->
                 if (count > 0 && controller?.isPlaying == true) startPositionTicker()
@@ -95,7 +88,6 @@ class PlaybackConnection @Inject constructor(
                 pending?.invoke(c)
                 pending = null
             } catch (t: Throwable) {
-                // Connection failed: reset so the next command retries.
                 controller = null
                 controllerFuture = null
                 _state.value = _state.value.copy(isConnected = false)
@@ -112,7 +104,6 @@ class PlaybackConnection @Inject constructor(
         _state.value = _state.value.copy(isConnected = false, isPlaying = false)
     }
 
-    /** Run [action] now, or as soon as the controller is connected. */
     private fun withController(action: MediaController.() -> Unit) {
         val c = controller
         if (c != null) {
@@ -123,16 +114,26 @@ class PlaybackConnection @Inject constructor(
         }
     }
 
-    /** Replace the queue with [tracks] and start at [startIndex]. */
     fun play(tracks: List<PlayableTrack>, startIndex: Int = 0, shuffle: Boolean = false) {
         if (tracks.isEmpty()) return
         val items = tracks.map(MediaItems::from)
         withController {
             shuffleModeEnabled = shuffle
             val start = if (shuffle) items.indices.random() else startIndex.coerceIn(0, items.lastIndex)
-            setMediaItems(items, start, /* startPositionMs = */ 0L)
+            setMediaItems(items, start, 0L)
             prepare()
             play()
+        }
+    }
+
+    fun replaceUpcoming(tracks: List<PlayableTrack>) {
+        withController {
+            val items = tracks.map(MediaItems::from).filter { it.mediaId != currentMediaItem?.mediaId }
+            if (items.isEmpty()) return@withController
+            val next = currentMediaItemIndex + 1
+            if (next < mediaItemCount) removeMediaItems(next, mediaItemCount)
+            shuffleModeEnabled = false
+            addMediaItems(items)
         }
     }
 
@@ -140,7 +141,6 @@ class PlaybackConnection @Inject constructor(
         if (isPlaying) {
             pause()
         } else {
-            // After an error the player parks in IDLE; prepare again to recover.
             if (playbackState == Player.STATE_IDLE) prepare()
             play()
         }
@@ -148,7 +148,6 @@ class PlaybackConnection @Inject constructor(
 
     fun next() = withController { if (hasNextMediaItem()) seekToNextMediaItem() }
 
-    /** Previous track, or back to the start of this one after a few seconds (like every music player). */
     fun previous() = withController { seekToPrevious() }
 
     fun seekTo(positionMs: Long) = withController { this.seekTo(positionMs) }

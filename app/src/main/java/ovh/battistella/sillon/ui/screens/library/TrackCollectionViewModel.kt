@@ -16,11 +16,9 @@ import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.toFailed
 
-/** How much of a list of tracks is on the phone. */
 data class DownloadStatus(val total: Int = 0, val done: Int = 0, val active: Int = 0, val failed: Int = 0) {
     val isComplete: Boolean get() = total > 0 && done == total
     val isDownloading: Boolean get() = active > 0
-    /** Some tracks are known (queued, done or failed). */
     val isStarted: Boolean get() = done + active + failed > 0
 
     companion object {
@@ -37,18 +35,13 @@ data class DownloadStatus(val total: Int = 0, val done: Int = 0, val active: Int
     }
 }
 
-/** What an album or playlist page shows, before the tracks are made playable. */
 data class TrackCollection(val ui: AlbumUi, val tracks: List<PlexMetadata>, val fallbackArtworkUrl: String?)
 
-/**
- * An album or a playlist: loads its tracks, plays them, and downloads them.
- */
 abstract class TrackCollectionViewModel(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
     private val downloads: DownloadManager,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow<Load<AlbumUi>>(Load.Loading)
     val state = _state.asStateFlow()
 
@@ -86,7 +79,6 @@ abstract class TrackCollectionViewModel(
 
     fun play(trackKey: String?) {
         val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
-        // Rebuilt at play time so tracks downloaded since the page opened play from their file.
         viewModelScope.launch {
             val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable)
             playback.play(fresh.ifEmpty { playable }, start)

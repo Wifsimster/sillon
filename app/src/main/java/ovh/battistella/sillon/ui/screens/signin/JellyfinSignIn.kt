@@ -38,7 +38,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 
-/** Jellyfin sign-in: server address, then user name and password or Quick Connect. */
 @Composable
 fun JellyfinSignIn(onBack: () -> Unit, viewModel: JellyfinSignInViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()

@@ -15,9 +15,7 @@ import ovh.battistella.sillon.data.plex.PlexDevice
 import ovh.battistella.sillon.data.plex.ServerEndpoint
 import ovh.battistella.sillon.data.plex.ServerKind
 
-/** Request and response shapes taken from a real Jellyfin server (the public demo). */
 class JellyfinApiTest {
-
     private val server = MockWebServer()
     private val api = JellyfinApi(OkHttpClient(), PlexDevice("Sillon", "1.0.0", "15", "Pixel"))
     private lateinit var endpoint: ServerEndpoint
@@ -68,7 +66,7 @@ class JellyfinApiTest {
         assertEquals("Leap Fidei", track.trackArtist)
         assertEquals(183_050L, track.duration)
         assertEquals(10, track.index)
-        assertEquals(5f, track.stars) // a favourite counts as 5 stars
+        assertEquals(5f, track.stars)
         assertEquals("/Audio/t1/stream.flac?static=true", track.partKey)
         val url = server.takeRequest().requestUrl!!
         assertEquals("/jf/Items", url.encodedPath)

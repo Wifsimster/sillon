@@ -14,7 +14,6 @@ import org.junit.Before
 import org.junit.Test
 
 class PlexApiTest {
-
     private val server = MockWebServer()
     private val device = PlexDevice("Sillon", "1.0.0", "15", "Pixel")
     private lateinit var api: PlexApi
@@ -180,7 +179,6 @@ class PlexApiTest {
 
     @Test
     fun `five-star tracks are filtered by the server and checked again here`() = runTest {
-        // A server ignoring the filter must not turn "5 stars" into "everything".
         server.enqueue(
             MockResponse().setBody(
                 """{"MediaContainer": {"Metadata": [
@@ -214,7 +212,80 @@ class PlexApiTest {
         assertEquals("sess-1", url.queryParameter("session"))
         assertEquals("client-1", url.queryParameter("X-Plex-Client-Identifier"))
         assertTrue(url.queryParameter("X-Plex-Client-Profile-Extra")!!.contains("audioCodec=aac"))
-        // The timeline reporter finds the server and token in it, like in a direct stream URL.
         assertEquals(endpoint, streamEndpoint(url.toString()))
+    }
+
+    @Test
+    fun `plays a station through a play queue`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {"playQueueID": 977, "Metadata": [{"ratingKey": "1", "title": "First"}]}}"""))
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"playQueueID": 977, "Metadata": [{"ratingKey": "1", "title": "First"}, {"ratingKey": "2", "title": "Second"}]}}""",
+            ),
+        )
+        val endpoint = ServerEndpoint(server.url("/").toString(), "t")
+
+        val tracks = api.stationTracks("c", endpoint, "machine-1", "/library/sections/3/stations/1", count = 100)
+
+        assertEquals(listOf("First", "Second"), tracks.map { it.title })
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/playQueues", create.requestUrl!!.encodedPath)
+        assertEquals(
+            "server://machine-1/com.plexapp.plugins.library/library/sections/3/stations/1",
+            create.requestUrl!!.queryParameter("uri"),
+        )
+        val window = server.takeRequest().requestUrl!!
+        assertEquals("/playQueues/977", window.encodedPath)
+        assertEquals("100", window.queryParameter("window"))
+    }
+
+    @Test
+    fun `finds the library radios in the station hub`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Hub": [
+                  {"hubIdentifier": "music.recent.played.3", "Metadata": [{"ratingKey": "9", "title": "AC/DC"}]},
+                  {"hubIdentifier": "music.stations.3", "type": "station", "Metadata": [
+                    {"key": "/library/sections/3/stations/1", "type": "playlist", "title": "Library Radio", "radio": "1"}]}
+                ]}}""",
+            ),
+        )
+
+        val stations = api.stations("c", ServerEndpoint(server.url("/").toString(), "t"), "3")
+
+        assertEquals(listOf("Library Radio"), stations.map { it.title })
+        assertEquals("/library/sections/3/stations/1", stations.single().key)
+        assertEquals("1", server.takeRequest().requestUrl!!.queryParameter("includeStations"))
+    }
+
+    @Test
+    fun `asks for sonically similar tracks`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {"Metadata": [{"ratingKey": "7", "title": "Close"}]}}"""))
+
+        val similar = api.sonicallySimilar("c", ServerEndpoint(server.url("/").toString(), "t"), "50155", limit = 50)
+
+        assertEquals(listOf("Close"), similar.map { it.title })
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/library/metadata/50155/nearest", url.encodedPath)
+        assertEquals("50", url.queryParameter("limit"))
+        assertEquals("0.25", url.queryParameter("maxDistance"))
+    }
+
+    @Test
+    fun `keeps only mix hubs as mixes`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"Hub": [
+                  {"hubIdentifier": "music.stations.3", "Metadata": [{"key": "/library/sections/3/stations/1", "title": "Library Radio"}]},
+                  {"hubIdentifier": "music.mixes.3", "Metadata": [
+                    {"key": "/library/sections/3/mixes/1", "title": "Chill Mix"}, {"title": "No key"}]}
+                ]}}""",
+            ),
+        )
+
+        val mixes = api.mixes("c", ServerEndpoint(server.url("/").toString(), "t"), "3")
+
+        assertEquals(listOf("Chill Mix"), mixes.map { it.title })
     }
 }

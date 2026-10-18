@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tells Android Auto that Sillon is a media app it can browse and control. -->
 <automotiveApp>
     <uses name="media" />
 </automotiveApp>

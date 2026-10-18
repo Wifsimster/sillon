@@ -14,26 +14,18 @@ import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.toFailed
 import javax.inject.Inject
 
-/** A grid of the current music library; null tiles means the server has no music library. */
 data class SectionGridUi(val sectionTitle: String?, val tiles: List<TileUi>?)
 
-/**
- * Loads one listing of the current music library (artists, albums), and loads
- * it again when the user switches library.
- */
 abstract class SectionGridViewModel(
     private val repository: PlexRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow<Load<SectionGridUi>>(Load.Loading)
     val state = _state.asStateFlow()
 
     private var job: Job? = null
 
-    /** The items to list for [sectionKey]. */
     protected abstract suspend fun fetch(sectionKey: String): List<PlexMetadata>
 
-    /** Second line under a tile, if any. */
     protected open fun subtitle(item: PlexMetadata): String? = null
 
     protected fun start() {

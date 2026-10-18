@@ -13,27 +13,20 @@ import javax.inject.Inject
 
 sealed interface SignInState {
     data object Loading : SignInState
-    /** Waiting for the user to approve [code], in the browser or at plex.tv/link. */
     data class Waiting(val code: String, val authUrl: String) : SignInState
     data object Expired : SignInState
     data class Failed(val message: String) : SignInState
 }
 
-/**
- * Plex PIN sign-in: create a PIN, let the user approve it, poll until plex.tv
- * hands over the token. Once stored, the session flow moves the app on by itself.
- */
 @HiltViewModel
 class SignInViewModel @Inject constructor(
     private val repository: PlexRepository,
 ) : ViewModel() {
-
     private val _state = MutableStateFlow<SignInState>(SignInState.Loading)
     val state = _state.asStateFlow()
 
     private var job: Job? = null
 
-    /** Start the Plex sign-in, unless it's already under way. */
     fun startIfIdle() {
         if (job == null) start()
     }
@@ -48,7 +41,6 @@ class SignInViewModel @Inject constructor(
                 val deadline = System.currentTimeMillis() + MAX_WAIT_MS
                 while (System.currentTimeMillis() < deadline) {
                     delay(POLL_INTERVAL_MS)
-                    // A dropped poll (flaky network) isn't fatal: try again next tick.
                     for (pin in listOf(pins.browser, pins.link)) {
                         val approved = runCatching { repository.completeSignInIfApproved(pin) }.getOrDefault(false)
                         if (approved) return@launch
@@ -64,7 +56,6 @@ class SignInViewModel @Inject constructor(
 
     private companion object {
         const val POLL_INTERVAL_MS = 2_000L
-        /** Plex PINs live 15 minutes or more; stop polling well before draining the battery. */
         const val MAX_WAIT_MS = 10 * 60_000L
     }
 }

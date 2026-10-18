@@ -60,7 +60,6 @@ fun AlbumScreen(
     TrackCollectionRoute(viewModel, onBack, contentPadding)
 }
 
-/** An album or playlist page wired to its view model, with the download control. */
 @Composable
 fun TrackCollectionRoute(viewModel: TrackCollectionViewModel, onBack: () -> Unit, contentPadding: PaddingValues) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -82,10 +81,6 @@ fun TrackCollectionRoute(viewModel: TrackCollectionViewModel, onBack: () -> Unit
     )
 }
 
-/**
- * Download control of an album or playlist: download, progress while it runs,
- * a check once everything is on the phone (tap to remove).
- */
 @Composable
 fun DownloadAction(status: DownloadStatus, onDownload: () -> Unit, onRemove: () -> Unit) {
     when {
@@ -108,10 +103,6 @@ fun DownloadAction(status: DownloadStatus, onDownload: () -> Unit, onRemove: () 
     }
 }
 
-/**
- * An album or a playlist: cover, title, Play / Shuffle, then the tracks.
- * [onPlay] with null plays from the top, with a key from that track.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackCollectionScreen(
@@ -153,7 +144,6 @@ fun TrackCollectionScreen(
     }
 }
 
-/** One track: number, title, artist when it adds something, duration. */
 @Composable
 fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
     val accent = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface

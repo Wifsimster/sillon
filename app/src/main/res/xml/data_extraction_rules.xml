@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Backup & device-transfer rules for Android 12+. The DataStore holds the
-     Plex token, which must never leave the device. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="datastore" />

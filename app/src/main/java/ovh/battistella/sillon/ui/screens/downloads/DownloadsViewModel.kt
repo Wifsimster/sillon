@@ -27,7 +27,6 @@ import ovh.battistella.sillon.ui.screens.library.TrackUi
 import java.io.File
 import javax.inject.Inject
 
-/** One downloaded (or downloading) album in the Downloads tab. */
 data class DownloadedAlbum(
     val albumKey: String,
     val title: String,
@@ -37,25 +36,18 @@ data class DownloadedAlbum(
     val sizeBytes: Long,
 )
 
-/** Key under which tracks without an album are grouped. */
 private const val NO_ALBUM = "_"
 
 private fun artworkUri(rows: List<DownloadEntity>): String? =
     rows.firstNotNullOfOrNull { it.artworkPath }?.let { Uri.fromFile(File(it)).toString() }
 
-/**
- * The Downloads tab: everything on the phone, grouped by album. Reads only the
- * local database, so it works without any connection.
- */
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val downloads: DownloadManager,
     settings: SettingsStore,
 ) : ViewModel() {
-
     private val _albums = MutableStateFlow<List<DownloadedAlbum>?>(null)
-    /** Null while loading. */
     val albums = _albums.asStateFlow()
 
     val wifiOnly: StateFlow<Boolean> = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
@@ -91,7 +83,6 @@ class DownloadsViewModel @Inject constructor(
     }
 }
 
-/** A downloaded album, played from the phone. */
 @HiltViewModel
 class DownloadedAlbumViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -100,7 +91,6 @@ class DownloadedAlbumViewModel @Inject constructor(
     private val playback: PlaybackConnection,
     private val settings: SettingsStore,
 ) : ViewModel() {
-
     private val albumKey: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     private val _state = MutableStateFlow<AlbumUi?>(null)
@@ -147,12 +137,10 @@ class DownloadedAlbumViewModel @Inject constructor(
         viewModelScope.launch { playback.play(playable(), shuffle = true) }
     }
 
-    /** Remove the whole album from the phone. */
     fun remove() {
         val id = serverId ?: return
         viewModelScope.launch { downloads.delete(id, rows.map { it.ratingKey }) }
     }
 
-    /** Tracks still downloading or failed can't be played yet. */
     fun isReady(key: String): Boolean = rows.firstOrNull { it.ratingKey == key }?.state == DownloadState.DONE
 }

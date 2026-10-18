@@ -103,4 +103,11 @@
     <string name="settings_loudness_off">Off</string>
     <string name="settings_loudness_track">Per track: every track at the same loudness</string>
     <string name="settings_loudness_album">Per album: keeps each album\'s own dynamics</string>
+    <string name="radios">Radios</string>
+    <string name="radio_library">Library radio</string>
+    <string name="artist_radio">Artist radio</string>
+    <string name="track_radio">Radio from this track: what sounds like it comes next</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_wallpaper_colors">Wallpaper colours</string>
+    <string name="settings_wallpaper_colors_hint">Follow your wallpaper (Material You) instead of Sillon\'s colours</string>
 </resources>

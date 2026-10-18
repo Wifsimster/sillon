@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import ovh.battistella.sillon.data.plex.ServerKind
+import ovh.battistella.sillon.ui.components.SillonMark
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,7 +45,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 
-/** First screen: pick the kind of server, then sign in to it. */
 @Composable
 fun SignInScreen() {
     var kind by rememberSaveable { mutableStateOf<ServerKind?>(null) }
@@ -66,7 +66,13 @@ private fun ServerKindChoice(onChoose: (ServerKind) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(stringResource(R.string.signin_choose_title), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+        SillonMark(Modifier.size(96.dp), groove = MaterialTheme.colorScheme.onBackground)
+        Text(
+            stringResource(R.string.app_name),
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(stringResource(R.string.signin_choose_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         Text(
             stringResource(R.string.signin_choose_body),
             style = MaterialTheme.typography.bodyLarge,
@@ -78,7 +84,6 @@ private fun ServerKindChoice(onChoose: (ServerKind) -> Unit) {
     }
 }
 
-/** A server type, with its logo in its own colours. */
 @Composable
 private fun ServerButton(@DrawableRes logo: Int, label: String, onClick: () -> Unit) {
     OutlinedButton(
@@ -152,4 +157,3 @@ private fun PlexSignIn(onBack: () -> Unit, viewModel: SignInViewModel = hiltView
         TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
     }
 }
-
