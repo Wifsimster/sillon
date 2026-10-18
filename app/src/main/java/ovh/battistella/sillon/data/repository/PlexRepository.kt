@@ -241,15 +241,25 @@ class PlexRepository @Inject constructor(
     suspend fun trackRadioTracks(trackKey: String): List<PlexMetadata> = onServer(
         plex = { clientId, server ->
             val similar = runCatching { api.sonicallySimilar(clientId, server, trackKey) }.getOrDefault(emptyList())
-            if (similar.isNotEmpty()) {
-                similar
-            } else {
-                val artist = api.metadata(clientId, server, trackKey)?.grandparentRatingKey
-                if (artist != null) artistRadioTracks(artist) else emptyList()
-            }
+            if (similar.isNotEmpty()) similar else trackRadioFallback(clientId, server, trackKey)
         },
         jellyfin = { deviceId, server -> jellyfin.instantMix(server, deviceId, trackKey) },
     )
+
+    private suspend fun trackRadioFallback(clientId: String, server: ServerEndpoint, trackKey: String): List<PlexMetadata> {
+        val track = api.metadata(clientId, server, trackKey) ?: return emptyList()
+        val section = currentMusicSection()
+        val performer = section?.let { s ->
+            performers(track.originalTitle).firstNotNullOfOrNull { name ->
+                runCatching { api.artistNamed(clientId, server, s.key, name) }.getOrNull()
+            }
+        }
+        val artistKey = performer?.ratingKey?.takeIf { it.isNotBlank() }
+            ?: track.grandparentRatingKey.takeUnless { isCompilationArtist(track.grandparentTitle) }
+        if (artistKey != null) return artistRadioTracks(artistKey)
+        val libraryRadio = stations().firstOrNull() ?: return emptyList()
+        return stationTracks(libraryRadio)
+    }
 
     suspend fun artistRadioTracks(artistKey: String): List<PlexMetadata> {
         val machineId = currentServer().machineId
@@ -450,3 +460,12 @@ class PlexRepository @Inject constructor(
         Session.SignedOut -> throw PlexHttpException(401, "Signed out")
     }
 }
+
+fun performers(credit: String?): List<String> =
+    credit.orEmpty()
+        .split(Regex("""\s*(?:/|,|;|&| feat\.? | ft\.? | featuring | x )\s*""", RegexOption.IGNORE_CASE))
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+
+fun isCompilationArtist(name: String?): Boolean =
+    name != null && name.trim().lowercase() in setOf("various artists", "various", "artistes divers", "compilation", "va")
