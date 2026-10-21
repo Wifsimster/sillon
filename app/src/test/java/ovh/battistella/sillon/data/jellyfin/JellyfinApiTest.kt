@@ -75,6 +75,28 @@ class JellyfinApiTest {
     }
 
     @Test
+    fun `fetches the library's played tracks in one request for sleeve wear`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"Items": [{"Id": "t1", "Name": "Jellyfin", "Type": "Audio", "AlbumId": "a1",
+                  "UserData": {"PlayCount": 7}}], "TotalRecordCount": 1}""",
+            ),
+        )
+
+        val track = api.playedTracks(endpoint, "device-1", "music").single()
+
+        assertEquals("a1", track.parentRatingKey)
+        assertEquals(7, track.viewCount)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/jf/Items", url.encodedPath)
+        assertEquals("music", url.queryParameter("parentId"))
+        assertEquals("Audio", url.queryParameter("includeItemTypes"))
+        assertEquals("IsPlayed", url.queryParameter("filters"))
+        assertEquals("true", url.queryParameter("recursive"))
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
     fun `groups search results like Plex hubs`() = runTest {
         server.enqueue(
             MockResponse().setBody(

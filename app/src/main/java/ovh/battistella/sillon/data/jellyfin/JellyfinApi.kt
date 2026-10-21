@@ -118,6 +118,13 @@ class JellyfinApi(
             "filters" to "IsFavorite", "sortBy" to "SortName",
         ).map { it.toMetadata() }
 
+    suspend fun playedTracks(server: ServerEndpoint, deviceId: String, sectionKey: String): List<PlexMetadata> =
+        items(
+            server, deviceId, "Items",
+            "parentId" to sectionKey, "includeItemTypes" to "Audio", "recursive" to "true",
+            "filters" to "IsPlayed", "enableImages" to "false", "enableUserData" to "true",
+        ).map { it.toMetadata() }
+
     suspend fun instantMix(server: ServerEndpoint, deviceId: String, itemId: String): List<PlexMetadata> =
         items(server, deviceId, "Items/$itemId/InstantMix", "limit" to RADIO_TRACKS.toString()).map { it.toMetadata() }
 
