@@ -55,6 +55,7 @@
     <string name="settings_downloads_none">Rien de téléchargé pour l\'instant</string>
     <plurals name="settings_downloads_summary">
         <item quantity="one">%1$d album · %2$s</item>
+        <item quantity="many">%1$d albums · %2$s</item>
         <item quantity="other">%1$d albums · %2$s</item>
     </plurals>
     <string name="download">Télécharger</string>
