@@ -79,6 +79,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setListenBySide(value) }
     }
 
+    val skipOneStar = settings.skipOneStar.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setSkipOneStar(value: Boolean) {
+        viewModelScope.launch { settings.setSkipOneStar(value) }
+    }
+
     fun setWallpaperColors(value: Boolean) {
         viewModelScope.launch { settings.setWallpaperColors(value) }
     }
@@ -117,6 +123,7 @@ fun SettingsScreen(
     val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
     val sleeveWear by viewModel.sleeveWear.collectAsStateWithLifecycle()
     val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
+    val skipOneStar by viewModel.skipOneStar.collectAsStateWithLifecycle()
     val downloadsTotal by viewModel.downloadsTotal.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -192,6 +199,18 @@ fun SettingsScreen(
                         value = listenBySide,
                         role = Role.Switch,
                         onValueChange = viewModel::setListenBySide,
+                    ),
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_skip_one_star)) },
+                    supportingContent = { Text(stringResource(R.string.settings_skip_one_star_hint)) },
+                    trailingContent = { Switch(checked = skipOneStar, onCheckedChange = null) },
+                    modifier = Modifier.toggleable(
+                        value = skipOneStar,
+                        role = Role.Switch,
+                        onValueChange = viewModel::setSkipOneStar,
                     ),
                 )
             }

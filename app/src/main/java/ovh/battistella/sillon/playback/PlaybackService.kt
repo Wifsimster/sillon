@@ -7,9 +7,13 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.HeartRating
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.Rating
+import androidx.media3.common.StarRating
+import androidx.media3.common.ThumbRating
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -32,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -41,9 +46,12 @@ import kotlinx.coroutines.launch
 import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.rating.Rater
+import ovh.battistella.sillon.data.rating.Stars
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
+import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.mystery.MysterySession
@@ -62,6 +70,8 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var neverPlayed: NeverPlayedRadio
     @Inject lateinit var sides: SideSession
     @Inject lateinit var listeningCache: ListeningCache
+    @Inject lateinit var rater: Rater
+    @Inject lateinit var settings: SettingsStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -69,6 +79,8 @@ class PlaybackService : MediaLibraryService() {
     private var mysteryWatcher: MysteryWatcher? = null
     private var groupPlayer: ExoGroupPlayer? = null
     private var sidePlayer: SidePlayer? = null
+    private var skipper: OneStarSkipper? = null
+    @Volatile private var skipOneStar = true
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -91,6 +103,7 @@ class PlaybackService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 applyGain(player, mediaItem)
                 saveQueue(player)
+                refreshButtons()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -98,6 +111,16 @@ class PlaybackService : MediaLibraryService() {
             }
         })
         player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
+        val oneStar = { item: MediaItem -> rater.state.value.book.isOneStar(item.mediaId, MediaItems.ratingOf(item)) }
+        skipper = OneStarSkipper(
+            player = player,
+            isOneStar = oneStar,
+            enabled = { skipOneStar },
+            grouped = { together.state.value.isActive },
+            // At the end of a side the record waits to be flipped: nothing to skip.
+            holding = { sides.state.value.ended != null || (player.pauseAtEndOfMediaItems && !player.playWhenReady) },
+        ).also(player::addListener)
+        sides.machine.skipped = { i -> skipOneStar && i < player.mediaItemCount && oneStar(player.getMediaItemAt(i)) }
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
             repository.reportPlayback(
@@ -121,8 +144,8 @@ class PlaybackService : MediaLibraryService() {
             describe = { end ->
                 getString(R.string.side_end_title, end.ended) to getString(R.string.side_flip_hint, end.next)
             },
-            onEndedChanged = { end ->
-                mediaSession?.setCustomLayout(if (end != null) listOf(flipButton()) else emptyList())
+            onEndedChanged = {
+                refreshButtons()
                 scope.launch { runCatching { sides.save() } }
             },
         ).also { sidePlayer = it }
@@ -133,6 +156,15 @@ class PlaybackService : MediaLibraryService() {
         scope.launch(Dispatchers.Main.immediate) {
             together.state.map { it.isActive }.distinctUntilChanged().collect { sidePlayer.sync() }
         }
+        // A new rating can move the end of a side, and changes the heart in the notification.
+        scope.launch {
+            combine(rater.state, settings.skipOneStar) { ratings, skip -> ratings to skip }.collect { (_, skip) ->
+                skipOneStar = skip
+                sidePlayer.sync()
+                refreshButtons()
+            }
+        }
+        refreshButtons()
         scope.launch {
             runCatching { sides.restore() }
             sides.planChanges.collect {
@@ -148,6 +180,43 @@ class PlaybackService : MediaLibraryService() {
         .setCustomIconResId(R.drawable.ic_side_flip)
         .setSessionCommand(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
         .build()
+
+    /** The notification, lock screen and car: flip at the end of a side, else the heart and the thumb down. */
+    @OptIn(UnstableApi::class)
+    private fun refreshButtons() {
+        val session = mediaSession ?: return
+        val item = session.player.currentMediaItem
+        val buttons = when {
+            sides.state.value.ended != null -> listOf(flipButton())
+            item == null || item.mediaId.isBlank() -> emptyList()
+            else -> {
+                val loved = Stars.isFiveStars(rater.state.value.book.ratingOf(item.mediaId, MediaItems.ratingOf(item)))
+                listOf(loveButton(loved), dislikeButton())
+            }
+        }
+        session.setCustomLayout(buttons)
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun loveButton(loved: Boolean): CommandButton =
+        CommandButton.Builder(if (loved) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+            .setDisplayName(getString(if (loved) R.string.rating_love_undo else R.string.rating_love))
+            .setCustomIconResId(if (loved) R.drawable.ic_heart_filled else R.drawable.ic_heart)
+            .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
+            .build()
+
+    @OptIn(UnstableApi::class)
+    private fun dislikeButton(): CommandButton = CommandButton.Builder(CommandButton.ICON_THUMB_DOWN_UNFILLED)
+        .setDisplayName(getString(R.string.rating_dislike))
+        .setCustomIconResId(R.drawable.ic_thumb_down)
+        .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
+        .build()
+
+    /** Rates [key]; 1 star on the track playing moves on at once, except when listening together. */
+    private fun rate(key: String, stars: Int?) {
+        rater.rate(key, stars)
+        if (stars == 1 && key == mediaSession?.player?.currentMediaItem?.mediaId) skipper?.skipCurrent()
+    }
 
     private fun applyGain(player: Player, item: MediaItem?) {
         val gain = item?.mediaMetadata?.extras
@@ -248,6 +317,7 @@ class PlaybackService : MediaLibraryService() {
         groupPlayer?.let(together::detach)
         groupPlayer = null
         sidePlayer = null
+        skipper = null
         scope.cancel()
         mediaSession?.run {
             player.release()
@@ -276,6 +346,9 @@ class PlaybackService : MediaLibraryService() {
         ): MediaSession.ConnectionResult {
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .add(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
+                .add(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY))
+                .add(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
+                .add(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
@@ -289,10 +362,46 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction != SideSession.ACTION_FLIP) {
-                return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
+            val current = session.player.currentMediaItem
+            when (customCommand.customAction) {
+                SideSession.ACTION_FLIP -> sidePlayer?.flip()
+                PlaybackConnection.ACTION_RATE -> {
+                    val key = args.getString(PlaybackConnection.RATE_KEY) ?: current?.mediaId
+                    if (key.isNullOrBlank()) return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    rate(key, args.getInt(PlaybackConnection.RATE_STARS).takeIf { it in 1..Stars.MAX })
+                }
+                PlaybackConnection.ACTION_LOVE, PlaybackConnection.ACTION_DISLIKE -> {
+                    val item = current?.takeIf { it.mediaId.isNotBlank() }
+                        ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    val stars = if (customCommand.customAction == PlaybackConnection.ACTION_DISLIKE) {
+                        1
+                    } else {
+                        val loved = Stars.isFiveStars(rater.state.value.book.ratingOf(item.mediaId, MediaItems.ratingOf(item)))
+                        if (loved) null else Stars.MAX
+                    }
+                    rate(item.mediaId, stars)
+                }
+                else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
-            sidePlayer?.flip()
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        // Controllers that rate with Media3's own ratings (stars, heart or thumbs).
+        @OptIn(UnstableApi::class)
+        override fun onSetRating(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            rating: Rating,
+        ): ListenableFuture<SessionResult> {
+            val key = session.player.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() }
+                ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            val stars = when (rating) {
+                is StarRating -> if (rating.isRated) Math.round(rating.starRating * Stars.MAX / rating.maxStars).coerceIn(1, Stars.MAX) else null
+                is HeartRating -> if (rating.isRated && rating.isHeart) Stars.MAX else null
+                is ThumbRating -> if (!rating.isRated) null else if (rating.isThumbsUp) Stars.MAX else 1
+                else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
+            }
+            rate(key, stars)
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 

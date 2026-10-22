@@ -28,6 +28,10 @@ import ovh.battistella.sillon.data.plex.PlexResource
 import ovh.battistella.sillon.data.plex.ServerEndpoint
 import ovh.battistella.sillon.data.plex.ServerKind
 import ovh.battistella.sillon.data.plex.TimelineState
+import ovh.battistella.sillon.data.rating.RatingBook
+import ovh.battistella.sillon.data.rating.RatingStore
+import ovh.battistella.sillon.data.rating.Stars
+import ovh.battistella.sillon.data.rating.withoutOneStar
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
@@ -103,6 +107,7 @@ class PlexRepository @Inject constructor(
     private val sleeveWearCache: SleeveWearCache,
     private val fiveStarsCache: FiveStarsCache,
     private val listeningCache: ListeningCache,
+    private val ratings: RatingStore,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -128,6 +133,7 @@ class PlexRepository @Inject constructor(
         sessionStore.signOut()
         sleeveWearCache.clear()
         fiveStarsCache.clear()
+        ratings.clear()
         listeningCache.clear(sweepAgain = true)
     }
 
@@ -264,16 +270,16 @@ class PlexRepository @Inject constructor(
 
     suspend fun stationTracks(station: Station): List<PlexMetadata> {
         val machineId = currentServer().machineId
-        return onServer(
+        return drawn(
             plex = { clientId, server -> api.stationTracks(clientId, server, machineId, station.key) },
             jellyfin = { deviceId, server ->
-                val section = currentMusicSection() ?: return@onServer emptyList()
+                val section = currentMusicSection() ?: return@drawn emptyList()
                 jellyfin.randomTracks(server, deviceId, section.key)
             },
         )
     }
 
-    suspend fun trackRadioTracks(trackKey: String): List<PlexMetadata> = onServer(
+    suspend fun trackRadioTracks(trackKey: String): List<PlexMetadata> = drawn(
         plex = { clientId, server ->
             val similar = runCatching { api.sonicallySimilar(clientId, server, trackKey) }.getOrDefault(emptyList())
             if (similar.isNotEmpty()) similar else trackRadioFallback(clientId, server, trackKey)
@@ -298,7 +304,7 @@ class PlexRepository @Inject constructor(
 
     suspend fun artistRadioTracks(artistKey: String): List<PlexMetadata> {
         val machineId = currentServer().machineId
-        return onServer(
+        return drawn(
             plex = { clientId, server ->
                 val station = api.artistStation(clientId, server, artistKey)
                 if (station != null) {
@@ -314,7 +320,7 @@ class PlexRepository @Inject constructor(
     /** A random draw over the whole library, made by the server: nothing is downloaded beforehand. */
     suspend fun libraryShuffleTracks(): List<PlexMetadata> {
         val section = currentMusicSection() ?: return emptyList()
-        return onServer(
+        return drawn(
             plex = { clientId, server -> api.sectionItems(clientId, server, section.key, LibraryShuffle.plexTracks()).metadata },
             jellyfin = { deviceId, server -> jellyfin.randomTracks(server, deviceId, section.key) },
         )
@@ -322,7 +328,7 @@ class PlexRepository @Inject constructor(
 
     suspend fun neverPlayedTracks(): List<PlexMetadata> {
         val section = currentMusicSection() ?: return emptyList()
-        return onServer(
+        return drawn(
             plex = { clientId, server ->
                 api.sectionItems(clientId, server, section.key, NeverPlayedQueries.plexTracks()).metadata
             },
@@ -370,6 +376,38 @@ class PlexRepository @Inject constructor(
             plex = { clientId, server -> api.metadataBatch(clientId, server, keys) },
             jellyfin = { deviceId, server -> jellyfin.itemsByIds(server, deviceId, keys) },
         ).associate { it.ratingKey to (it.viewCount ?: 0) }
+    }
+
+    /**
+     * Sends a rating (0–10, 0 clears it). On Jellyfin only 1 and 5 stars exist; the other
+     * values are refused before they leave the phone.
+     */
+    suspend fun sendRating(ratingKey: String, rating: Int) = onServer(
+        plex = { clientId, server -> api.rate(clientId, server, ratingKey, rating) },
+        jellyfin = { deviceId, server -> jellyfin.rate(server, deviceId, ratingKey, Stars.of(rating.toFloat())) },
+    )
+
+    /** Remembers the ratings the server gave these tracks (see [RatingStore]). */
+    suspend fun learnRatings(tracks: List<PlexMetadata>) {
+        if (tracks.isEmpty()) return
+        val server = runCatching { currentServerId() }.getOrNull() ?: return
+        runCatching { ratings.update(server) { it.learn(tracks) } }
+    }
+
+    /** A queue drawn for the listener (shuffle, radios): tracks rated 1 star never come in. */
+    private suspend fun drawn(
+        plex: suspend (String, ServerEndpoint) -> List<PlexMetadata>,
+        jellyfin: suspend (String, ServerEndpoint) -> List<PlexMetadata>,
+    ): List<PlexMetadata> = withoutOneStar(onServer(plex, jellyfin))
+
+    /** What the phone knows of the ratings: lets downloads (which carry none) skip the 1-star tracks offline. */
+    suspend fun ratingBook(): RatingBook =
+        runCatching { ratings.book(currentServerId()) }.getOrDefault(RatingBook())
+
+    suspend fun withoutOneStar(tracks: List<PlexMetadata>): List<PlexMetadata> {
+        learnRatings(tracks)
+        val server = runCatching { currentServerId() }.getOrNull() ?: return tracks
+        return ratings.book(server).withoutOneStar(tracks)
     }
 
     suspend fun playlists(): List<PlexMetadata> = onServer(
@@ -435,6 +473,7 @@ class PlexRepository @Inject constructor(
                 }
             }.awaitAll()
         }
+        learnRatings(complete.filterNotNull())
         val quality = if (network.isMetered()) settings.mobileQuality.first() else settings.wifiQuality.first()
         val clientId = sessionStore.clientId()
         val mode = settings.loudness.first()
@@ -482,6 +521,7 @@ class PlexRepository @Inject constructor(
                 gainDb = loudness[track.ratingKey]?.forMode(mode),
                 albumKey = track.parentRatingKey,
                 cacheKey = cacheKey.takeIf { source.original },
+                userRating = track.userRating,
             )
         }
     }

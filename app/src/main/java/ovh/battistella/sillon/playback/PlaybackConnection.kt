@@ -18,9 +18,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.data.rating.RatingStore
+import ovh.battistella.sillon.data.rating.ServerRatings
+import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.playback.mystery.MysteryMask
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,6 +47,8 @@ data class PlayerUiState(
     val hasPrevious: Boolean = false,
     val shuffle: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
+    /** The server's rating of the current track (0–10), before any given on the phone. */
+    val serverRating: Float? = null,
 ) {
     val hasMedia: Boolean get() = currentKey != null
 }
@@ -49,8 +57,13 @@ data class PlayerUiState(
 class PlaybackConnection @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sides: SideSession,
+    ratingStore: RatingStore,
+    settings: SettingsStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    val ratings: StateFlow<ServerRatings> = ratingStore.state
+    val skipOneStar: StateFlow<Boolean> = settings.skipOneStar.stateIn(scope, SharingStarted.Eagerly, true)
     private val _state = MutableStateFlow(PlayerUiState())
     val state = _state.asStateFlow()
 
@@ -127,13 +140,21 @@ class PlaybackConnection @Inject constructor(
         startIndex: Int = 0,
         shuffle: Boolean = false,
         albumSides: List<Side> = emptyList(),
+        pickStart: Boolean = false,
     ) {
         if (tracks.isEmpty()) return
         val items = tracks.map(MediaItems::from)
         sides.setPlan(if (shuffle) null else SidePlan.of(albumSides, tracks.map { it.ratingKey }))
+        // A track you touch plays even at 1 star; a queue started for you doesn't open on one.
+        val book = ratings.value.book
+        val oneStar = { i: Int -> book.isOneStar(tracks[i].ratingKey, tracks[i].userRating) }
         withController {
             shuffleModeEnabled = shuffle
-            val start = if (shuffle) items.indices.random() else startIndex.coerceIn(0, items.lastIndex)
+            val start = when {
+                shuffle -> items.indices.filterNot(oneStar).randomOrNull() ?: items.indices.random()
+                pickStart && skipOneStar.value -> OneStarSkip.start(startIndex.coerceIn(0, items.lastIndex), items.size, oneStar)
+                else -> startIndex.coerceIn(0, items.lastIndex)
+            }
             setMediaItems(items, start, 0L)
             prepare()
             play()
@@ -160,6 +181,15 @@ class PlaybackConnection @Inject constructor(
             shuffleModeEnabled = false
             addMediaItems(items)
         }
+    }
+
+    /** Rates [key] with [stars] (null clears); 1 star on the current track moves on to the next. */
+    fun rate(key: String, stars: Int?) = withController {
+        val args = Bundle().apply {
+            putString(RATE_KEY, key)
+            putInt(RATE_STARS, stars ?: 0)
+        }
+        sendCustomCommand(SessionCommand(ACTION_RATE, Bundle.EMPTY), args)
     }
 
     fun flipSide() = withController {
@@ -234,6 +264,15 @@ class PlaybackConnection @Inject constructor(
             hasPrevious = c.hasPreviousMediaItem(),
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
+            serverRating = MediaItems.ratingOf(item),
         )
+    }
+
+    companion object {
+        const val ACTION_RATE = "ovh.battistella.sillon.RATE"
+        const val ACTION_LOVE = "ovh.battistella.sillon.LOVE"
+        const val ACTION_DISLIKE = "ovh.battistella.sillon.DISLIKE"
+        const val RATE_KEY = "key"
+        const val RATE_STARS = "stars"
     }
 }

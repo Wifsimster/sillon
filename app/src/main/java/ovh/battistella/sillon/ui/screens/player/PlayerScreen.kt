@@ -86,6 +86,8 @@ interface PlayerControls {
     fun seekTo(positionMs: Long)
     fun toggleShuffle()
     fun cycleRepeat()
+    fun rate(stars: Int?) = Unit
+    fun retryRating() = Unit
 }
 
 @Composable
@@ -102,6 +104,7 @@ fun PlayerScreen(
     val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val sides by viewModel.sides.collectAsStateWithLifecycle()
+    val rating by viewModel.rating.collectAsStateWithLifecycle()
     PlayerContent(
         state = state,
         startingRadio = startingRadio,
@@ -111,6 +114,7 @@ fun PlayerScreen(
         keep = keep,
         wear = wear,
         sides = sides,
+        rating = rating,
         controls = viewModel,
         onClose = onClose,
         onTogether = onTogether,
@@ -130,6 +134,7 @@ fun PlayerContent(
     onClose: () -> Unit,
     onTogether: () -> Unit,
     sides: SideState = SideState(),
+    rating: RatingUi? = null,
 ) {
     val reducedMotion = rememberReducedMotion()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
@@ -202,6 +207,7 @@ fun PlayerContent(
                         else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
                     }
                     NowPlayingTitle(state, sides.current)
+                    if (rating != null && !hidden) RatingBar(rating, onRate = controls::rate, onRetry = controls::retryRating)
                 }
             }
         }

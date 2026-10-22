@@ -6,6 +6,7 @@ import ovh.battistella.sillon.data.plex.PlexDirectory
 import ovh.battistella.sillon.data.plex.PlexMedia
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
+import ovh.battistella.sillon.data.rating.JellyfinStars
 
 @Serializable
 data class JellyfinPublicInfo(
@@ -67,6 +68,7 @@ data class JellyfinItem(
 data class JellyfinUserData(
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
     @SerialName("PlayCount") val playCount: Int = 0,
+    @SerialName("Likes") val likes: Boolean? = null,
 )
 
 const val JELLYFIN_IMAGE = "jellyfin-item:"
@@ -102,7 +104,7 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         leafCount = childCount,
         thumb = ownImage,
         parentThumb = albumImage,
-        userRating = if (userData?.isFavorite == true) 10f else null,
+        userRating = userData?.let { JellyfinStars.rating(it.isFavorite, it.likes) },
         viewCount = userData?.playCount,
         normalizationGain = normalizationGain,
         media = if (type == "Audio") {

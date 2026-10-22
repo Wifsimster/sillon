@@ -253,4 +253,24 @@
     <string name="listen_no_five_stars">No 5-star tracks yet. Rate a track 5 stars and it lands here.</string>
     <string name="listen_no_favourites">No favourites yet. Mark a track as a favourite and it lands here.</string>
     <string name="listen_failed">That did not start. Try again.</string>
+    <!-- Rating while listening -->
+    <plurals name="rating_give">
+        <item quantity="one">Rate %d star</item>
+        <item quantity="other">Rate %d stars</item>
+    </plurals>
+    <plurals name="rating_given">
+        <item quantity="one">Rated %d star</item>
+        <item quantity="other">Rated %d stars</item>
+    </plurals>
+    <string name="rating_none">Not rated</string>
+    <string name="rating_clear">Clear the rating</string>
+    <string name="rating_love">Love it (5 stars)</string>
+    <string name="rating_love_undo">Remove the 5 stars</string>
+    <string name="rating_dislike">Not for me (1 star, next)</string>
+    <string name="rating_waiting">Offline: your rating leaves once you are back online.</string>
+    <string name="rating_failed">Your rating did not reach the server. Touch to try again.</string>
+    <string name="rating_jellyfin_only">Jellyfin keeps 1 star (dislike) and 5 stars (favourite) only.</string>
+    <string name="settings_skip_one_star">Skip 1-star tracks</string>
+    <string name="settings_skip_one_star_hint">In albums and playlists. Touch one to hear it anyway. Shuffle and radios never play them.</string>
+    <string name="track_skipped">Skipped when played in order</string>
 </resources>

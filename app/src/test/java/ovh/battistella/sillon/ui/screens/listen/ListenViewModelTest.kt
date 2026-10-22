@@ -37,6 +37,7 @@ import ovh.battistella.sillon.data.settings.FiveStarsCache
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.download.DownloadManager
+import ovh.battistella.sillon.data.rating.RatingBook
 import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.PlaybackConnection
 import java.io.IOException
@@ -61,6 +62,7 @@ class ListenViewModelTest {
         every { isOnline() } answers { this@ListenViewModelTest.online.value }
     }
     private val repository = mockk<PlexRepository> {
+        coEvery { ratingBook() } returns RatingBook()
         coEvery { currentServerId() } returns SERVER
         every { isJellyfin } returns flowOf(false)
         coEvery { fiveStarTracks() } returns emptyList()
