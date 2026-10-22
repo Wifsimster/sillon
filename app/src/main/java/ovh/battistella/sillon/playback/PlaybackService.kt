@@ -41,6 +41,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
+    @Inject lateinit var neverPlayed: NeverPlayedRadio
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -71,6 +72,7 @@ class PlaybackService : MediaLibraryService() {
                 if (isPlaying) startQueueSaver(player) else saveQueue(player)
             }
         })
+        player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
             repository.reportPlayback(

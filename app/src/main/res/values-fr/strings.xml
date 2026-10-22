@@ -106,4 +106,15 @@
     <string name="settings_appearance">Apparence</string>
     <string name="settings_wallpaper_colors">Couleurs du fond d\'écran</string>
     <string name="settings_wallpaper_colors_hint">Suivre ton fond d\'écran (Material You) plutôt que les couleurs de Sillon</string>
+    <string name="never_played">Jamais écouté</string>
+    <string name="never_played_albums">Jamais écouté : albums</string>
+    <string name="never_played_hint">Les titres que tu n\'as jamais écoutés, au hasard</string>
+    <string name="never_played_share">%1$d&#8239;%% de ta bibliothèque n\'a jamais été écoutée</string>
+    <string name="never_played_count">%1$s titres sur %2$s</string>
+    <string name="never_played_play">Lancer la radio Jamais écouté</string>
+    <string name="never_played_albums_play">Redécouvre un disque : un album jamais écouté, tiré au sort</string>
+    <string name="never_played_offline">Hors ligne : seulement tes titres téléchargés.</string>
+    <string name="never_played_no_history">Pas encore d\'historique d\'écoute sur ce téléphone. Connecte-toi une fois à ton serveur : la radio marchera ensuite hors ligne avec tes téléchargements.</string>
+    <string name="never_played_exhausted">Plus rien à découvrir ici : tu as tout écouté.</string>
+    <string name="never_played_failed">La radio n\'a pas pu démarrer. Réessaie.</string>
 </resources>

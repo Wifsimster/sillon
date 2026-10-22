@@ -110,4 +110,15 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_wallpaper_colors">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_hint">Follow your wallpaper (Material You) instead of Sillon\'s colours</string>
+    <string name="never_played">Never played</string>
+    <string name="never_played_albums">Never played: albums</string>
+    <string name="never_played_hint">Tracks you have never listened to, at random</string>
+    <string name="never_played_share">%1$d%% of your library has never been played</string>
+    <string name="never_played_count">%1$s of %2$s tracks</string>
+    <string name="never_played_play">Play the never-played radio</string>
+    <string name="never_played_albums_play">Rediscover a record: a never-played album at random</string>
+    <string name="never_played_offline">Offline: only your downloaded tracks.</string>
+    <string name="never_played_no_history">No listening history on this phone yet. Connect to your server once, then this radio works offline with your downloads.</string>
+    <string name="never_played_exhausted">Nothing left to discover here: you have heard it all.</string>
+    <string name="never_played_failed">The radio could not start. Try again.</string>
 </resources>

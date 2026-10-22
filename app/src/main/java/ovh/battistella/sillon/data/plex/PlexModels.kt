@@ -41,6 +41,7 @@ data class PlexResponse(
 @Serializable
 data class MediaContainer(
     val size: Int = 0,
+    val totalSize: Int? = null,
     val machineIdentifier: String? = null,
     @SerialName("Directory") val directories: List<PlexDirectory> = emptyList(),
     @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
@@ -88,6 +89,7 @@ data class PlexMetadata(
     val userRating: Float? = null,
     val ratingCount: Long? = null,
     val viewCount: Int? = null,
+    val viewedLeafCount: Int? = null,
     @SerialName("Stations") val stations: PlexStations? = null,
     val normalizationGain: Float? = null,
     val thumb: String? = null,

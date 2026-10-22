@@ -128,6 +128,15 @@ class JellyfinApi(
             "sortBy" to "Random", "limit" to RADIO_TRACKS.toString(),
         ).map { it.toMetadata() }
 
+    suspend fun itemsPage(
+        server: ServerEndpoint,
+        deviceId: String,
+        query: List<Pair<String, String>>,
+    ): Pair<List<PlexMetadata>, Int> {
+        val page = page(server, deviceId, "Items", *query.toTypedArray())
+        return page.items.map { it.toMetadata() } to page.total
+    }
+
     fun artworkUrl(server: ServerEndpoint, thumb: String?, sizePx: Int): String? {
         val id = thumb?.takeIf { it.startsWith(JELLYFIN_IMAGE) }?.removePrefix(JELLYFIN_IMAGE) ?: return null
         return serverUrl(server, "Items/$id/Images/Primary").newBuilder()
@@ -178,12 +187,19 @@ class JellyfinApi(
         deviceId: String,
         path: String,
         vararg query: Pair<String, String>,
-    ): List<JellyfinItem> {
+    ): List<JellyfinItem> = page(server, deviceId, path, *query).items
+
+    private suspend fun page(
+        server: ServerEndpoint,
+        deviceId: String,
+        path: String,
+        vararg query: Pair<String, String>,
+    ): JellyfinItems {
         val url = serverUrl(server, path).newBuilder().apply {
             server.userId?.let { addQueryParameter("userId", it) }
             query.forEach { (k, v) -> addQueryParameter(k, v) }
         }.build()
-        return PlexJson.decodeFromString(JellyfinItems.serializer(), get(url, deviceId, server.token)).items
+        return PlexJson.decodeFromString(JellyfinItems.serializer(), get(url, deviceId, server.token))
     }
 
     private suspend fun get(url: HttpUrl, deviceId: String, token: String? = null): String =
