@@ -84,12 +84,15 @@ it may not reach the server and the music comes back to the phone.
 
 **Tokens.** The URLs carry a token, as every Plex/Jellyfin stream URL does; they go only to the
 speaker, on the LAN, over HTTP (or HTTPS if the server address is HTTPS).
-- **Plex:** Sillon asks the server for a **transient (delegation) token**
+- **Plex:** each Sonos session asks the server for a **transient (delegation) token**
   (`GET /security/token?type=delegation&scope=all`, as python-plexapi's `createToken` does:
-  [server.py](https://github.com/pkkid/python-plexapi/blob/master/plexapi/server.py)) and puts it
-  in the speaker's URLs instead of the account token. Plex expires it on its own and on a server
-  restart; its exact lifetime is not documented (not confirmed: the 48 h often quoted). If the
-  server refuses, Sillon falls back to the account token and logs it.
+  [server.py](https://github.com/pkkid/python-plexapi/blob/master/plexapi/server.py)) and puts
+  only that token in the speaker's URLs. It is **not limited to the session**: `scope=all`
+  covers the whole server with the user's rights, and it lasts **about 48 hours** (or until the
+  server restarts); Plex offers no way to revoke it earlier. Its lifetime is not documented by
+  Plex: 48 h is the figure commonly reported, not confirmed. **The account token never goes to
+  a speaker**: if the server refuses a transient token (an old server, a shared server that
+  doesn't delegate, a timeout), the session doesn't start and Sillon says why.
 - **Jellyfin:** there is no short-lived token for a stream. The URL carries Sillon's session
   token (the one in Jellyfin's *Dashboard → Devices*). Revoking Sillon's device there revokes it.
 - The speaker may keep the last URLs in its queue until something else is played. Anyone who

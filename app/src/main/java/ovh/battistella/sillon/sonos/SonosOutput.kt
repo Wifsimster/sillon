@@ -31,6 +31,7 @@ enum class OutputNotice {
     COULD_NOT_PLAY,
     TAKEN_OVER,
     FAILED,
+    PLEX_TOKEN_REFUSED,
     MYSTERY_ON_PHONE,
     TOGETHER_ON_PHONE,
 }

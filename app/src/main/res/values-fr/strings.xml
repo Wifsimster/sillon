@@ -281,4 +281,5 @@
     <string name="output_notice_together">L\'écoute à plusieurs se joue sur chaque téléphone : la musique est revenue ici.</string>
     <string name="output_notice_ok">OK</string>
     <string name="together_not_on_sonos">Écouter à plusieurs, pas pendant une lecture sur Sonos</string>
+    <string name="output_notice_plex_token">Ton serveur Plex n\'a pas fourni de jeton temporaire pour l\'enceinte, et Sillon ne lui confie pas celui de ton compte. La musique reste sur ce téléphone.</string>
 </resources>

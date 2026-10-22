@@ -254,6 +254,7 @@ private fun noticeText(notice: OutputNotice): Int = when (notice) {
     OutputNotice.COULD_NOT_PLAY -> R.string.output_notice_could_not_play
     OutputNotice.TAKEN_OVER -> R.string.output_notice_taken_over
     OutputNotice.FAILED -> R.string.output_notice_failed
+    OutputNotice.PLEX_TOKEN_REFUSED -> R.string.output_notice_plex_token
     OutputNotice.MYSTERY_ON_PHONE -> R.string.output_notice_mystery
     OutputNotice.TOGETHER_ON_PHONE -> R.string.output_notice_together
 }

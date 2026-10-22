@@ -42,6 +42,8 @@ import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.repository.SonosAccess
+import ovh.battistella.sillon.data.repository.SonosAccessException
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
 import ovh.battistella.sillon.playback.cache.ListeningCache
@@ -83,6 +85,7 @@ class PlaybackService : MediaLibraryService() {
     private var exo: ExoPlayer? = null
     private var sonos: SonosPlayer? = null
     private var sonosReporter: TimelineReporter? = null
+    private var sonosAccess: SonosAccess? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -193,11 +196,20 @@ class PlaybackService : MediaLibraryService() {
         val play = current?.wasPlaying ?: exo.playWhenReady
         sonosOutput.set(Output.Connecting(group))
         if (current != null) leaveSonos(current, pause = true)
+        val access = try {
+            repository.openSonosAccess()
+        } catch (e: Exception) {
+            Log.w(TAG, "no way to the server for the speaker: ${e.message}")
+            if (current != null) restoreOnPhone(items, index, positionMs, play = false)
+            sonosOutput.set(Output.Phone)
+            sonosOutput.tell(if (e is SonosAccessException) OutputNotice.PLEX_TOKEN_REFUSED else OutputNotice.FAILED)
+            return
+        }
         val player = SonosPlayer(
             group = group,
             client = sonosOutput.client,
             scope = scope,
-            resolve = ::resolveForSonos,
+            resolve = { resolveForSonos(it, access) },
             refuse = ::refusedOnSonos,
             onRefused = { refused, at, position ->
                 backToPhone(resume = false)
@@ -222,6 +234,7 @@ class PlaybackService : MediaLibraryService() {
         if (started.isFailure) {
             Log.w(TAG, "Sonos did not take the queue: ${started.exceptionOrNull()?.message}")
             player.release()
+            access.close()
             if (current != null) restoreOnPhone(items, index, positionMs, play = false)
             sonosOutput.set(Output.Phone)
             sonosOutput.tell(OutputNotice.FAILED)
@@ -231,6 +244,7 @@ class PlaybackService : MediaLibraryService() {
         // Sides pause the phone's player between faces; the speaker plays the record through.
         sides.setPlan(null)
         sonos = player
+        sonosAccess = access
         mediaSession?.player = player
         sonosReporter = TimelineReporter(player, scope, ::report).also { it.start() }
         sonosOutput.set(Output.OnSonos(group))
@@ -254,6 +268,8 @@ class PlaybackService : MediaLibraryService() {
         sidePlayer?.let { mediaSession?.player = it }
         if (pause) player.pauseSpeaker()
         player.release()
+        sonosAccess?.close()
+        sonosAccess = null
     }
 
     private fun restoreOnPhone(items: List<MediaItem>, index: Int, positionMs: Long, play: Boolean) {
@@ -266,8 +282,8 @@ class PlaybackService : MediaLibraryService() {
         if (play) exo.play()
     }
 
-    private suspend fun resolveForSonos(items: List<MediaItem>): List<SonosTrack?> {
-        val tracks = runCatching { repository.sonosTracks(items.map { it.mediaId }) }
+    private suspend fun resolveForSonos(items: List<MediaItem>, access: SonosAccess): List<SonosTrack?> {
+        val tracks = runCatching { repository.sonosTracks(items.map { it.mediaId }, access) }
             .onFailure { Log.w(TAG, "Sonos tracks failed: ${it.message}") }
             .getOrDefault(emptyMap())
         return items.map { tracks[it.mediaId] }
