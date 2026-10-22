@@ -180,4 +180,32 @@ class TogetherMachineTest {
         assertEquals(false, rejoined.reconnecting)
         assertEquals(null, rejoined.queue)
     }
+
+    @Test
+    fun `losing the socket before GroupJoined ends the attempt and gives the player back`() {
+        val step = reduce(TogetherState.Off, SessionEvent.Connect("Road trip"), SessionEvent.ConnectionLost)
+        assertEquals(TogetherState.Ended(EndReason.Failed), step.state)
+        assertEquals(listOf(Effect.ExitGroupMode), step.effects)
+    }
+
+    @Test
+    fun `no GroupJoined in time ends the attempt`() {
+        val step = reduce(TogetherState.Off, SessionEvent.Connect("Road trip"), SessionEvent.TimedOut)
+        assertEquals(TogetherState.Ended(EndReason.TimedOut), step.state)
+        assertEquals(listOf(Effect.ExitGroupMode), step.effects)
+    }
+
+    @Test
+    fun `a late timeout does not end a joined session`() {
+        val state = joined()
+        assertEquals(Step(state), TogetherMachine.reduce(state, SessionEvent.TimedOut))
+    }
+
+    @Test
+    fun `cancelling while connecting goes back to the lobby`() {
+        val step = reduce(TogetherState.Off, SessionEvent.Connect("Road trip"), SessionEvent.Cancel)
+        assertEquals(TogetherState.Off, step.state)
+        assertEquals(listOf(Effect.ExitGroupMode), step.effects)
+        assertEquals(Step(joined()), TogetherMachine.reduce(joined(), SessionEvent.Cancel))
+    }
 }

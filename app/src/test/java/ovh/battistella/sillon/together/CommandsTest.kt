@@ -86,54 +86,83 @@ class CommandsTest {
         shuffle = false,
         repeatMode = "RepeatNone",
     )
+    private val loaded = listOf("p1", "p2", "p3")
 
     @Test
     fun `play, pause and seek become group requests`() {
-        assertEquals(GroupRequest.Unpause, GroupRequests.forIntent(UserIntent.Play, queue))
-        assertEquals(GroupRequest.Pause, GroupRequests.forIntent(UserIntent.Pause, queue))
-        assertEquals(GroupRequest.Seek(42_000), GroupRequests.forIntent(UserIntent.Seek(42_000), queue))
-        assertEquals(GroupRequest.Seek(0), GroupRequests.forIntent(UserIntent.Seek(-5), queue))
+        assertEquals(GroupRequest.Unpause, GroupRequests.forIntent(UserIntent.Play, queue, loaded))
+        assertEquals(GroupRequest.Pause, GroupRequests.forIntent(UserIntent.Pause, queue, loaded))
+        assertEquals(GroupRequest.Seek(42_000), GroupRequests.forIntent(UserIntent.Seek(42_000), queue, loaded))
+        assertEquals(GroupRequest.Seek(0), GroupRequests.forIntent(UserIntent.Seek(-5), queue, loaded))
     }
 
     @Test
     fun `with nothing in the group, play and seek have nothing to act on`() {
-        assertNull(GroupRequests.forIntent(UserIntent.Play, null))
-        assertNull(GroupRequests.forIntent(UserIntent.Seek(1), null))
-        assertNull(GroupRequests.forIntent(UserIntent.Next, null))
+        assertNull(GroupRequests.forIntent(UserIntent.Play, null, loaded))
+        assertNull(GroupRequests.forIntent(UserIntent.Seek(1), null, loaded))
+        assertNull(GroupRequests.forIntent(UserIntent.Next, null, loaded))
     }
 
     @Test
     fun `skips name the current track, so the server acts once for everyone`() {
-        assertEquals(GroupRequest.NextItem("p2"), GroupRequests.forIntent(UserIntent.Next, queue))
-        assertEquals(GroupRequest.PreviousItem("p2"), GroupRequests.forIntent(UserIntent.Previous(1_000), queue))
+        assertEquals(GroupRequest.NextItem("p2"), GroupRequests.forIntent(UserIntent.Next, queue, loaded))
+        assertEquals(GroupRequest.PreviousItem("p2"), GroupRequests.forIntent(UserIntent.Previous(1_000), queue, loaded))
     }
 
     @Test
     fun `previous restarts the track once into it, or on the first track`() {
-        assertEquals(GroupRequest.Seek(0), GroupRequests.forIntent(UserIntent.Previous(10_000), queue))
-        assertEquals(GroupRequest.Seek(0), GroupRequests.forIntent(UserIntent.Previous(0), queue.copy(playingIndex = 0)))
+        assertEquals(GroupRequest.Seek(0), GroupRequests.forIntent(UserIntent.Previous(10_000), queue, loaded))
+        assertEquals(GroupRequest.Seek(0), GroupRequests.forIntent(UserIntent.Previous(0), queue.copy(playingIndex = 0), loaded))
     }
 
     @Test
     fun `picking a track in the queue`() {
-        assertEquals(GroupRequest.SetItem("p3"), GroupRequests.forIntent(UserIntent.SeekToItem(2, 0), queue))
-        assertEquals(GroupRequest.Seek(5_000), GroupRequests.forIntent(UserIntent.SeekToItem(1, 5_000), queue))
-        assertNull(GroupRequests.forIntent(UserIntent.SeekToItem(7, 0), queue))
+        assertEquals(GroupRequest.SetItem("p3"), GroupRequests.forIntent(UserIntent.SeekToItem(2, 0), queue, loaded))
+        assertEquals(GroupRequest.Seek(5_000), GroupRequests.forIntent(UserIntent.SeekToItem(1, 5_000), queue, loaded))
+        assertNull(GroupRequests.forIntent(UserIntent.SeekToItem(7, 0), queue, loaded))
     }
 
     @Test
     fun `playing an album replaces the group's queue`() {
         assertEquals(
             GroupRequest.SetQueue(listOf("x", "y"), 1, 0),
-            GroupRequests.forIntent(UserIntent.NewQueue(listOf("x", "y"), 5, -1), null),
+            GroupRequests.forIntent(UserIntent.NewQueue(listOf("x", "y"), 5, -1), null, loaded),
         )
-        assertNull(GroupRequests.forIntent(UserIntent.NewQueue(emptyList(), 0, 0), queue))
-        assertEquals(GroupRequest.Queue(listOf("z")), GroupRequests.forIntent(UserIntent.Append(listOf("z")), queue))
+        assertNull(GroupRequests.forIntent(UserIntent.NewQueue(emptyList(), 0, 0), queue, loaded))
+        assertEquals(GroupRequest.Queue(listOf("z")), GroupRequests.forIntent(UserIntent.Append(listOf("z")), queue, loaded))
     }
 
     @Test
     fun `shuffle and repeat are the group's`() {
-        assertEquals(GroupRequest.Shuffle(true), GroupRequests.forIntent(UserIntent.Shuffle(true), queue))
-        assertEquals(GroupRequest.Repeat("RepeatAll"), GroupRequests.forIntent(UserIntent.Repeat("RepeatAll"), queue))
+        assertEquals(GroupRequest.Shuffle(true), GroupRequests.forIntent(UserIntent.Shuffle(true), queue, loaded))
+        assertEquals(GroupRequest.Repeat("RepeatAll"), GroupRequests.forIntent(UserIntent.Repeat("RepeatAll"), queue, loaded))
+    }
+
+    @Test
+    fun `picking a track follows this phone's queue when some tracks could not load`() {
+        val partial = listOf("p1", "p3")
+        assertEquals(GroupRequest.SetItem("p3"), GroupRequests.forIntent(UserIntent.SeekToItem(1, 0), queue, partial))
+        assertEquals(GroupRequest.SetItem("p1"), GroupRequests.forIntent(UserIntent.SeekToItem(0, 0), queue, partial))
+        assertNull(GroupRequests.forIntent(UserIntent.SeekToItem(2, 0), queue, partial))
+    }
+
+    @Test
+    fun `removing upcoming tracks removes them from the group's queue`() {
+        assertEquals(GroupRequest.Remove(listOf("p3")), GroupRequests.forIntent(UserIntent.Remove(2, 3), queue, loaded))
+        assertEquals(GroupRequest.Remove(listOf("p2", "p3")), GroupRequests.forIntent(UserIntent.Remove(1, 9), queue, loaded))
+        assertNull(GroupRequests.forIntent(UserIntent.Remove(3, 3), queue, loaded))
+        assertNull(GroupRequests.forIntent(UserIntent.Remove(0, 1), null, loaded))
+    }
+
+    @Test
+    fun `moving one track maps to the server's index`() {
+        assertEquals(GroupRequest.Move("p3", 0), GroupRequests.forIntent(UserIntent.Move(2, 3, 0), queue, loaded))
+        assertEquals(GroupRequest.Move("p1", 2), GroupRequests.forIntent(UserIntent.Move(0, 1, 1), queue, listOf("p1", "p3")))
+        assertNull(GroupRequests.forIntent(UserIntent.Move(0, 2, 2), queue, loaded))
+    }
+
+    @Test
+    fun `controls the group owns are dropped`() {
+        assertNull(GroupRequests.forIntent(UserIntent.GroupOwned, queue, loaded))
     }
 }

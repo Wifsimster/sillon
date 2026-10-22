@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -42,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.jellyfin.GroupState
+import ovh.battistella.sillon.data.jellyfin.SyncPlayGroupInfo
 import ovh.battistella.sillon.together.EndReason
 import ovh.battistella.sillon.together.MyStatus
 import ovh.battistella.sillon.together.TogetherState
@@ -57,19 +59,54 @@ fun TogetherScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val available by viewModel.available.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
+    TogetherContent(
+        state = state,
+        available = available,
+        groups = groups,
+        actions = TogetherActions(
+            onBack = onBack,
+            onRefresh = viewModel::refresh,
+            onStart = { viewModel.create(viewModel.deviceName) },
+            onJoin = viewModel::join,
+            onCancel = viewModel::cancel,
+            onLeave = viewModel::leave,
+            onDismiss = viewModel::dismiss,
+        ),
+        contentPadding = contentPadding,
+    )
+}
 
+class TogetherActions(
+    val onBack: () -> Unit,
+    val onRefresh: () -> Unit,
+    val onStart: () -> Unit,
+    val onJoin: (SyncPlayGroupInfo) -> Unit,
+    val onCancel: () -> Unit,
+    val onLeave: () -> Unit,
+    val onDismiss: () -> Unit,
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TogetherContent(
+    state: TogetherState,
+    available: Boolean?,
+    groups: GroupList,
+    actions: TogetherActions,
+    contentPadding: PaddingValues,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.together_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = actions.onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 actions = {
-                    if (available == true && !state.isActive) {
-                        IconButton(onClick = viewModel::refresh) {
+                    if (available == true && state == TogetherState.Off) {
+                        IconButton(onClick = actions.onRefresh) {
                             Icon(Icons.Rounded.Refresh, stringResource(R.string.together_refresh))
                         }
                     }
@@ -85,10 +122,10 @@ fun TogetherScreen(
                 available == null -> Unit
                 available == false -> notOnPlex()
                 else -> when (val s = state) {
-                    TogetherState.Off -> lobby(groups, viewModel)
-                    is TogetherState.Connecting -> connecting()
-                    is TogetherState.InGroup -> inGroup(s, viewModel::leave)
-                    is TogetherState.Ended -> ended(s.reason, viewModel::dismiss)
+                    TogetherState.Off -> lobby(groups, actions)
+                    is TogetherState.Connecting -> connecting(actions.onCancel)
+                    is TogetherState.InGroup -> inGroup(s, actions.onLeave)
+                    is TogetherState.Ended -> ended(s.reason, actions.onDismiss)
                 }
             }
         }
@@ -110,11 +147,11 @@ private fun LazyListScope.notOnPlex() {
     }
 }
 
-private fun LazyListScope.lobby(groups: GroupList, viewModel: TogetherViewModel) {
+private fun LazyListScope.lobby(groups: GroupList, actions: TogetherActions) {
     intro()
     item {
         Button(
-            onClick = { viewModel.create(viewModel.deviceName) },
+            onClick = actions.onStart,
             enabled = groups !is GroupList.Unreachable,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         ) { Text(stringResource(R.string.together_start)) }
@@ -130,7 +167,7 @@ private fun LazyListScope.lobby(groups: GroupList, viewModel: TogetherViewModel)
             ListItem(
                 leadingContent = { Icon(Icons.Rounded.CloudOff, contentDescription = null) },
                 headlineContent = { Text(stringResource(R.string.together_offline)) },
-                trailingContent = { TextButton(onClick = viewModel::refresh) { Text(stringResource(R.string.action_retry)) } },
+                trailingContent = { TextButton(onClick = actions.onRefresh) { Text(stringResource(R.string.action_retry)) } },
             )
         }
         is GroupList.Loaded -> if (groups.groups.isEmpty()) {
@@ -147,7 +184,7 @@ private fun LazyListScope.lobby(groups: GroupList, viewModel: TogetherViewModel)
                         )
                     },
                     trailingContent = {
-                        OutlinedButton(onClick = { viewModel.join(group) }) { Text(stringResource(R.string.together_join)) }
+                        OutlinedButton(onClick = { actions.onJoin(group) }) { Text(stringResource(R.string.together_join)) }
                     },
                 )
             }
@@ -155,13 +192,19 @@ private fun LazyListScope.lobby(groups: GroupList, viewModel: TogetherViewModel)
     }
 }
 
-private fun LazyListScope.connecting() {
+private fun LazyListScope.connecting(onCancel: () -> Unit) {
     item {
         ListItem(
-            leadingContent = { CircularProgressIndicator(Modifier.padding(4.dp)) },
+            leadingContent = { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp) },
             headlineContent = { Text(stringResource(R.string.together_connecting)) },
+            supportingContent = { Text(stringResource(R.string.together_connecting_hint)) },
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
+    }
+    item {
+        OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(stringResource(R.string.together_cancel))
+        }
     }
 }
 
@@ -263,6 +306,7 @@ private fun endedText(reason: EndReason): Int = when (reason) {
     EndReason.GroupGone -> R.string.together_ended_gone
     EndReason.AccessDenied -> R.string.together_ended_denied
     EndReason.Failed -> R.string.together_ended_failed
+    EndReason.TimedOut -> R.string.together_ended_timed_out
 }
 
 @Composable

@@ -146,6 +146,9 @@
     <string name="together_ended_gone">La session est terminée.</string>
     <string name="together_ended_denied">Ton compte Jellyfin n\'a pas accès à SyncPlay, ou ne voit pas tous les titres de la file. Un administrateur peut le changer dans les réglages de l\'utilisateur.</string>
     <string name="together_ended_failed">Impossible de lancer l\'écoute à plusieurs. Vérifie la connexion au serveur et réessaie.</string>
+    <string name="together_connecting_hint">La musique continue sur ce téléphone tant que tu n\'as pas rejoint la session.</string>
+    <string name="together_cancel">Annuler</string>
+    <string name="together_ended_timed_out">Ton serveur n\'a pas répondu à temps, tu n\'as donc pas rejoint la session. La musique continue sur ce téléphone seulement.</string>
     <string name="together_plex_title">Indisponible avec Plex</string>
     <string name="together_plex_body">L\'écoute à plusieurs repose sur SyncPlay de Jellyfin. Plex ne permet pas aux apps de jouer en synchro via ton serveur, et Sillon ne passe par aucun service tiers.</string>
 </resources>

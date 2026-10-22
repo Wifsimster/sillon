@@ -9,7 +9,7 @@ import ovh.battistella.sillon.data.jellyfin.sameJellyfinId
 
 enum class MyStatus { Loading, Ready, Playing, Paused, CatchingUp, CantPlay }
 
-enum class EndReason { Left, ConnectionLost, GroupGone, AccessDenied, Failed }
+enum class EndReason { Left, ConnectionLost, GroupGone, AccessDenied, Failed, TimedOut }
 
 sealed interface TogetherState {
     data object Off : TogetherState
@@ -50,8 +50,10 @@ sealed interface SessionEvent {
     data object Reconnected : SessionEvent
 
     data object GaveUp : SessionEvent
+    data object TimedOut : SessionEvent
     data class Failed(val reason: EndReason) : SessionEvent
     data object Leave : SessionEvent
+    data object Cancel : SessionEvent
     data object Dismiss : SessionEvent
     data class Status(val status: MyStatus) : SessionEvent
     data class Drift(val driftMs: Long?) : SessionEvent
@@ -64,13 +66,20 @@ object TogetherMachine {
         is SessionEvent.Connect ->
             if (state.isActive) Step(state) else Step(TogetherState.Connecting(event.groupName))
         is SessionEvent.Server -> onServer(state, event.event)
-        SessionEvent.ConnectionLost ->
-            if (state is TogetherState.InGroup) Step(state.copy(reconnecting = true)) else Step(state)
+        SessionEvent.ConnectionLost -> when (state) {
+            is TogetherState.InGroup -> Step(state.copy(reconnecting = true))
+            is TogetherState.Connecting -> end(state, EndReason.Failed, pause = false)
+            else -> Step(state)
+        }
         SessionEvent.Reconnected ->
             if (state is TogetherState.InGroup) Step(state.copy(reconnecting = false)) else Step(state)
         SessionEvent.GaveUp -> end(state, EndReason.ConnectionLost, pause = true)
+        SessionEvent.TimedOut ->
+            if (state is TogetherState.Connecting) end(state, EndReason.TimedOut, pause = false) else Step(state)
         is SessionEvent.Failed -> end(state, event.reason, pause = false)
         SessionEvent.Leave -> end(state, EndReason.Left, pause = false)
+        SessionEvent.Cancel ->
+            if (state is TogetherState.Connecting) Step(TogetherState.Off, listOf(Effect.ExitGroupMode)) else Step(state)
         SessionEvent.Dismiss -> if (state is TogetherState.Ended) Step(TogetherState.Off) else Step(state)
         is SessionEvent.Status ->
             if (state is TogetherState.InGroup) Step(state.copy(me = event.status)) else Step(state)
@@ -192,8 +201,12 @@ sealed interface UserIntent {
     data class Previous(val positionMs: Long) : UserIntent
     data class NewQueue(val itemIds: List<String>, val index: Int, val positionMs: Long) : UserIntent
     data class Append(val itemIds: List<String>) : UserIntent
+    data class Remove(val fromIndex: Int, val toIndex: Int) : UserIntent
+    data class Move(val fromIndex: Int, val toIndex: Int, val newIndex: Int) : UserIntent
     data class Shuffle(val enabled: Boolean) : UserIntent
     data class Repeat(val mode: String) : UserIntent
+
+    data object GroupOwned : UserIntent
 }
 
 sealed interface GroupRequest {
@@ -205,6 +218,8 @@ sealed interface GroupRequest {
     data class SetItem(val playlistItemId: String) : GroupRequest
     data class SetQueue(val itemIds: List<String>, val index: Int, val positionMs: Long) : GroupRequest
     data class Queue(val itemIds: List<String>) : GroupRequest
+    data class Remove(val playlistItemIds: List<String>) : GroupRequest
+    data class Move(val playlistItemId: String, val newIndex: Int) : GroupRequest
     data class Shuffle(val enabled: Boolean) : GroupRequest
     data class Repeat(val mode: String) : GroupRequest
 }
@@ -212,16 +227,19 @@ sealed interface GroupRequest {
 object GroupRequests {
     const val RESTART_THRESHOLD_MS = 3_000L
 
-    fun forIntent(intent: UserIntent, queue: SyncQueue?): GroupRequest? {
+    fun forIntent(intent: UserIntent, queue: SyncQueue?, loaded: List<String>): GroupRequest? {
         val current = queue?.current?.playlistItemId
         return when (intent) {
             UserIntent.Play -> if (queue == null) null else GroupRequest.Unpause
             UserIntent.Pause -> if (queue == null) null else GroupRequest.Pause
             is UserIntent.Seek -> if (queue == null) null else GroupRequest.Seek(intent.positionMs.coerceAtLeast(0))
-            is UserIntent.SeekToItem -> when {
-                queue == null -> null
-                intent.index == queue.playingIndex -> GroupRequest.Seek(intent.positionMs.coerceAtLeast(0))
-                else -> queue.items.getOrNull(intent.index)?.let { GroupRequest.SetItem(it.playlistItemId) }
+            is UserIntent.SeekToItem -> {
+                val target = loaded.getOrNull(intent.index)
+                when {
+                    queue == null || target == null -> null
+                    target == current -> GroupRequest.Seek(intent.positionMs.coerceAtLeast(0))
+                    else -> GroupRequest.SetItem(target)
+                }
             }
             UserIntent.Next -> current?.let(GroupRequest::NextItem)
             is UserIntent.Previous -> when {
@@ -233,8 +251,19 @@ object GroupRequests {
                 if (intent.itemIds.isEmpty()) null
                 else GroupRequest.SetQueue(intent.itemIds, intent.index.coerceIn(0, intent.itemIds.lastIndex), intent.positionMs.coerceAtLeast(0))
             is UserIntent.Append -> if (intent.itemIds.isEmpty()) null else GroupRequest.Queue(intent.itemIds)
+            is UserIntent.Remove -> {
+                val ids = loaded.subList(intent.fromIndex.coerceIn(0, loaded.size), intent.toIndex.coerceIn(0, loaded.size))
+                if (queue == null || ids.isEmpty()) null else GroupRequest.Remove(ids)
+            }
+            is UserIntent.Move -> {
+                val moved = loaded.getOrNull(intent.fromIndex)
+                val anchor = loaded.getOrNull(intent.newIndex)
+                val newIndex = queue?.items?.indexOfFirst { it.playlistItemId == anchor } ?: -1
+                if (intent.toIndex - intent.fromIndex != 1 || moved == null || newIndex < 0) null else GroupRequest.Move(moved, newIndex)
+            }
             is UserIntent.Shuffle -> GroupRequest.Shuffle(intent.enabled)
             is UserIntent.Repeat -> GroupRequest.Repeat(intent.mode)
+            UserIntent.GroupOwned -> null
         }
     }
 }

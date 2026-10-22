@@ -82,22 +82,13 @@ fun PlayerScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
-            }
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onTogether) {
-                Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
-            }
-            if (startingRadio) {
-                CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-            } else {
-                IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
-                    Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
-                }
-            }
-        }
+        PlayerHeader(
+            onClose = onClose,
+            onTogether = onTogether,
+            startingRadio = startingRadio,
+            radioEnabled = state.hasMedia,
+            onRadio = viewModel::radioFromCurrent,
+        )
         Artwork(
             state.artworkUri,
             Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
@@ -196,4 +187,30 @@ private fun coverColor(uri: String?): Color? {
         color = Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
     }
     return color
+}
+
+@Composable
+fun PlayerHeader(
+    onClose: () -> Unit,
+    onTogether: () -> Unit,
+    startingRadio: Boolean,
+    radioEnabled: Boolean,
+    onRadio: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onTogether) {
+            Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
+        }
+        if (startingRadio) {
+            CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+        } else {
+            IconButton(onClick = onRadio, enabled = radioEnabled) {
+                Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
+            }
+        }
+    }
 }

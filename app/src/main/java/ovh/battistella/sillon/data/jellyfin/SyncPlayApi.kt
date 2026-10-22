@@ -55,6 +55,19 @@ class SyncPlayApi(
             put("Mode", "Queue")
         }
 
+    suspend fun removeFromPlaylist(server: ServerEndpoint, deviceId: String, playlistItemIds: List<String>) =
+        post(server, deviceId, "SyncPlay/RemoveFromPlaylist") {
+            putJsonArray("PlaylistItemIds") { playlistItemIds.forEach { add(it) } }
+            put("ClearPlaylist", false)
+            put("ClearPlayingItem", false)
+        }
+
+    suspend fun movePlaylistItem(server: ServerEndpoint, deviceId: String, playlistItemId: String, newIndex: Int) =
+        post(server, deviceId, "SyncPlay/MovePlaylistItem") {
+            put("PlaylistItemId", playlistItemId)
+            put("NewIndex", newIndex)
+        }
+
     suspend fun setPlaylistItem(server: ServerEndpoint, deviceId: String, playlistItemId: String) =
         post(server, deviceId, "SyncPlay/SetPlaylistItem") { put("PlaylistItemId", playlistItemId) }
 

@@ -48,6 +48,11 @@ class TogetherViewModel @Inject constructor(
 
     fun join(group: SyncPlayGroupInfo) = together.join(group)
 
+    fun cancel() {
+        together.cancel()
+        refresh()
+    }
+
     fun leave() = together.leave()
 
     fun dismiss() {

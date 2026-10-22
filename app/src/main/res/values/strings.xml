@@ -149,6 +149,9 @@
     <string name="together_ended_gone">The session ended.</string>
     <string name="together_ended_denied">Your Jellyfin account isn\'t allowed to use SyncPlay, or can\'t see every track in the queue. An administrator can change this in the user\'s settings.</string>
     <string name="together_ended_failed">Couldn\'t start listening together. Check your connection to the server and try again.</string>
+    <string name="together_connecting_hint">Your music keeps playing on this phone until you\'re in.</string>
+    <string name="together_cancel">Cancel</string>
+    <string name="together_ended_timed_out">Your server didn\'t answer in time, so you didn\'t join the session. The music plays on this phone only.</string>
     <string name="together_plex_title">Not available with Plex</string>
     <string name="together_plex_body">Listening together relies on Jellyfin\'s SyncPlay. Plex offers no way for apps to play in sync through your server, and Sillon sends nothing through anyone else\'s.</string>
 </resources>

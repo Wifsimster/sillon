@@ -45,7 +45,7 @@ class ListenTogether @Inject constructor(
     private val api: SyncPlayApi,
     private val sessionStore: SessionStore,
     private val repository: PlexRepository,
-) {
+) : GroupControls {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow<TogetherState>(TogetherState.Off)
     val state: StateFlow<TogetherState> = _state.asStateFlow()
@@ -69,6 +69,7 @@ class ListenTogether @Inject constructor(
     private var handOver = false
 
     private var connection: Job? = null
+    private var connectTimeout: Job? = null
     private var clockJob: Job? = null
     private var keepAliveJob: Job? = null
     private var driftJob: Job? = null
@@ -114,20 +115,28 @@ class ListenTogether @Inject constructor(
         events.trySend(SessionEvent.Leave)
     }
 
+    fun cancel() {
+        events.trySend(SessionEvent.Cancel)
+    }
+
     fun dismiss() {
         events.trySend(SessionEvent.Dismiss)
     }
 
-    fun intercept(intent: UserIntent): Boolean {
-        val current = _state.value
-        if (!current.isActive) return false
-        if (current is TogetherState.InGroup) GroupRequests.forIntent(intent, queue)?.let { requests.trySend(it) }
+    override fun intercept(intent: UserIntent): Boolean {
+        if (_state.value !is TogetherState.InGroup) return false
+        GroupRequests.forIntent(intent, queue, loaded.map { it.playlistItemId })?.let { requests.trySend(it) }
         return true
     }
 
     private fun start(name: String?, joinId: String?) {
         if (_state.value.isActive) return
         events.trySend(SessionEvent.Connect(name))
+        connectTimeout?.cancel()
+        connectTimeout = scope.launch {
+            delay(CONNECT_TIMEOUT_MS)
+            events.send(SessionEvent.TimedOut)
+        }
         connection = scope.launch {
             val endpoint = jellyfin()
             val groupPlayer = withTimeoutOrNull(PLAYER_WAIT_MS) { players.filterNotNull().first() }
@@ -140,13 +149,13 @@ class ListenTogether @Inject constructor(
             clock.reset()
             repeat(ClockSync.MIN_SAMPLES) { sampleClock() }
             if (!clock.isSynced) {
-                events.send(SessionEvent.Failed(EndReason.ConnectionLost))
+                events.send(SessionEvent.Failed(EndReason.Failed))
                 return@launch
             }
             handOver = joinId == null
             val opened = openSocket()
             if (!opened) {
-                events.send(SessionEvent.Failed(EndReason.ConnectionLost))
+                events.send(SessionEvent.Failed(EndReason.Failed))
                 return@launch
             }
             runCatching {
@@ -162,10 +171,11 @@ class ListenTogether @Inject constructor(
         _state.value = step.state
         if (event is SessionEvent.Server && event.event is SyncPlayEvent.Joined) onJoined(event.event.group)
         step.effects.forEach { apply(it) }
-        if (before.isActive && step.state is TogetherState.Ended) tearDown(step.state.reason)
+        if (before.isActive && !step.state.isActive) tearDown((step.state as? TogetherState.Ended)?.reason ?: EndReason.Left)
     }
 
     private fun onJoined(group: SyncPlayGroupInfo) {
+        connectTimeout?.cancel()
         val rejoined = groupId != null && sameJellyfinId(groupId, group.groupId)
         groupId = group.groupId
         if (rejoined) return
@@ -406,6 +416,8 @@ class ListenTogether @Inject constructor(
                 is GroupRequest.SetItem -> api.setPlaylistItem(endpoint, deviceId, request.playlistItemId)
                 is GroupRequest.SetQueue -> api.setNewQueue(endpoint, deviceId, request.itemIds, request.index, request.positionMs)
                 is GroupRequest.Queue -> api.queue(endpoint, deviceId, request.itemIds)
+                is GroupRequest.Remove -> api.removeFromPlaylist(endpoint, deviceId, request.playlistItemIds)
+                is GroupRequest.Move -> api.movePlaylistItem(endpoint, deviceId, request.playlistItemId, request.newIndex)
                 is GroupRequest.Shuffle -> api.setShuffle(endpoint, deviceId, request.enabled)
                 is GroupRequest.Repeat -> api.setRepeat(endpoint, deviceId, request.mode)
             }
@@ -458,7 +470,10 @@ class ListenTogether @Inject constructor(
         if (reconnect?.isActive == true) return
         reconnect = scope.launch {
             val current = _state.value
-            if (current !is TogetherState.InGroup) return@launch
+            if (current !is TogetherState.InGroup) {
+                if (current is TogetherState.Connecting) events.send(SessionEvent.ConnectionLost)
+                return@launch
+            }
             events.send(SessionEvent.ConnectionLost)
             val id = groupId ?: return@launch events.send(SessionEvent.GaveUp)
             val back = withTimeoutOrNull(RECONNECT_WINDOW_MS) {
@@ -498,6 +513,7 @@ class ListenTogether @Inject constructor(
         val closing = socket
         socket = null
         connection?.cancel()
+        connectTimeout?.cancel()
         listOf(clockJob, keepAliveJob, driftJob, actionJob, reconnect).forEach { it?.cancel() }
         timeline = null
         queue = null
@@ -508,7 +524,7 @@ class ListenTogether @Inject constructor(
         awaitingReady = false
         reportedBuffering = false
         scope.launch {
-            if (endpoint != null && reason == EndReason.Left) runCatching { api.leave(endpoint, deviceId) }
+            if (endpoint != null && (reason == EndReason.Left || reason == EndReason.TimedOut)) runCatching { api.leave(endpoint, deviceId) }
             closing?.close(NORMAL_CLOSURE, null)
         }
     }
@@ -525,6 +541,7 @@ class ListenTogether @Inject constructor(
     private companion object {
         const val TAG = "SillonTogether"
         const val PLAYER_WAIT_MS = 5_000L
+        const val CONNECT_TIMEOUT_MS = 15_000L
         const val SOCKET_OPEN_TIMEOUT_MS = 10_000L
         const val RECONNECT_WINDOW_MS = 20_000L
         const val RECONNECT_INTERVAL_MS = 2_000L

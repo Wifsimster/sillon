@@ -122,6 +122,14 @@ class SyncPlayServerTest {
         syncPlay.nextItem(b.server, b.deviceId, first)
         assertEquals(1, a.next<SyncPlayEvent.Queue>().queue.playingIndex)
 
+        val third = queue.items[2].playlistItemId
+        syncPlay.removeFromPlaylist(a.server, a.deviceId, listOf(third))
+        val trimmed = a.next<SyncPlayEvent.Queue> { update -> update.queue.items.none { it.playlistItemId == third } }.queue
+        assertEquals(2, trimmed.items.size)
+        syncPlay.movePlaylistItem(a.server, a.deviceId, first, 1)
+        val moved = a.next<SyncPlayEvent.Queue> { it.queue.items.firstOrNull()?.playlistItemId != first }.queue
+        assertEquals(first, moved.items[1].playlistItemId)
+
         b.socket.cancel()
         assertEquals("the member whose connection died is out", users[1].first, a.next<SyncPlayEvent.UserLeft>().name)
 
