@@ -47,6 +47,10 @@ data class GenreTileUi(
 
 fun Genre.toTile() = GenreTileUi(key, label, albums.size)
 
+/** Tiles in the order of the grid, so that two neighbours never share a colour (see [Genres.gridColors]). */
+fun List<GenreTileUi>.withGridColors(): List<GenreTileUi> =
+    zip(Genres.gridColors(map { it.key })) { tile, color -> tile.copy(color = color) }
+
 /** Genre tiles two by two; they sit inside the search page's list, so they are laid out in plain rows. */
 @Composable
 fun GenreGrid(genres: List<GenreTileUi>, onGenre: (String) -> Unit, modifier: Modifier = Modifier) {

@@ -114,6 +114,6 @@ class GenreViewModel @Inject constructor(
 @HiltViewModel
 class GenresViewModel @Inject constructor(genres: GenreRepository) : ViewModel() {
     val state: StateFlow<GenreListUi> = genres.view
-        .map { GenreListUi(it.genres.map { g -> g.toTile() }, it.online, loading = it.genres.isEmpty() && !it.known && it.online) }
+        .map { GenreListUi(it.genres.map { g -> g.toTile() }.withGridColors(),it.online, loading = it.genres.isEmpty() && !it.known && it.online) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), GenreListUi())
 }

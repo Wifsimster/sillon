@@ -124,7 +124,7 @@ class GenreRenders {
             // After a shuffle that found no track to play.
             Page("genre-nothing-to-play") { GenrePage(genreUi(online = true), false, true, {}, {}, {}, {}, PaddingValues()) },
             Page("genre-missing") { GenrePage(GenrePageUi(found = false, loading = false), false, false, {}, {}, {}, {}, PaddingValues()) },
-            Page("all") { GenreList(GenreListUi(genres(), loading = false), {}, {}, PaddingValues()) },
+            Page("all") { GenreList(GenreListUi(genres().withGridColors(), loading = false), {}, {}, PaddingValues()) },
             Page("all-offline-none") { GenreList(GenreListUi(online = false, loading = false), {}, {}, PaddingValues()) },
         ).forEach {
             show(it)
@@ -152,7 +152,7 @@ class GenreRenders {
         online = online,
         // Online: twelve tiles ending on "Heavy Metal, 1 album", and more behind "All genres".
         // Offline: only the genres of downloaded albums, counted on those albums.
-        genres = if (online) genres().filter { it.label != "Blues" }.take(Genres.VISIBLE) else offlineGenres(),
+        genres = (if (online) genres().filter { it.label != "Blues" }.take(Genres.VISIBLE) else offlineGenres()).withGridColors(),
         moreGenres = online,
     )
 

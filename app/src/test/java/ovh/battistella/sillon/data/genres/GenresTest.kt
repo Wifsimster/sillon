@@ -148,6 +148,20 @@ class GenresTest {
     }
 
     @Test
+    fun `two neighbouring tiles never share a colour`() {
+        val keys = (1..60).map { "genre $it" }
+        val colors = Genres.gridColors(keys)
+        assertEquals(keys.size, colors.size)
+        colors.forEachIndexed { i, color ->
+            assertTrue(color in Genres.PALETTE)
+            if (i % 2 == 1) assertNotEquals("tile $i and its left neighbour", colors[i - 1], color)
+            if (i >= 2) assertNotEquals("tile $i and the one above", colors[i - 2], color)
+        }
+        // Without a clash a genre keeps the colour of its name.
+        assertEquals(Genres.colorOf("rock"), Genres.gridColors(listOf("rock")).single())
+    }
+
+    @Test
     fun `a shuffle draws from a handful of the genre's albums`() {
         val genre = Genres.group((1..40).map { album("$it", "Rock") }).single()
         val drawn = Genres.shuffleAlbums(genre, Random(7))

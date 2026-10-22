@@ -219,7 +219,7 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun withGenres(rows: SearchHomeUi, view: GenreView): SearchHomeUi {
-        val tiles = view.genres.map { it.toTile() }
+        val tiles = view.genres.map { it.toTile() }.withGridColors()
         val shown = rows.copy(genres = tiles.take(Genres.VISIBLE), moreGenres = tiles.size > Genres.VISIBLE)
         // The spinner is for a first visit with nothing to show yet; genres count as something to show.
         return if (tiles.isEmpty()) shown else shown.copy(loading = false)

@@ -197,6 +197,23 @@ object Genres {
     /** A genre keeps its colour from one launch to the next: it is drawn from its normalised name. */
     fun colorOf(key: String): Long = PALETTE[key.hashCode().mod(PALETTE.size)]
 
+    /**
+     * Colours for genres laid out [columns] by [columns], in order: each keeps [colorOf] unless the tile
+     * on its left or above already has it, then takes the next palette colour that neither has.
+     */
+    fun gridColors(keys: List<String>, columns: Int = 2): List<Long> {
+        val colors = ArrayList<Long>(keys.size)
+        keys.forEachIndexed { i, key ->
+            val taken = setOfNotNull(
+                colors.getOrNull(i - 1)?.takeIf { i % columns != 0 },
+                colors.getOrNull(i - columns),
+            )
+            val first = PALETTE.indexOf(colorOf(key))
+            colors += PALETTE.indices.map { PALETTE[(first + it) % PALETTE.size] }.first { it !in taken }
+        }
+        return colors
+    }
+
     private val COMBINING_MARKS = Regex("\\p{Mn}+")
     private val SEPARATORS = Regex("[-_‐‑‒–—]")
     private val SPACES = Regex("\\s+")
