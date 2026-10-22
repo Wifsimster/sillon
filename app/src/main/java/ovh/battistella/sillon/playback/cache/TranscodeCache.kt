@@ -1,7 +1,7 @@
 package ovh.battistella.sillon.playback.cache
 
-import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.UriUtil
 import androidx.media3.datasource.DataSourceUtil
@@ -127,7 +127,7 @@ class TranscodeCache(private val cache: () -> Cache) {
         TranscodeUrls.partOf(url, session)?.let { ListeningCacheKeys.part(prefix, it) }
 
     private fun parse(key: String, uri: String) = read(key)?.let {
-        HlsPlaylistParser().parse(Uri.parse(uri), it.inputStream())
+        HlsPlaylistParser().parse(uri.toUri(), it.inputStream())
     }
 
     private fun read(key: String): ByteArray? {
