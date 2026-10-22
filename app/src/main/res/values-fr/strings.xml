@@ -151,4 +151,22 @@
     <string name="together_ended_timed_out">Ton serveur n\'a pas répondu à temps, tu n\'as donc pas rejoint la session. La musique continue sur ce téléphone seulement.</string>
     <string name="together_plex_title">Indisponible avec Plex</string>
     <string name="together_plex_body">L\'écoute à plusieurs repose sur SyncPlay de Jellyfin. Plex ne permet pas aux apps de jouer en synchro via ton serveur, et Sillon ne passe par aucun service tiers.</string>
+    <string name="settings_sleeve_wear">Usure des pochettes</string>
+    <string name="settings_sleeve_wear_hint">Les pochettes vieillissent à mesure que tu les écoutes, comme un vrai disque</string>
+    <string name="cover_wear_0">Pochette, album jamais écouté</string>
+    <string name="cover_wear_1">Pochette, album peu écouté</string>
+    <string name="cover_wear_2">Pochette, album écouté de temps en temps</string>
+    <string name="cover_wear_3">Pochette, album souvent écouté</string>
+    <string name="cover_wear_4">Pochette, album très écouté</string>
+    <string name="never_played">Jamais écouté</string>
+    <string name="never_played_albums">Jamais écouté : albums</string>
+    <string name="never_played_hint">Les titres que tu n\'as jamais écoutés, au hasard</string>
+    <string name="never_played_share">%1$d&#8239;%% de ta bibliothèque n\'a jamais été écoutée</string>
+    <string name="never_played_count">%1$s titres sur %2$s</string>
+    <string name="never_played_play">Lancer la radio Jamais écouté</string>
+    <string name="never_played_albums_play">Redécouvre un disque : un album jamais écouté, tiré au sort</string>
+    <string name="never_played_offline">Hors ligne : seulement tes titres téléchargés.</string>
+    <string name="never_played_no_history">Pas encore d\'historique d\'écoute sur ce téléphone. Connecte-toi une fois à ton serveur : la radio marchera ensuite hors ligne avec tes téléchargements.</string>
+    <string name="never_played_exhausted">Plus rien à découvrir ici : tu as tout écouté.</string>
+    <string name="never_played_failed">La radio n\'a pas pu démarrer. Réessaie.</string>
 </resources>

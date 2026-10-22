@@ -49,6 +49,11 @@ class SettingsViewModel @Inject constructor(
     val downloadWifiOnly = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val loudness = settings.loudness.stateIn(viewModelScope, SharingStarted.Eagerly, LoudnessMode.TRACK)
     val wallpaperColors = settings.wallpaperColors.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val sleeveWear = settings.sleeveWear.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setSleeveWear(value: Boolean) {
+        viewModelScope.launch { settings.setSleeveWear(value) }
+    }
 
     fun setWallpaperColors(value: Boolean) {
         viewModelScope.launch { settings.setWallpaperColors(value) }
@@ -83,6 +88,7 @@ fun SettingsScreen(
     val downloadWifiOnly by viewModel.downloadWifiOnly.collectAsStateWithLifecycle()
     val loudness by viewModel.loudness.collectAsStateWithLifecycle()
     val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
+    val sleeveWear by viewModel.sleeveWear.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -132,8 +138,20 @@ fun SettingsScreen(
                 )
             }
             item { HorizontalDivider() }
+            item { SectionTitle(stringResource(R.string.settings_appearance)) }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_sleeve_wear)) },
+                    supportingContent = { Text(stringResource(R.string.settings_sleeve_wear_hint)) },
+                    trailingContent = { Switch(checked = sleeveWear, onCheckedChange = null) },
+                    modifier = Modifier.toggleable(
+                        value = sleeveWear,
+                        role = Role.Switch,
+                        onValueChange = viewModel::setSleeveWear,
+                    ),
+                )
+            }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                item { SectionTitle(stringResource(R.string.settings_appearance)) }
                 item {
                     ListItem(
                         headlineContent = { Text(stringResource(R.string.settings_wallpaper_colors)) },
@@ -146,8 +164,8 @@ fun SettingsScreen(
                         ),
                     )
                 }
-                item { HorizontalDivider() }
             }
+            item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.library_downloads)) }
             item {
                 ListItem(

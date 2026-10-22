@@ -30,6 +30,7 @@ import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.Message
+import ovh.battistella.sillon.ui.components.Wear
 
 @Composable
 fun ArtistsScreen(
@@ -48,7 +49,11 @@ fun AlbumsScreen(
     viewModel: AlbumsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SectionGridScreen(stringResource(R.string.library_albums), state, viewModel::load, onAlbum, round = false, contentPadding)
+    val wear by viewModel.wear.collectAsStateWithLifecycle()
+    SectionGridScreen(
+        stringResource(R.string.library_albums), state, viewModel::load, onAlbum, round = false, contentPadding,
+        wear = { Wear.of(wear, it) },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +65,7 @@ private fun SectionGridScreen(
     onClick: (String) -> Unit,
     round: Boolean,
     contentPadding: PaddingValues,
+    wear: (String) -> Wear? = { null },
 ) {
     Scaffold(
         topBar = {
@@ -80,6 +86,7 @@ private fun SectionGridScreen(
                     round = round,
                     modifier = Modifier.padding(top = padding.calculateTopPadding()),
                     contentPadding = contentPadding,
+                    wear = wear,
                 )
             }
         }
@@ -94,6 +101,7 @@ fun TileGrid(
     round: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(),
     header: (@Composable () -> Unit)? = null,
+    wear: (String) -> Wear? = { null },
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 140.dp),
@@ -119,6 +127,7 @@ fun TileGrid(
                     url = tile.artworkUrl,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                     cornerRadius = if (round) 999.dp else 8.dp,
+                    wear = wear(tile.key),
                 )
                 Text(
                     tile.title,

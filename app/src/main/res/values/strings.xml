@@ -154,4 +154,22 @@
     <string name="together_ended_timed_out">Your server didn\'t answer in time, so you didn\'t join the session. The music plays on this phone only.</string>
     <string name="together_plex_title">Not available with Plex</string>
     <string name="together_plex_body">Listening together relies on Jellyfin\'s SyncPlay. Plex offers no way for apps to play in sync through your server, and Sillon sends nothing through anyone else\'s.</string>
+    <string name="settings_sleeve_wear">Sleeve wear</string>
+    <string name="settings_sleeve_wear_hint">Covers age as you play them, like a real record</string>
+    <string name="cover_wear_0">Cover, never played</string>
+    <string name="cover_wear_1">Cover, rarely played</string>
+    <string name="cover_wear_2">Cover, played now and then</string>
+    <string name="cover_wear_3">Cover, played often</string>
+    <string name="cover_wear_4">Cover, played a lot</string>
+    <string name="never_played">Never played</string>
+    <string name="never_played_albums">Never played: albums</string>
+    <string name="never_played_hint">Tracks you have never listened to, at random</string>
+    <string name="never_played_share">%1$d%% of your library has never been played</string>
+    <string name="never_played_count">%1$s of %2$s tracks</string>
+    <string name="never_played_play">Play the never-played radio</string>
+    <string name="never_played_albums_play">Rediscover a record: a never-played album at random</string>
+    <string name="never_played_offline">Offline: only your downloaded tracks.</string>
+    <string name="never_played_no_history">No listening history on this phone yet. Connect to your server once, then this radio works offline with your downloads.</string>
+    <string name="never_played_exhausted">Nothing left to discover here: you have heard it all.</string>
+    <string name="never_played_failed">The radio could not start. Try again.</string>
 </resources>
