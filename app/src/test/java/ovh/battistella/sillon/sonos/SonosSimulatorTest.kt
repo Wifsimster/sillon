@@ -129,7 +129,8 @@ class SonosSimulatorTest {
 
         transcript.append("== Next from the notification\n")
         player.seekToNext()
-        until("speaker on track 3") { speaker.index == 2 && player.currentMediaItemIndex == 2 }
+        // The player shows the next track at once (a placeholder); wait for the speaker's own answer.
+        until("speaker on track 3") { speaker.index == 2 && player.handBack().second == 2 }
 
         transcript.append("== Back to This phone\n")
         handover.backToPhone(resume = true)
