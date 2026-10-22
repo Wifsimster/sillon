@@ -8,6 +8,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.rememberUpdatedState
 import coil.imageLoader
 import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +56,11 @@ import androidx.media3.common.Player
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.formatDuration
+import ovh.battistella.sillon.playback.mystery.MysteryMask
+import ovh.battistella.sillon.ui.screens.mystery.MysteryCover
+import ovh.battistella.sillon.ui.screens.mystery.MysteryHiddenActions
+import ovh.battistella.sillon.ui.screens.mystery.MysteryReveal
+import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
 
 @Composable
 fun PlayerScreen(
@@ -62,7 +69,17 @@ fun PlayerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
+    val mystery by viewModel.mystery.collectAsStateWithLifecycle()
+    val mysteryStarting by viewModel.mysteryStarting.collectAsStateWithLifecycle()
+    val keeping by viewModel.keeping.collectAsStateWithLifecycle()
+    val keep by viewModel.keep.collectAsStateWithLifecycle()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
+    val surprise = mystery?.takeIf { state.currentKey == MysteryMask.HIDDEN_KEY || it.contains(state.currentKey.orEmpty()) }
+    val hidden = surprise != null && !surprise.revealed
+    val revealing = surprise != null && surprise.revealed && !surprise.revealSeen
+    val view = LocalView.current
+    val revealedAnnouncement = stringResource(R.string.mystery_revealed, state.title, state.artist)
+    val announcement by rememberUpdatedState(revealedAnnouncement)
 
     val tint by animateColorAsState(
         coverColor(state.artworkUri) ?: MaterialTheme.colorScheme.background,
@@ -83,19 +100,27 @@ fun PlayerScreen(
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
             }
-            if (startingRadio) {
-                CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-            } else {
-                IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
+            when {
+                hidden -> Unit
+                startingRadio -> CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+                else -> IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
                     Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
                 }
             }
         }
-        Artwork(
-            state.artworkUri,
-            Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
-            cornerRadius = 16.dp,
-        )
+        val coverModifier = Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f)
+        when {
+            hidden -> MysteryCover(coverModifier)
+            revealing -> MysteryReveal(
+                coverUri = state.artworkUri,
+                onDone = {
+                    viewModel.revealSeen()
+                    view.announceForAccessibility(announcement)
+                },
+                modifier = coverModifier,
+            )
+            else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp)
+        }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 state.title,
@@ -112,6 +137,19 @@ fun PlayerScreen(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        surprise?.let {
+            if (hidden) {
+                MysteryHiddenActions(onReveal = viewModel::reveal, offline = it.offline)
+            } else {
+                MysteryRevealedActions(
+                    keeping = keeping,
+                    keep = keep,
+                    starting = mysteryStarting,
+                    onKeep = viewModel::keepSurprise,
+                    onAnother = viewModel::anotherSurprise,
+                )
+            }
         }
 
         val duration = state.durationMs.coerceAtLeast(1L).toFloat()

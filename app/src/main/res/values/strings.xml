@@ -110,4 +110,25 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_wallpaper_colors">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_hint">Follow your wallpaper (Material You) instead of Sillon\'s colours</string>
+    <string name="mystery_title">Mystery sleeve</string>
+    <string name="mystery_hint_rare">A whole album you rarely play, without knowing which one.</string>
+    <string name="mystery_hint_any">A whole album from your library, without knowing which one.</string>
+    <string name="mystery_any_album">Any album</string>
+    <string name="mystery_start">Draw a mystery sleeve</string>
+    <string name="mystery_track_label">Mystery sleeve · side %1$d, track %2$d</string>
+    <string name="mystery_album">Mystery album</string>
+    <string name="mystery_reveal">Reveal</string>
+    <string name="mystery_reveal_hint">It reveals itself at the end of the third track.</string>
+    <string name="mystery_reveal_hint_offline">Offline: drawn from your downloads. It reveals itself at the end of the third track.</string>
+    <string name="mystery_revealed">Revealed: %1$s, %2$s</string>
+    <string name="mystery_keep">Keep</string>
+    <string name="mystery_another">Another surprise</string>
+    <string name="mystery_kept">Added to your “Surprises” playlist.</string>
+    <string name="mystery_already_kept">Already in your “Surprises” playlist.</string>
+    <string name="mystery_keep_offline">Offline: connect to your server to keep this album.</string>
+    <string name="mystery_keep_denied">Your server doesn\'t let this account create playlists.</string>
+    <string name="mystery_keep_failed">Couldn\'t add it to “Surprises”. Try again.</string>
+    <string name="mystery_none">No album with at least 4 tracks to draw from.</string>
+    <string name="mystery_none_offline">Offline: no downloaded album with at least 4 tracks.</string>
+    <string name="mystery_failed">Couldn\'t draw a mystery sleeve. Try again.</string>
 </resources>

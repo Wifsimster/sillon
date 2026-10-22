@@ -286,6 +286,35 @@ class PlexRepository @Inject constructor(
         jellyfin = { deviceId, server -> jellyfin.playlistItems(server, deviceId, ratingKey) },
     )
 
+    suspend fun addAlbumToPlaylist(albumKey: String, playlistTitle: String): Boolean {
+        val machineId = currentServer().machineId
+        return onServer(
+            plex = { clientId, server ->
+                val playlist = api.playlists(clientId, server).firstOrNull { it.title == playlistTitle }
+                when {
+                    playlist == null -> api.createPlaylist(clientId, server, machineId, playlistTitle, albumKey)
+                    api.playlistItems(clientId, server, playlist.ratingKey).any { it.parentRatingKey == albumKey } ->
+                        return@onServer false
+                    else -> api.addToPlaylist(clientId, server, machineId, playlist.ratingKey, albumKey)
+                }
+                true
+            },
+            jellyfin = { deviceId, server ->
+                val ids = jellyfin.tracksOf(server, deviceId, albumKey).map { it.ratingKey }
+                val playlist = jellyfin.playlists(server, deviceId).firstOrNull { it.title == playlistTitle }
+                if (playlist == null) {
+                    jellyfin.createPlaylist(server, deviceId, playlistTitle, ids)
+                    return@onServer true
+                }
+                val present = jellyfin.playlistItems(server, deviceId, playlist.ratingKey).map { it.ratingKey }.toSet()
+                val missing = ids.filter { it !in present }
+                if (missing.isEmpty()) return@onServer false
+                jellyfin.addToPlaylist(server, deviceId, playlist.ratingKey, missing)
+                true
+            },
+        )
+    }
+
     suspend fun search(sectionKey: String, query: String): List<PlexHub> = onServer(
         plex = { clientId, server -> api.search(clientId, server, sectionKey, query) },
         jellyfin = { deviceId, server -> jellyfin.search(server, deviceId, sectionKey, query) },

@@ -203,6 +203,20 @@ class PlexApi(
     suspend fun playlistItems(clientId: String, server: ServerEndpoint, ratingKey: String): List<PlexMetadata> =
         get(clientId, server, "playlists/$ratingKey/items").metadata
 
+    suspend fun createPlaylist(clientId: String, server: ServerEndpoint, machineId: String, title: String, itemKey: String) {
+        send(
+            clientId, server, "POST", "playlists",
+            "type" to "audio", "title" to title, "smart" to "0", "uri" to libraryUri(machineId, itemKey),
+        )
+    }
+
+    suspend fun addToPlaylist(clientId: String, server: ServerEndpoint, machineId: String, playlistKey: String, itemKey: String) {
+        send(clientId, server, "PUT", "playlists/$playlistKey/items", "uri" to libraryUri(machineId, itemKey))
+    }
+
+    private fun libraryUri(machineId: String, itemKey: String) =
+        "server://$machineId/com.plexapp.plugins.library/library/metadata/$itemKey"
+
     suspend fun search(clientId: String, server: ServerEndpoint, sectionKey: String, query: String): List<PlexHub> =
         get(
             clientId, server, "hubs/search",
@@ -304,6 +318,19 @@ class PlexApi(
         }.build()
         val request = Request.Builder().url(url).headers(clientId, server.token).build()
         return PlexJson.decodeFromString(PlexResponse.serializer(), client.fetch(request)).container
+    }
+
+    private suspend fun send(
+        clientId: String,
+        server: ServerEndpoint,
+        method: String,
+        path: String,
+        vararg query: Pair<String, String>,
+    ) {
+        val url = server.uri.toHttpUrl().newBuilder().addPathSegments(path).apply {
+            query.forEach { (k, v) -> addQueryParameter(k, v) }
+        }.build()
+        client.fetch(Request.Builder().url(url).headers(clientId, server.token).method(method, FormBody.Builder().build()).build())
     }
 
     private fun Request.Builder.headers(clientId: String, token: String? = null): Request.Builder = apply {

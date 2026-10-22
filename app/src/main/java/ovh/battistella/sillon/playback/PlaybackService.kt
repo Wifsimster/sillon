@@ -34,6 +34,8 @@ import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
+import ovh.battistella.sillon.playback.mystery.MysterySession
+import ovh.battistella.sillon.playback.mystery.MysteryWatcher
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -41,10 +43,12 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
+    @Inject lateinit var mystery: MysterySession
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
+    private var mysteryWatcher: MysteryWatcher? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -82,6 +86,7 @@ class PlaybackService : MediaLibraryService() {
                 continuing = report.continuing,
             )
         }.also { it.start() }
+        mysteryWatcher = MysteryWatcher(player, mystery, scope).also { it.start() }
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
@@ -169,6 +174,8 @@ class PlaybackService : MediaLibraryService() {
         }
         timelineReporter?.release()
         timelineReporter = null
+        mysteryWatcher?.release()
+        mysteryWatcher = null
         scope.cancel()
         mediaSession?.run {
             player.release()

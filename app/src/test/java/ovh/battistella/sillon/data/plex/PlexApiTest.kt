@@ -288,4 +288,33 @@ class PlexApiTest {
 
         assertEquals(listOf("Chill Mix"), mixes.map { it.title })
     }
+
+    @Test
+    fun `creates a playlist from an album, then adds the next album to it`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {}}"""))
+        server.enqueue(MockResponse().setBody("""{"MediaContainer": {}}"""))
+        val endpoint = ServerEndpoint(server.url("/").toString(), "srv-token")
+
+        api.createPlaylist("client-1", endpoint, "machine-1", "Surprises", "77")
+        api.addToPlaylist("client-1", endpoint, "machine-1", "500", "78")
+
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/playlists", create.requestUrl!!.encodedPath)
+        assertEquals("Surprises", create.requestUrl!!.queryParameter("title"))
+        assertEquals("audio", create.requestUrl!!.queryParameter("type"))
+        assertEquals("0", create.requestUrl!!.queryParameter("smart"))
+        assertEquals(
+            "server://machine-1/com.plexapp.plugins.library/library/metadata/77",
+            create.requestUrl!!.queryParameter("uri"),
+        )
+        assertEquals("srv-token", create.getHeader("X-Plex-Token"))
+        val add = server.takeRequest()
+        assertEquals("PUT", add.method)
+        assertEquals("/playlists/500/items", add.requestUrl!!.encodedPath)
+        assertEquals(
+            "server://machine-1/com.plexapp.plugins.library/library/metadata/78",
+            add.requestUrl!!.queryParameter("uri"),
+        )
+    }
 }

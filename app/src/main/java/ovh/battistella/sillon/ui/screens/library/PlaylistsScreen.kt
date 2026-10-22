@@ -34,6 +34,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.ui.components.LoadContent
+import ovh.battistella.sillon.ui.screens.mystery.MysteryProblemLine
+import ovh.battistella.sillon.ui.screens.mystery.MysteryStationCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,9 +58,7 @@ fun PlaylistsScreen(
                 onOpen = onFiveStars,
                 onShuffle = viewModel::shuffleFiveStars,
             )
-            if (stations.isNotEmpty()) {
-                StationsRow(stations, startingStation, onPlay = viewModel::playStation)
-            }
+            StationsRow(stations, startingStation, onPlay = viewModel::playStation)
         }
     }
     Scaffold(
@@ -128,6 +128,7 @@ private fun StationsRow(stations: List<Station>, starting: String?, onPlay: (Sta
         modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
     )
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
+        item(key = "mystery") { MysteryStationCard() }
         items(stations, key = { it.key }) { station ->
             Card(
                 onClick = { onPlay(station) },
@@ -151,6 +152,7 @@ private fun StationsRow(stations: List<Station>, starting: String?, onPlay: (Sta
             }
         }
     }
+    MysteryProblemLine()
 }
 
 @Composable

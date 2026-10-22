@@ -40,6 +40,9 @@ go, with no ads, no tracking and no subscription.
 - 📻 **Radios.** Your server's library radios (Library, Deep Cuts, Time
   Travel…), Plex's *Mixes for you*, a radio for every artist, and from the
   player, a radio of tracks that sound like the one playing.
+- 🎁 **Mystery sleeve.** One tap plays a whole album you rarely listen to,
+  hidden behind a kraft sleeve in the app, the notification and the car. It
+  reveals itself after the third track, or when you ask.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
