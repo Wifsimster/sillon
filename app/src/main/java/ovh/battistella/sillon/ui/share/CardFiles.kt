@@ -19,17 +19,24 @@ object CardFiles {
     const val AUTHORITY = "${BuildConfig.APPLICATION_ID}.cards"
     private const val DIR = "share_cards"
     private const val MAX_AGE_MS = 60 * 60 * 1000L
+    private const val KEEP_MS = 5 * 60 * 1000L
 
     fun dir(context: Context): File = File(context.cacheDir, DIR)
 
-    /** Writes the card, after removing every older one: only the card being shared stays in the cache. */
-    fun write(context: Context, card: Bitmap, now: Long = System.currentTimeMillis()): File {
+    /**
+     * Writes the card, after removing the cards older than a few minutes: an app still reading the
+     * previous one keeps it. Returns null when the file could not be written.
+     */
+    fun write(context: Context, card: Bitmap, now: Long = System.currentTimeMillis()): File? {
         val dir = dir(context).apply { mkdirs() }
-        dir.listFiles()?.forEach { it.delete() }
+        dir.listFiles()?.filter { now - it.lastModified() >= KEEP_MS }?.forEach { it.delete() }
         val file = File(dir, "sillon-card-$now.png")
         val tmp = File(dir, "${file.name}.part")
-        tmp.outputStream().use { card.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        tmp.renameTo(file)
+        val written = tmp.outputStream().use { card.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        if (!written || !tmp.renameTo(file)) {
+            tmp.delete()
+            return null
+        }
         return file
     }
 

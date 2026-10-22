@@ -2,7 +2,6 @@ package ovh.battistella.sillon.ui.share
 
 import android.content.ActivityNotFoundException
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,7 +48,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -186,23 +185,22 @@ fun ShareCardContent(
         )
 
         if (ui.stars != null) {
-            val label = stringResource(R.string.share_card_stars)
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable(role = Role.Switch) { onShowStars(!ui.showStars) },
+                    .toggleable(value = ui.showStars, role = Role.Switch, onValueChange = onShowStars),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, Modifier.weight(1f))
+                Text(stringResource(R.string.share_card_stars), Modifier.weight(1f))
                 Switch(checked = ui.showStars, onCheckedChange = null)
             }
-        }
-        if (ui.isJellyfin && !ui.loading) {
-            Text(
-                stringResource(R.string.share_card_stars_jellyfin),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (ui.isJellyfin) {
+                Text(
+                    stringResource(R.string.share_card_stars_jellyfin),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         if (ui.lyrics.isNotEmpty()) {
@@ -214,15 +212,13 @@ fun ShareCardContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 val full = ui.chosenLyrics.size >= CardRules.LYRICS_MAX
-                val chosenState = stringResource(R.string.share_card_lyric_chosen)
                 ui.lyrics.forEachIndexed { index, line ->
                     val chosen = index in ui.chosenLyrics
                     val enabled = chosen || !full
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable(enabled = enabled, role = Role.Checkbox) { onLyric(index) }
-                            .semantics { if (chosen) stateDescription = chosenState }
+                            .toggleable(value = chosen, enabled = enabled, role = Role.Checkbox) { onLyric(index) }
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

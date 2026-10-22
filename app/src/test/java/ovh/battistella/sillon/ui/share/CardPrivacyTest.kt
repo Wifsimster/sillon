@@ -48,7 +48,7 @@ class CardPrivacyTest {
     private fun card(template: CardTemplate = CardTemplate.VINYL, format: CardFormat = CardFormat.SQUARE): File {
         val cover = syntheticCover()
         val bitmap = renderer.render(renderer.layout(format, template, text), cover, CardPalette.of(cover))
-        return CardFiles.write(context, bitmap)
+        return CardFiles.write(context, bitmap)!!
     }
 
     @Test
@@ -105,12 +105,15 @@ class CardPrivacyTest {
     }
 
     @Test
-    fun `only the latest card stays in the cache, and old ones are purged`() {
+    fun `a new card keeps a recent one, removes older ones, and the purge empties the cache`() {
         val first = card()
-        Thread.sleep(5)
-        val second = CardFiles.write(context, Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888), now = System.currentTimeMillis() + 1)
+        val small = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        val second = CardFiles.write(context, small, now = first.lastModified() + 1_000)!!
+        assertTrue("a card shared a second ago may still be read", first.exists())
+        val third = CardFiles.write(context, small, now = first.lastModified() + 10 * 60 * 1000L)!!
         assertFalse(first.exists())
-        assertTrue(second.exists())
+        assertTrue(third.exists())
+        third.delete()
         CardFiles.purge(context, now = second.lastModified() + 60 * 60 * 1000L)
         assertFalse(second.exists())
         assertEquals(0, CardFiles.dir(context).listFiles()?.size ?: 0)

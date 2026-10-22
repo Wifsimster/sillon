@@ -189,7 +189,6 @@
         <item quantity="many">%1$d lignes au plus</item>
         <item quantity="other">%1$d lignes au plus</item>
     </plurals>
-    <string name="share_card_lyric_chosen">Sur la carte</string>
     <string name="share_card_private">La carte est une image créée sur ton téléphone. Elle ne contient aucun lien, et rien sur ton serveur.</string>
     <string name="share_card_send">Partager</string>
 </resources>

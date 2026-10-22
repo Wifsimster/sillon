@@ -191,7 +191,6 @@
         <item quantity="one">Up to %1$d line</item>
         <item quantity="other">Up to %1$d lines</item>
     </plurals>
-    <string name="share_card_lyric_chosen">On the card</string>
     <string name="share_card_private">The card is an image made on your phone. It carries no link, and nothing about your server.</string>
     <string name="share_card_send">Share</string>
 </resources>

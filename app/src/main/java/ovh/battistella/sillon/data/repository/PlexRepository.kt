@@ -454,7 +454,7 @@ class PlexRepository @Inject constructor(
         jellyfin = { deviceId, server -> jellyfin.item(server, deviceId, ratingKey) },
     )
 
-    /** The lines of a track's lyrics, or an empty list when the server has none (or can't be reached). */
+    /** The lines of a track's lyrics, or an empty list when the server has none. Throws when the server can't be reached. */
     suspend fun lyrics(trackKey: String): List<String> = Lyrics.parse(
         onServer(
             plex = { clientId, server -> api.lyrics(clientId, server, trackKey) },

@@ -12,6 +12,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import ovh.battistella.sillon.data.repository.PlexRepository
 import javax.inject.Inject
 
@@ -71,6 +74,7 @@ class ShareCardViewModel @Inject constructor(
     private var palette = CardPalette.Default
     private var quote: (String) -> String = { "“$it”" }
     private val renderLock = Mutex()
+    private var loadJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -96,14 +100,20 @@ class ShareCardViewModel @Inject constructor(
     fun open(source: ShareSource, quote: (String) -> String) {
         if (_ui.value.source == source) return
         this.quote = quote
+        // A card still loading for another track must not land on this one.
+        loadJob?.cancel()
         _ui.value = ShareCardUi(source = source, detail = detail(source, year = source.year))
         viewModelScope.launch(Dispatchers.IO) { CardFiles.purge(context) }
-        viewModelScope.launch {
-            val coverJob = async { loadCover(source.artworkUri) }
-            val enriched = enrich(source)
-            cover = coverJob.await()
-            palette = withContext(Dispatchers.Default) { CardPalette.of(cover) }
-            _ui.update { enriched(it).copy(loading = false) }
+        loadJob = viewModelScope.launch {
+            val coverJob = async { withTimeoutOrNull(LOAD_TIMEOUT_MS) { attempt { loadCover(source.artworkUri) } } }
+            // A server that doesn't answer leaves the card with what the screen knew, not a grey Share button.
+            val enriched = withTimeoutOrNull(LOAD_TIMEOUT_MS) { enrich(source) }
+            val art = coverJob.await()
+            val colours = art?.let { withContext(Dispatchers.Default) { CardPalette.of(it) } } ?: CardPalette.Default
+            if (_ui.value.source != source) return@launch
+            cover = art
+            palette = colours
+            _ui.update { (enriched?.invoke(it) ?: it).copy(loading = false) }
         }
     }
 
@@ -112,11 +122,11 @@ class ShareCardViewModel @Inject constructor(
      * the card keeps what the screen already knew: title, artist and cover.
      */
     private suspend fun enrich(source: ShareSource): (ShareCardUi) -> ShareCardUi {
-        val isJellyfin = runCatching { repository.isJellyfin.first() }.getOrDefault(false)
+        val isJellyfin = attempt { repository.isJellyfin.first() } ?: false
         val key = source.key ?: return { it.copy(isJellyfin = isJellyfin) }
-        val meta = runCatching { repository.metadata(key) }.getOrNull()
+        val meta = attempt { repository.metadata(key) }
         val lyrics = if (source.kind == ShareSource.Kind.TRACK) {
-            runCatching { repository.lyrics(key) }.getOrDefault(emptyList())
+            attempt { repository.lyrics(key) }.orEmpty()
         } else {
             emptyList()
         }
@@ -131,6 +141,15 @@ class ShareCardViewModel @Inject constructor(
                 lyrics = lyrics,
             )
         }
+    }
+
+    /** Null when the server fails; cancellation still cancels. */
+    private suspend fun <T> attempt(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     private fun detail(source: ShareSource, year: String?): String? = when (source.kind) {
@@ -159,14 +178,17 @@ class ShareCardViewModel @Inject constructor(
         val state = _ui.value
         val text = state.text(quote) ?: return null
         _ui.update { it.copy(exporting = true) }
+        var card: Bitmap? = null
         return try {
-            val card = draw(state, text, scale = 1f)
-            val file = withContext(Dispatchers.IO) { CardFiles.write(context, card) }
-            card.recycle()
+            val drawn = draw(state, text, scale = 1f).also { card = it }
+            val file = withContext(Dispatchers.IO) { CardFiles.write(context, drawn) } ?: return null
             CardFiles.uri(context, file)
-        } catch (e: java.io.IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             null
         } finally {
+            card?.recycle()
             _ui.update { it.copy(exporting = false) }
         }
     }
@@ -175,5 +197,6 @@ class ShareCardViewModel @Inject constructor(
         const val COVER_PX = 1080
         const val PREVIEW_SCALE = 0.5f
         const val PREVIEW_DEBOUNCE_MS = 120L
+        const val LOAD_TIMEOUT_MS = 5_000L
     }
 }
