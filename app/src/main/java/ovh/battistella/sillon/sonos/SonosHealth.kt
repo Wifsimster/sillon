@@ -36,7 +36,27 @@ class SonosHealth(private val now: () -> Long) {
         }
     }
 
+    private var idleSince: Long? = null
+
+    /**
+     * How long to wait before the next poll: every second while the speaker plays or should
+     * start, every 4 s for the first two minutes of a pause or a stop, then once a minute. Any
+     * command from Sillon polls at once whatever this says.
+     */
+    fun nextPollMs(playWhenReady: Boolean): Long {
+        if (playWhenReady || waiting) {
+            idleSince = null
+            return POLL_MS
+        }
+        val since = idleSince ?: now().also { idleSince = it }
+        return if (now() - since < IDLE_BACKOFF_AFTER_MS) IDLE_POLL_MS else ASLEEP_POLL_MS
+    }
+
     companion object {
+        const val POLL_MS = 1_000L
+        const val IDLE_POLL_MS = 4_000L
+        const val ASLEEP_POLL_MS = 60_000L
+        const val IDLE_BACKOFF_AFTER_MS = 120_000L
         const val MAX_FAILURES = 8
         const val FOREIGN_POLLS = 3
         const val START_TIMEOUT_MS = 20_000L

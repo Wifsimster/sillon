@@ -71,4 +71,23 @@ class SonosHealthTest {
         repeat(7) { assertNull(health.pollFailed()) }
         assertEquals(SonosLoss.UNREACHABLE, health.pollFailed())
     }
+
+    @Test
+    fun `polls every second while playing, back off when paused, then once a minute`() {
+        assertEquals(1_000L, health.nextPollMs(playWhenReady = true))
+        assertEquals(4_000L, health.nextPollMs(playWhenReady = false))
+        clock += 119_000
+        assertEquals(4_000L, health.nextPollMs(playWhenReady = false))
+        clock += 2_000
+        assertEquals(60_000L, health.nextPollMs(playWhenReady = false))
+        // Playing again resets the back-off.
+        assertEquals(1_000L, health.nextPollMs(playWhenReady = true))
+        assertEquals(4_000L, health.nextPollMs(playWhenReady = false))
+    }
+
+    @Test
+    fun `waiting for the speaker to start polls every second even before it says so`() {
+        health.playAsked()
+        assertEquals(1_000L, health.nextPollMs(playWhenReady = false))
+    }
 }

@@ -57,6 +57,7 @@ import ovh.battistella.sillon.sonos.Output
 import ovh.battistella.sillon.sonos.OutputNotice
 import ovh.battistella.sillon.sonos.OutputRequest
 import ovh.battistella.sillon.sonos.SonosGroup
+import ovh.battistella.sillon.sonos.SonosLocks
 import ovh.battistella.sillon.sonos.SonosLoss
 import ovh.battistella.sillon.sonos.SonosOutput
 import ovh.battistella.sillon.sonos.SonosPlayer
@@ -87,6 +88,10 @@ class PlaybackService : MediaLibraryService() {
     private var sonos: SonosPlayer? = null
     private var sonosReporter: TimelineReporter? = null
     private var sonosAccess: SonosAccess? = null
+    private val sonosLocks by lazy { SonosLocks(this) }
+    private val sonosLockListener = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = sonosLocks.hold(playWhenReady)
+    }
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -252,6 +257,8 @@ class PlaybackService : MediaLibraryService() {
         sides.setPlan(null)
         sonos = player
         sonosAccess = access
+        player.addListener(sonosLockListener)
+        sonosLocks.hold(player.playWhenReady)
         mediaSession?.player = player
         sonosReporter = TimelineReporter(player, scope, ::report).also { it.start() }
         sonosOutput.set(Output.OnSonos(group))
@@ -270,6 +277,8 @@ class PlaybackService : MediaLibraryService() {
     @OptIn(UnstableApi::class)
     private suspend fun leaveSonos(player: SonosPlayer, pause: Boolean) {
         sonos = null
+        player.removeListener(sonosLockListener)
+        sonosLocks.hold(false)
         sonosReporter?.release()
         sonosReporter = null
         sidePlayer?.let { mediaSession?.player = it }
@@ -415,6 +424,7 @@ class PlaybackService : MediaLibraryService() {
         sonosReporter = null
         sonos?.release()
         sonos = null
+        sonosLocks.hold(false)
         // The speaker's own token ends with the session (bounded wait: the service is going away).
         sonosAccess?.let { access -> runBlocking { withTimeoutOrNull(ACCESS_CLOSE_MS) { access.close() } } }
         sonosAccess = null

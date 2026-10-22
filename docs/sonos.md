@@ -26,16 +26,20 @@ not needed.
 | Send the queue | On the group **coordinator**: `RemoveAllTracksFromQueue`, `AddMultipleURIsToQueue` (16 tracks per call, DIDL-Lite metadata), `SetAVTransportURI x-rincon-queue:RINCON_…#0`, `Seek TRACK_NR`, `Seek REL_TIME`, `SetPlayMode`, `Play` |
 | Controls | `Play`, `Pause`, `Next`, `Previous`, `Seek`, `SetPlayMode`; queue edits with `AddMultipleURIsToQueue`, `RemoveTrackRangeFromQueue`, `ReorderTracksInQueue` |
 | Volume | `GroupRenderingControl#SetGroupVolume` / `SetGroupMute`: the phone's volume keys move the group's volume |
-| State | `GetTransportInfo`, `GetPositionInfo`, `GetMediaInfo` every second; `GetTransportSettings` and `GetGroupVolume` every 5 s |
+| State | `GetTransportInfo`, `GetPositionInfo`, `GetMediaInfo` every second while playing (4 s, then 60 s when paused); `GetTransportSettings` and `GetGroupVolume` every fifth poll |
 
 Groups: every command goes to the group's coordinator, as the Sonos app does. A group shows as
 "Living room + Kitchen".
 
 **State by polling, not GENA events.** GENA (`SUBSCRIBE` to `/MediaRenderer/AVTransport/Event`)
-would need Sillon to run an HTTP server on the phone for the speaker to call back, with an open
-port and a callback URL to keep alive across Wi-Fi changes. A poll of three small SOAP calls a
-second, only while a Sonos session is on, is simpler and good enough for a player screen. This
-is the choice to revisit if battery use shows up.
+would need Sillon to run an HTTP server on the phone for the speaker to call back: an open port
+on the phone, a callback URL to renew across Wi-Fi changes, and events that still stop arriving
+when the phone sleeps. Polling is simpler and sized to what is on screen: three small SOAP calls
+every second while the speaker plays (or should start), every 4 s for the first two minutes of a
+pause or a stop, then once a minute; any command from Sillon reads the speaker back at once.
+While the speaker plays, Sillon holds a Wi-Fi lock and a partial wake lock (the phone's own
+player is paused, so its network wake mode is off): without them, polls fail with the screen off
+and the session would be dropped while the speaker plays on. Both are released on pause.
 
 Sillon's media session switches its player to a `SonosPlayer` (a Media3 `SimpleBasePlayer`): the
 notification, the lock screen, the player screen, Bluetooth buttons and the volume keys drive

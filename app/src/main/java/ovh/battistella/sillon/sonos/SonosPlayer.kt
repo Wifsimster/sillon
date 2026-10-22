@@ -101,7 +101,7 @@ class SonosPlayer(
 
     private suspend fun follow() {
         while (scope.isActive && !lost) {
-            delay(if (status?.playWhenReady == true) POLL_MS else IDLE_POLL_MS)
+            delay(health.nextPollMs(status?.playWhenReady == true))
             commands.withLock {
                 runCatching { poll() }.onFailure {
                     Log.w(TAG, "poll failed: ${it.message}")
@@ -308,8 +308,6 @@ class SonosPlayer(
 
     private companion object {
         const val TAG = "SillonSonos"
-        const val POLL_MS = 1_000L
-        const val IDLE_POLL_MS = 4_000L
         const val SLOW_POLL_EVERY = 5
         const val MAX_VOLUME = 100
         const val VOLUME_STEP = 2
