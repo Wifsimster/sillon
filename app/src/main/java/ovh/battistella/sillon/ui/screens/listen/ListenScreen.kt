@@ -59,7 +59,8 @@ import ovh.battistella.sillon.ui.screens.mystery.MysteryViewModel
 
 /**
  * The first page: music in one tap. Shuffle, 5 stars, never played and the mystery sleeve, as large
- * tiles. Without a connection, what needs the server is greyed out and says why.
+ * tiles, then the server's radios in one row. Without a connection, what needs the server is greyed
+ * out and says why.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +70,7 @@ fun ListenScreen(
     viewModel: ListenViewModel = hiltViewModel(),
     neverPlayed: NeverPlayedViewModel = hiltViewModel(),
     mystery: MysteryViewModel = hiltViewModel(),
+    radios: ListenRadiosViewModel = hiltViewModel(),
 ) {
     val online by viewModel.online.collectAsStateWithLifecycle()
     val offline by viewModel.offline.collectAsStateWithLifecycle()
@@ -78,6 +80,8 @@ fun ListenScreen(
     val plays by neverPlayed.plays.collectAsStateWithLifecycle()
     val neverStarting by neverPlayed.starting.collectAsStateWithLifecycle()
     val neverNotice by neverPlayed.notice.collectAsStateWithLifecycle()
+    val stations by radios.stations.collectAsStateWithLifecycle()
+    val radioStarting by radios.starting.collectAsStateWithLifecycle()
     val shuffleState = ListenTiles.state(ListenTile.SHUFFLE, online, offline)
     val fiveStarsState = ListenTiles.state(ListenTile.FIVE_STARS, online, offline)
     val neverPlayedState = ListenTiles.state(ListenTile.NEVER_PLAYED, online, offline)
@@ -178,17 +182,19 @@ fun ListenScreen(
             item(key = "never-played-albums") {
                 ListenTileCard(
                     title = stringResource(R.string.never_played_albums),
-                    subtitle = if (neverPlayedState == TileState.NOTHING_DOWNLOADED) {
-                        stringResource(R.string.listen_nothing_downloaded)
-                    } else {
-                        null
-                    },
+                    subtitle = stringResource(
+                        if (neverPlayedState == TileState.NOTHING_DOWNLOADED) {
+                            R.string.listen_nothing_downloaded
+                        } else {
+                            R.string.listen_never_played_albums_hint
+                        },
+                    ),
                     icon = Icons.Rounded.Album,
                     action = stringResource(R.string.never_played_albums_play),
                     onClick = { neverPlayed.play(NeverPlayedMode.ALBUMS) },
                     enabled = ListenTiles.enabled(neverPlayedState) && neverStarting == null,
                     loading = neverStarting == NeverPlayedMode.ALBUMS,
-                    container = colors.surfaceContainerHigh,
+                    container = colors.tertiaryContainer,
                     small = true,
                 )
             }
@@ -205,6 +211,11 @@ fun ListenScreen(
                         },
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
+                }
+            }
+            if (showRadios(stations, online)) {
+                item(key = "radios") {
+                    RadiosSection(stations, radioStarting, online, onPlay = radios::play)
                 }
             }
         }

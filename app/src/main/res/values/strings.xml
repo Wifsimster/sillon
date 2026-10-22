@@ -39,7 +39,7 @@
     <string name="library_playlists">Playlists</string>
     <string name="library_tracks">Tracks</string>
     <string name="library_search">Search</string>
-    <string name="playlists_empty">No music playlists on this server.</string>
+    <string name="playlists_empty">No music playlists on this server yet. The radios are on Listen.</string>
     <string name="search_hint">Artists, albums, tracks</string>
     <string name="search_clear">Clear</string>
     <string name="search_no_results">Nothing found for “%1$s”.</string>
@@ -293,6 +293,9 @@
     <string name="listen_no_five_stars">No 5-star tracks yet. Rate a track 5 stars and it lands here.</string>
     <string name="listen_no_favourites">No favourites yet. Mark a track as a favourite and it lands here.</string>
     <string name="listen_failed">That did not start. Try again.</string>
+    <string name="listen_never_played_albums_hint">A whole record you have never played</string>
+    <string name="listen_radio_play">Start this radio</string>
+    <string name="listen_radios_offline">Offline: the radios play from your server. Back once you are online.</string>
     <string name="output_open">Play on…</string>
     <string name="output_open_active">Playing on %1$s. Change where the music plays</string>
     <string name="output_title">Play on</string>
