@@ -72,6 +72,19 @@ class RaterTest {
     }
 
     @Test
+    fun `online but the server out of reach, the rating is tried again later`() = runBlocking {
+        online.value = true
+        val rater = Rater(repository, store, fiveStars, network).apply { firstRetryMs = 50 }
+
+        rater.rate("t1", 5)
+        until { it.sendState("t1") == RatingSend.WAITING_FOR_NETWORK }
+        failure = null
+        until { it.pending.isEmpty() }
+
+        assertEquals(listOf("t1" to 10), sent)
+    }
+
+    @Test
     fun `the queue survives a restart of the app`() = runBlocking {
         Rater(repository, store, fiveStars, network).rate("t1", 1)
         until { it.sendState("t1") == RatingSend.WAITING_FOR_NETWORK }

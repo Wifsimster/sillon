@@ -3,7 +3,9 @@ package ovh.battistella.sillon.data.rating
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -29,10 +31,13 @@ fun sendOutcomeOf(error: Throwable?): SendOutcome = when (error) {
 }
 
 private const val SERVER_ERROR = 500
+private const val FIRST_RETRY_MS = 30_000L
+private const val LAST_RETRY_MS = 15 * 60_000L
 
 /**
  * Rates tracks: the rating shows at once, then leaves for the server. Without a network it
- * waits on the phone and leaves when the phone is back online.
+ * waits on the phone and leaves when the phone is back online. A server out of reach while the
+ * phone is online (a LAN-only server away from home) is tried again later, less and less often.
  */
 @Singleton
 class Rater @Inject constructor(
@@ -43,6 +48,11 @@ class Rater @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sending = Mutex()
+    private var retry: Job? = null
+    private var retryDelayMs: Long? = null
+
+    /** The first wait before trying a server out of reach again; tests shorten it. */
+    internal var firstRetryMs = FIRST_RETRY_MS
 
     val state: StateFlow<ServerRatings> = store.state
 
@@ -78,12 +88,30 @@ class Rater @Inject constructor(
                 e
             }
             when (sendOutcomeOf(error)) {
-                SendOutcome.SENT -> store.update(server) { it.sent(key, rating) }
+                SendOutcome.SENT -> {
+                    store.update(server) { it.sent(key, rating) }
+                    synchronized(this) { retryDelayMs = null }
+                }
                 SendOutcome.REFUSED -> store.update(server) { it.refused(key) }
                 SendOutcome.OFFLINE -> {
                     store.update(server) { book -> book.pending.keys.fold(book) { b, k -> b.offline(k) } }
+                    retryLater()
                     return@withLock
                 }
+            }
+        }
+    }
+
+    // One try at a time, waiting twice as long after each miss, up to LAST_RETRY_MS.
+    private fun retryLater() {
+        synchronized(this) {
+            if (retry?.isActive == true) return
+            val wait = retryDelayMs ?: firstRetryMs
+            retryDelayMs = (wait * 2).coerceAtMost(LAST_RETRY_MS)
+            retry = scope.launch {
+                delay(wait)
+                synchronized(this@Rater) { retry = null }
+                runCatching { flush() }
             }
         }
     }
