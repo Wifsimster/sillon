@@ -39,7 +39,7 @@ fun SillonMark(
 private const val VIEWPORT = 108f
 private const val CENTER = 54f
 
-private fun spiralPoints(): List<Pair<Float, Float>> {
+internal fun spiralPoints(): List<Pair<Float, Float>> {
     val outer = 31.0
     val inner = 15.5
     val turns = 2.75

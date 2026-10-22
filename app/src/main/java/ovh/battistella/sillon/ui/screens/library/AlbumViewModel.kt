@@ -33,7 +33,7 @@ class AlbumViewModel @Inject constructor(
     downloads: DownloadManager,
     sleeveWear: SleeveWearRepository,
 ) : TrackCollectionViewModel(repository, playback, downloads) {
-    private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+    val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     val wear: StateFlow<Wear?> = sleeveWear.levels
         .map { Wear.of(it, key) }

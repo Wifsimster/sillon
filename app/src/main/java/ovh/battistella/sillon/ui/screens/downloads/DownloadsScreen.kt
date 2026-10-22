@@ -45,7 +45,11 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.Message
+import ovh.battistella.sillon.ui.screens.library.ShareCardAction
 import ovh.battistella.sillon.ui.screens.library.TrackCollectionScreen
+import ovh.battistella.sillon.ui.screens.library.shareSource
+import ovh.battistella.sillon.ui.share.ShareCardSheet
+import ovh.battistella.sillon.ui.share.ShareSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,6 +148,7 @@ fun DownloadedAlbumScreen(
     val album by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
+    var shareSource by remember { mutableStateOf<ShareSource?>(null) }
     TrackCollectionScreen(
         state = album?.let { Load.Ready(it) } ?: Load.Loading,
         nowPlayingKey = nowPlaying.currentKey,
@@ -154,6 +159,7 @@ fun DownloadedAlbumScreen(
         contentPadding = contentPadding,
         wear = wear,
         actions = {
+            album?.let { ready -> ShareCardAction { shareSource = ready.shareSource(viewModel.albumKey) } }
             IconButton(onClick = {
                 viewModel.remove()
                 onBack()
@@ -162,4 +168,5 @@ fun DownloadedAlbumScreen(
             }
         },
     )
+    shareSource?.let { ShareCardSheet(it, onDismiss = { shareSource = null }) }
 }

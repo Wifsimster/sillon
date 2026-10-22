@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -56,6 +57,8 @@ import androidx.media3.common.Player
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.formatDuration
+import ovh.battistella.sillon.ui.share.ShareCardSheet
+import ovh.battistella.sillon.ui.share.ShareSource
 
 @Composable
 fun PlayerScreen(
@@ -67,6 +70,7 @@ fun PlayerScreen(
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
+    var shareSource by remember { mutableStateOf<ShareSource?>(null) }
 
     val tint by animateColorAsState(
         coverColor(state.artworkUri) ?: MaterialTheme.colorScheme.background,
@@ -89,6 +93,20 @@ fun PlayerScreen(
             startingRadio = startingRadio,
             radioEnabled = state.hasMedia,
             onRadio = viewModel::radioFromCurrent,
+            onShareCard = if (state.hasMedia) {
+                {
+                    shareSource = ShareSource(
+                        kind = ShareSource.Kind.TRACK,
+                        key = state.currentKey,
+                        title = state.title,
+                        artist = state.artist.ifBlank { null },
+                        album = state.album.ifBlank { null },
+                        artworkUri = state.artworkUri,
+                    )
+                }
+            } else {
+                null
+            },
         )
         Artwork(
             state.artworkUri,
@@ -165,6 +183,7 @@ fun PlayerScreen(
             }
         }
     }
+    shareSource?.let { ShareCardSheet(it, onDismiss = { shareSource = null }) }
 }
 
 @Composable
@@ -198,12 +217,18 @@ fun PlayerHeader(
     startingRadio: Boolean,
     radioEnabled: Boolean,
     onRadio: () -> Unit,
+    onShareCard: (() -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         IconButton(onClick = onClose) {
             Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
         }
         Spacer(Modifier.weight(1f))
+        if (onShareCard != null) {
+            IconButton(onClick = onShareCard) {
+                Icon(Icons.Rounded.Share, stringResource(R.string.share_card))
+            }
+        }
         IconButton(onClick = onTogether) {
             Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
         }

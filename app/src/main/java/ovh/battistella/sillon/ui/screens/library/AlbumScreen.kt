@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -51,6 +55,8 @@ import ovh.battistella.sillon.ui.components.PopularityBars
 import ovh.battistella.sillon.ui.components.RatingStars
 import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.components.formatDuration
+import ovh.battistella.sillon.ui.share.ShareCardSheet
+import ovh.battistella.sillon.ui.share.ShareSource
 
 @Composable
 fun AlbumScreen(
@@ -59,7 +65,27 @@ fun AlbumScreen(
     viewModel: AlbumViewModel = hiltViewModel(),
 ) {
     val wear by viewModel.wear.collectAsStateWithLifecycle()
-    TrackCollectionRoute(viewModel, onBack, contentPadding, wear)
+    var shareSource by remember { mutableStateOf<ShareSource?>(null) }
+    TrackCollectionRoute(viewModel, onBack, contentPadding, wear) { album ->
+        shareSource = album.shareSource(viewModel.key)
+    }
+    shareSource?.let { ShareCardSheet(it, onDismiss = { shareSource = null }) }
+}
+
+fun AlbumUi.shareSource(key: String?) = ShareSource(
+    kind = ShareSource.Kind.ALBUM,
+    key = key,
+    title = title,
+    artist = artist,
+    year = year?.toString(),
+    artworkUri = artworkUrl,
+)
+
+@Composable
+fun ShareCardAction(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share_card))
+    }
 }
 
 @Composable
@@ -68,6 +94,7 @@ fun TrackCollectionRoute(
     onBack: () -> Unit,
     contentPadding: PaddingValues,
     wear: Wear? = null,
+    onShareCard: ((AlbumUi) -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
@@ -82,6 +109,10 @@ fun TrackCollectionRoute(
         contentPadding = contentPadding,
         wear = wear,
         actions = {
+            val ready = state as? Load.Ready
+            if (ready != null && onShareCard != null) {
+                ShareCardAction { onShareCard(ready.value) }
+            }
             if (state is Load.Ready) {
                 DownloadAction(download, onDownload = viewModel::download, onRemove = viewModel::removeDownload)
             }
