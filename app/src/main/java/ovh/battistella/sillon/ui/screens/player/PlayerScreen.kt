@@ -25,10 +25,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -65,11 +68,14 @@ import ovh.battistella.sillon.playback.SideState
 import ovh.battistella.sillon.playback.mystery.KeepResult
 import ovh.battistella.sillon.playback.mystery.Mystery
 import ovh.battistella.sillon.playback.mystery.MysteryMask
+import ovh.battistella.sillon.sonos.Output
+import ovh.battistella.sillon.sonos.OutputNotice
 import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.screens.mystery.MysteryCover
 import ovh.battistella.sillon.ui.screens.mystery.MysteryHiddenActions
 import ovh.battistella.sillon.ui.screens.mystery.MysteryReveal
 import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
+import ovh.battistella.sillon.ui.screens.queue.QueueSheet
 import ovh.battistella.sillon.ui.share.ShareCardSheet
 import ovh.battistella.sillon.ui.share.ShareSource
 
@@ -86,6 +92,8 @@ interface PlayerControls {
     fun seekTo(positionMs: Long)
     fun toggleShuffle()
     fun cycleRepeat()
+    fun rate(stars: Int?) = Unit
+    fun retryRating() = Unit
 }
 
 @Composable
@@ -93,6 +101,7 @@ fun PlayerScreen(
     onClose: () -> Unit,
     onTogether: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel(),
+    outputViewModel: OutputViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
@@ -102,6 +111,12 @@ fun PlayerScreen(
     val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val sides by viewModel.sides.collectAsStateWithLifecycle()
+    val rating by viewModel.rating.collectAsStateWithLifecycle()
+    val together by viewModel.together.collectAsStateWithLifecycle()
+    val output by outputViewModel.output.collectAsStateWithLifecycle()
+    val notice by outputViewModel.notice.collectAsStateWithLifecycle()
+    var choosingOutput by remember { mutableStateOf(false) }
+    var showingQueue by remember { mutableStateOf(false) }
     PlayerContent(
         state = state,
         startingRadio = startingRadio,
@@ -111,10 +126,18 @@ fun PlayerScreen(
         keep = keep,
         wear = wear,
         sides = sides,
+        rating = rating,
         controls = viewModel,
         onClose = onClose,
-        onTogether = onTogether,
+        onTogether = onTogether.takeIf { together },
+        output = output,
+        outputNotice = notice,
+        onOutput = { choosingOutput = true },
+        onNoticeSeen = outputViewModel::noticeSeen,
+        onQueue = { showingQueue = true },
     )
+    if (choosingOutput) OutputSheet(onDismiss = { choosingOutput = false }, viewModel = outputViewModel)
+    if (showingQueue) QueueSheet(onDismiss = { showingQueue = false })
 }
 
 @Composable
@@ -128,8 +151,14 @@ fun PlayerContent(
     wear: Wear?,
     controls: PlayerControls,
     onClose: () -> Unit,
-    onTogether: () -> Unit,
+    onTogether: (() -> Unit)?,
     sides: SideState = SideState(),
+    rating: RatingUi? = null,
+    output: Output = Output.Phone,
+    outputNotice: OutputNotice? = null,
+    onOutput: (() -> Unit)? = null,
+    onNoticeSeen: () -> Unit = {},
+    onQueue: (() -> Unit)? = null,
 ) {
     val reducedMotion = rememberReducedMotion()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
@@ -178,7 +207,11 @@ fun PlayerContent(
             } else {
                 null
             },
+            onOutput = onOutput,
+            outputName = (output as? Output.OnSonos)?.group?.name ?: (output as? Output.Connecting)?.group?.name,
+            onQueue = onQueue.takeIf { state.hasMedia },
         )
+        if (onOutput != null) OutputBanner(output, outputNotice, onOpen = onOutput, onNoticeSeen = onNoticeSeen)
         Crossfade(sides.ended, label = "side end") { end ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -202,6 +235,7 @@ fun PlayerContent(
                         else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
                     }
                     NowPlayingTitle(state, sides.current)
+                    if (rating != null && !hidden) RatingBar(rating, onRate = controls::rate, onRetry = controls::retryRating)
                 }
             }
         }
@@ -328,25 +362,49 @@ private fun coverColor(uri: String?): Color? {
 @Composable
 fun PlayerHeader(
     onClose: () -> Unit,
-    onTogether: () -> Unit,
+    onTogether: (() -> Unit)?,
     startingRadio: Boolean,
     radioEnabled: Boolean,
     onRadio: () -> Unit,
     showRadio: Boolean = true,
     onShareCard: (() -> Unit)? = null,
+    onOutput: (() -> Unit)? = null,
+    /** The Sonos group the music plays on, or null on the phone. */
+    outputName: String? = null,
+    onQueue: (() -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         IconButton(onClick = onClose) {
             Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
         }
         Spacer(Modifier.weight(1f))
+        if (onQueue != null) {
+            IconButton(onClick = onQueue) {
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.queue_open))
+            }
+        }
         if (onShareCard != null) {
             IconButton(onClick = onShareCard) {
                 Icon(Icons.Rounded.Share, stringResource(R.string.share_card))
             }
         }
-        IconButton(onClick = onTogether) {
-            Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
+        if (onOutput != null) {
+            IconButton(onClick = onOutput) {
+                Icon(
+                    Icons.Rounded.Speaker,
+                    if (outputName != null) stringResource(R.string.output_open_active, outputName) else stringResource(R.string.output_open),
+                    tint = if (outputName != null) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                )
+            }
+        }
+        // Listen together plays on each phone, not on a speaker.
+        if (onTogether != null) {
+            IconButton(onClick = onTogether, enabled = outputName == null) {
+                Icon(
+                    Icons.Rounded.Groups,
+                    stringResource(if (outputName == null) R.string.together_open else R.string.together_not_on_sonos),
+                )
+            }
         }
         when {
             !showRadio -> Unit

@@ -32,6 +32,10 @@ import ovh.battistella.sillon.data.plex.PlexResource
 import ovh.battistella.sillon.data.plex.ServerEndpoint
 import ovh.battistella.sillon.data.plex.ServerKind
 import ovh.battistella.sillon.data.plex.TimelineState
+import ovh.battistella.sillon.data.rating.RatingBook
+import ovh.battistella.sillon.data.rating.RatingStore
+import ovh.battistella.sillon.data.rating.Stars
+import ovh.battistella.sillon.data.rating.withoutOneStar
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
@@ -47,6 +51,11 @@ import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.cache.StreamSource
+import ovh.battistella.sillon.sonos.Didl
+import ovh.battistella.sillon.sonos.SonosFormats
+import ovh.battistella.sillon.sonos.SonosStream
+import ovh.battistella.sillon.sonos.SonosTrack
+import ovh.battistella.sillon.sonos.audioFormat
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -91,6 +100,8 @@ const val LIBRARY_SHUFFLE_STATION = "jellyfin:library-shuffle"
 
 const val PLAYER_ART_PX = 900
 
+private const val SONOS_ART_PX = 600
+
 /** The transcode qualities the listening cache may hold, best first. */
 private val TRANSCODE_KBPS = StreamQuality.entries.mapNotNull { it.kbps }.sortedDescending()
 
@@ -107,6 +118,7 @@ class PlexRepository @Inject constructor(
     private val sleeveWearCache: SleeveWearCache,
     private val fiveStarsCache: FiveStarsCache,
     private val listeningCache: ListeningCache,
+    private val ratings: RatingStore,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -132,6 +144,7 @@ class PlexRepository @Inject constructor(
         sessionStore.signOut()
         sleeveWearCache.clear()
         fiveStarsCache.clear()
+        ratings.clear()
         listeningCache.clear(sweepAgain = true)
     }
 
@@ -268,16 +281,16 @@ class PlexRepository @Inject constructor(
 
     suspend fun stationTracks(station: Station): List<PlexMetadata> {
         val machineId = currentServer().machineId
-        return onServer(
+        return drawn(
             plex = { clientId, server -> api.stationTracks(clientId, server, machineId, station.key) },
             jellyfin = { deviceId, server ->
-                val section = currentMusicSection() ?: return@onServer emptyList()
+                val section = currentMusicSection() ?: return@drawn emptyList()
                 jellyfin.randomTracks(server, deviceId, section.key)
             },
         )
     }
 
-    suspend fun trackRadioTracks(trackKey: String): List<PlexMetadata> = onServer(
+    suspend fun trackRadioTracks(trackKey: String): List<PlexMetadata> = drawn(
         plex = { clientId, server ->
             val similar = runCatching { api.sonicallySimilar(clientId, server, trackKey) }.getOrDefault(emptyList())
             if (similar.isNotEmpty()) similar else trackRadioFallback(clientId, server, trackKey)
@@ -302,7 +315,7 @@ class PlexRepository @Inject constructor(
 
     suspend fun artistRadioTracks(artistKey: String): List<PlexMetadata> {
         val machineId = currentServer().machineId
-        return onServer(
+        return drawn(
             plex = { clientId, server ->
                 val station = api.artistStation(clientId, server, artistKey)
                 if (station != null) {
@@ -318,7 +331,7 @@ class PlexRepository @Inject constructor(
     /** A random draw over the whole library, made by the server: nothing is downloaded beforehand. */
     suspend fun libraryShuffleTracks(): List<PlexMetadata> {
         val section = currentMusicSection() ?: return emptyList()
-        return onServer(
+        return drawn(
             plex = { clientId, server -> api.sectionItems(clientId, server, section.key, LibraryShuffle.plexTracks()).metadata },
             jellyfin = { deviceId, server -> jellyfin.randomTracks(server, deviceId, section.key) },
         )
@@ -326,7 +339,7 @@ class PlexRepository @Inject constructor(
 
     suspend fun neverPlayedTracks(): List<PlexMetadata> {
         val section = currentMusicSection() ?: return emptyList()
-        return onServer(
+        return drawn(
             plex = { clientId, server ->
                 api.sectionItems(clientId, server, section.key, NeverPlayedQueries.plexTracks()).metadata
             },
@@ -374,6 +387,38 @@ class PlexRepository @Inject constructor(
             plex = { clientId, server -> api.metadataBatch(clientId, server, keys) },
             jellyfin = { deviceId, server -> jellyfin.itemsByIds(server, deviceId, keys) },
         ).associate { it.ratingKey to (it.viewCount ?: 0) }
+    }
+
+    /**
+     * Sends a rating (0–10, 0 clears it). On Jellyfin only 1 and 5 stars exist; the other
+     * values are refused before they leave the phone.
+     */
+    suspend fun sendRating(ratingKey: String, rating: Int) = onServer(
+        plex = { clientId, server -> api.rate(clientId, server, ratingKey, rating) },
+        jellyfin = { deviceId, server -> jellyfin.rate(server, deviceId, ratingKey, Stars.of(rating.toFloat())) },
+    )
+
+    /** Remembers the ratings the server gave these tracks (see [RatingStore]). */
+    suspend fun learnRatings(tracks: List<PlexMetadata>) {
+        if (tracks.isEmpty()) return
+        val server = runCatching { currentServerId() }.getOrNull() ?: return
+        runCatching { ratings.update(server) { it.learn(tracks) } }
+    }
+
+    /** A queue drawn for the listener (shuffle, radios): tracks rated 1 star never come in. */
+    private suspend fun drawn(
+        plex: suspend (String, ServerEndpoint) -> List<PlexMetadata>,
+        jellyfin: suspend (String, ServerEndpoint) -> List<PlexMetadata>,
+    ): List<PlexMetadata> = withoutOneStar(onServer(plex, jellyfin))
+
+    /** What the phone knows of the ratings: lets downloads (which carry none) skip the 1-star tracks offline. */
+    suspend fun ratingBook(): RatingBook =
+        runCatching { ratings.book(currentServerId()) }.getOrDefault(RatingBook())
+
+    suspend fun withoutOneStar(tracks: List<PlexMetadata>): List<PlexMetadata> {
+        learnRatings(tracks)
+        val server = runCatching { currentServerId() }.getOrNull() ?: return tracks
+        return ratings.book(server).withoutOneStar(tracks)
     }
 
     /** The albums last played on the server, newest first. */
@@ -484,6 +529,7 @@ class PlexRepository @Inject constructor(
                 }
             }.awaitAll()
         }
+        learnRatings(complete.filterNotNull())
         val quality = if (network.isMetered()) settings.mobileQuality.first() else settings.wifiQuality.first()
         val clientId = sessionStore.clientId()
         val mode = settings.loudness.first()
@@ -531,7 +577,103 @@ class PlexRepository @Inject constructor(
                 gainDb = loudness[track.ratingKey]?.forMode(mode),
                 albumKey = track.parentRatingKey,
                 cacheKey = cacheKey.takeIf { source.original },
+                userRating = track.userRating,
             )
+        }
+    }
+
+    /**
+     * Opens a Sonos session's way to the server; the account's or Sillon's own token never goes
+     * to a speaker. On Plex, a fresh transient token. On Jellyfin, a token of the speaker's own,
+     * revoked when the access is closed. When the server gives none, the session doesn't start.
+     */
+    suspend fun openSonosAccess(): SonosAccess {
+        val server = currentServer()
+        val endpoint = server.endpoint
+        return when (endpoint.kind) {
+            ServerKind.PLEX -> {
+                val token = try {
+                    api.transientToken(sessionStore.clientId(), endpoint)
+                } catch (e: Exception) {
+                    throw SonosAccessException(SonosAccessException.Reason.PLEX_TOKEN, e)
+                } ?: throw SonosAccessException(SonosAccessException.Reason.PLEX_TOKEN)
+                SonosAccess(endpoint.copy(token = token))
+            }
+            ServerKind.JELLYFIN -> {
+                val clientId = sessionStore.clientId()
+                runCatching { revokeLeftoverSpeakerToken() }
+                // Always the same speaker device: signing it in again also replaces a token left behind.
+                val speaker = "$clientId-sonos"
+                val token = try {
+                    jellyfin.speakerToken(endpoint, clientId, speaker)
+                } catch (e: Exception) {
+                    throw SonosAccessException(SonosAccessException.Reason.JELLYFIN_TOKEN, e)
+                }
+                // Kept until revoked, so a session cut short by a killed app is revoked on the next start.
+                sessionStore.rememberSpeakerToken(endpoint.uri, token)
+                SonosAccess(endpoint.copy(token = token), deviceId = speaker) {
+                    jellyfin.signOut(endpoint, speaker, token)
+                    sessionStore.forgetSpeakerToken()
+                }
+            }
+        }
+    }
+
+    /**
+     * Revokes a Sonos speaker's Jellyfin token that outlived its session (the app was killed, or
+     * the server was down when the session ended). Forgotten once the server takes the logout or
+     * no longer knows the token; kept for the next try when the server can't be reached.
+     */
+    suspend fun revokeLeftoverSpeakerToken() {
+        val (uri, token) = sessionStore.speakerTokenLeft() ?: return
+        val clientId = sessionStore.clientId()
+        try {
+            jellyfin.signOut(ServerEndpoint(uri, token, ServerKind.JELLYFIN), "$clientId-sonos", token)
+        } catch (e: PlexHttpException) {
+            if (e.code != 401 && e.code != 403) throw e
+        }
+        sessionStore.forgetSpeakerToken()
+    }
+
+    /**
+     * The tracks as a Sonos speaker fetches them, by key: the original file when the speaker
+     * plays it, else an MP3 transcode; never a download or the listening cache (the speaker
+     * reaches the server itself). The URLs carry [access]'s token only.
+     */
+    suspend fun sonosTracks(keys: List<String>, access: SonosAccess): Map<String, SonosTrack> {
+        if (keys.isEmpty()) return emptyMap()
+        val clientId = sessionStore.clientId()
+        val tracks = onServer(
+            plex = { id, endpoint -> api.metadataBatch(id, endpoint, keys) },
+            jellyfin = { id, endpoint -> jellyfin.itemsWithFormat(endpoint, id, keys) },
+        )
+        val endpoint = access.endpoint
+        return tracks.mapNotNull { track ->
+            val part = track.partKey ?: return@mapNotNull null
+            val stream = SonosFormats.plan(track.audioFormat())
+            val (uri, mime) = when (stream) {
+                is SonosStream.Direct -> streamUrl(endpoint, part) to stream.mimeType
+                SonosStream.Transcode -> sonosTranscodeUrl(endpoint, access.deviceId ?: clientId, track.ratingKey) to SonosStream.Transcode.MIME_TYPE
+            }
+            val didl = Didl.track(
+                key = track.ratingKey,
+                uri = uri,
+                mimeType = mime,
+                title = track.title,
+                artist = track.trackArtist,
+                album = track.parentTitle,
+                artUri = artworkUrl(endpoint, track.artwork, SONOS_ART_PX),
+            )
+            track.ratingKey to SonosTrack(track.ratingKey, uri, didl)
+        }.toMap()
+    }
+
+    private fun sonosTranscodeUrl(endpoint: ServerEndpoint, clientId: String, key: String): String {
+        val session = UUID.randomUUID().toString()
+        val kbps = SonosStream.Transcode.KBPS
+        return when (endpoint.kind) {
+            ServerKind.PLEX -> api.sonosTranscodeUrl(endpoint, clientId, key, kbps, session)
+            ServerKind.JELLYFIN -> jellyfin.sonosTranscodeUrl(endpoint, clientId, key, kbps, session)
         }
     }
 

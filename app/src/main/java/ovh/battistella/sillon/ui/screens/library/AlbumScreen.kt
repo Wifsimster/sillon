@@ -1,6 +1,6 @@
 package ovh.battistella.sillon.ui.screens.library
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
@@ -46,12 +46,20 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.draw.alpha
+import ovh.battistella.sillon.data.rating.RatingBook
+import ovh.battistella.sillon.data.rating.Stars
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.ui.screens.queue.QueueMenuAction
+import ovh.battistella.sillon.ui.screens.queue.QueuePlace
+import ovh.battistella.sillon.ui.screens.queue.TrackQueueMenu
+import ovh.battistella.sillon.ui.screens.queue.rememberQueueTracks
 import ovh.battistella.sillon.playback.Side
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Load
@@ -107,9 +115,14 @@ fun TrackCollectionRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val download by viewModel.downloadStatus.collectAsStateWithLifecycle()
+    val queueTracks = rememberQueueTracks()
+    val ratings by viewModel.ratings.collectAsStateWithLifecycle()
+    val skipOneStar by viewModel.skipOneStar.collectAsStateWithLifecycle()
     TrackCollectionScreen(
         state = state,
         nowPlayingKey = nowPlaying.currentKey,
+        ratings = ratings.book,
+        skipOneStar = skipOneStar,
         onBack = onBack,
         onRetry = viewModel::load,
         onPlay = viewModel::play,
@@ -125,8 +138,10 @@ fun TrackCollectionRoute(
             }
             if (state is Load.Ready) {
                 DownloadAction(download, onDownload = viewModel::download, onRemove = viewModel::removeDownload)
+                QueueMenuAction(onQueue = { place -> queueTracks(place) { viewModel.queueable(null) } })
             }
         },
+        onQueueTrack = { key, place -> queueTracks(place) { viewModel.queueable(key) } },
     )
 }
 
@@ -166,6 +181,9 @@ fun TrackCollectionScreen(
     listenBySide: Boolean = false,
     onListenBySideChange: ((Boolean) -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    ratings: RatingBook = RatingBook(),
+    skipOneStar: Boolean = false,
+    onQueueTrack: ((String, QueuePlace) -> Unit)? = null,
 ) {
     Scaffold(
         topBar = {
@@ -201,7 +219,23 @@ fun TrackCollectionScreen(
                         item(key = "side-${side.label}") { SideHeader(side) }
                     }
                     item(key = track.key) {
-                        TrackRow(track, playing = nowPlayingKey == track.key, onClick = { onPlay(track.key) })
+                        val rating = ratings.ratingOf(track.key, track.stars?.times(2f))
+                        val oneStar = Stars.isOneStar(rating)
+                        val row: @Composable (openMenu: (() -> Unit)?) -> Unit = { openMenu ->
+                            TrackRow(
+                                track.copy(stars = rating?.div(2f)),
+                                playing = nowPlayingKey == track.key,
+                                onClick = { onPlay(track.key) },
+                                muted = oneStar,
+                                skipped = oneStar && skipOneStar,
+                                onLongClick = openMenu,
+                            )
+                        }
+                        if (onQueueTrack != null) {
+                            TrackQueueMenu(onQueue = { onQueueTrack(track.key, it) }) { openMenu -> row(openMenu) }
+                        } else {
+                            row(null)
+                        }
                     }
                 }
             }
@@ -210,7 +244,16 @@ fun TrackCollectionScreen(
 }
 
 @Composable
-fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
+fun TrackRow(
+    track: TrackUi,
+    playing: Boolean,
+    onClick: () -> Unit,
+    muted: Boolean = false,
+    skipped: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+) {
+    val skippedLabel = stringResource(R.string.track_skipped)
+    val queueOptions = stringResource(R.string.queue_track_options)
     val accent = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val artist = track.artist
     val stars = track.stars
@@ -245,9 +288,19 @@ fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
                 track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
             }
         },
-        modifier = Modifier.clickable(onClick = onClick),
+        // A 1-star track stays in the list, greyed, and still plays when touched.
+        modifier = Modifier
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                onLongClickLabel = onLongClick?.let { queueOptions },
+            )
+            .then(if (muted && !playing) Modifier.alpha(MUTED_ALPHA) else Modifier)
+            .then(if (skipped) Modifier.semantics { stateDescription = skippedLabel } else Modifier),
     )
 }
+
+private const val MUTED_ALPHA = 0.45f
 
 @Composable
 private fun ListenBySideChip(selected: Boolean, onChange: (Boolean) -> Unit) {

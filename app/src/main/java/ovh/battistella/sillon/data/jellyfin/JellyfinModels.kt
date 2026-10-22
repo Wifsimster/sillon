@@ -6,6 +6,8 @@ import ovh.battistella.sillon.data.plex.PlexDirectory
 import ovh.battistella.sillon.data.plex.PlexMedia
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
+import ovh.battistella.sillon.data.plex.PlexStream
+import ovh.battistella.sillon.data.rating.JellyfinStars
 
 @Serializable
 data class JellyfinPublicInfo(
@@ -63,6 +65,8 @@ data class JellyfinItem(
     @SerialName("NormalizationGain") val normalizationGain: Float? = null,
     @SerialName("Genres") val genres: List<String> = emptyList(),
     @SerialName("AlbumArtists") val albumArtists: List<JellyfinNameId> = emptyList(),
+    /** Only when asked for (`fields=MediaSources`). */
+    @SerialName("MediaSources") val mediaSources: List<JellyfinMediaSource> = emptyList(),
 )
 
 @Serializable
@@ -72,9 +76,26 @@ data class JellyfinNameId(
 )
 
 @Serializable
+data class JellyfinMediaSource(
+    @SerialName("Container") val container: String? = null,
+    @SerialName("Bitrate") val bitrate: Int? = null,
+    @SerialName("MediaStreams") val streams: List<JellyfinMediaStream> = emptyList(),
+)
+
+@Serializable
+data class JellyfinMediaStream(
+    @SerialName("Type") val type: String = "",
+    @SerialName("Codec") val codec: String? = null,
+    @SerialName("SampleRate") val sampleRate: Int? = null,
+    @SerialName("BitDepth") val bitDepth: Int? = null,
+    @SerialName("BitRate") val bitRate: Int? = null,
+)
+
+@Serializable
 data class JellyfinUserData(
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
     @SerialName("PlayCount") val playCount: Int = 0,
+    @SerialName("Likes") val likes: Boolean? = null,
     @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )
 
@@ -111,12 +132,23 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         leafCount = childCount,
         thumb = ownImage,
         parentThumb = albumImage,
-        userRating = if (userData?.isFavorite == true) 10f else null,
+        userRating = userData?.let { JellyfinStars.rating(it.isFavorite, it.likes) },
         viewCount = userData?.playCount,
         lastViewedAt = parseServerDate(userData?.lastPlayedDate)?.div(1_000),
         normalizationGain = normalizationGain,
         media = if (type == "Audio") {
-            listOf(PlexMedia(container = container, parts = listOf(PlexPart(key = streamPath(id, container)))))
+            val audio = mediaSources.firstOrNull()?.streams?.firstOrNull { it.type == "Audio" }
+            val streams = audio?.let {
+                // Plex units: bitrate in kbps; stream type 2 is audio.
+                listOf(PlexStream(streamType = 2, codec = it.codec, samplingRate = it.sampleRate, bitDepth = it.bitDepth, bitrate = it.bitRate?.div(1000)))
+            }.orEmpty()
+            listOf(
+                PlexMedia(
+                    audioCodec = audio?.codec,
+                    container = container,
+                    parts = listOf(PlexPart(key = streamPath(id, container), streams = streams)),
+                ),
+            )
         } else {
             emptyList()
         },

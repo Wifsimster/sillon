@@ -221,6 +221,15 @@ class PlexApi(
         send(clientId, server, "PUT", "playlists/$playlistKey/items", "uri" to libraryUri(machineId, itemKey))
     }
 
+    /** Rates a track on the 0–10 scale (stars × 2); 0 clears the rating, which Plex takes as -1. */
+    suspend fun rate(clientId: String, server: ServerEndpoint, ratingKey: String, rating: Int) {
+        send(
+            clientId, server, "PUT", ":/rate",
+            "key" to ratingKey, "identifier" to LIBRARY_IDENTIFIER,
+            "rating" to if (rating > 0) rating.coerceAtMost(10).toString() else "-1",
+        )
+    }
+
     private fun libraryUri(machineId: String, itemKey: String) =
         "server://$machineId/com.plexapp.plugins.library/library/metadata/$itemKey"
 
@@ -315,6 +324,40 @@ class PlexApi(
             .build()
             .toString()
 
+    /**
+     * A transient (delegation) token: a stand-in for the account token in URLs handed to another
+     * device, here a Sonos speaker. Plex expires it on its own and on a server restart.
+     */
+    suspend fun transientToken(clientId: String, server: ServerEndpoint): String? =
+        get(clientId, server, "security/token", "type" to "delegation", "scope" to "all").token?.takeIf { it.isNotBlank() }
+
+    /** A plain-HTTP MP3 transcode (no HLS) for a Sonos speaker, which fetches it itself. */
+    fun sonosTranscodeUrl(server: ServerEndpoint, clientId: String, ratingKey: String, kbps: Int, session: String): String =
+        server.uri.toHttpUrl().newBuilder()
+            .addPathSegments("music/:/transcode/universal/start.mp3")
+            .addQueryParameter("path", "/library/metadata/$ratingKey")
+            .addQueryParameter("mediaIndex", "0")
+            .addQueryParameter("partIndex", "0")
+            .addQueryParameter("protocol", "http")
+            .addQueryParameter("directPlay", "0")
+            .addQueryParameter("directStream", "0")
+            .addQueryParameter("musicBitrate", kbps.toString())
+            .addQueryParameter("session", session)
+            .addQueryParameter("X-Plex-Session-Identifier", session)
+            .addQueryParameter("X-Plex-Client-Identifier", clientId)
+            .addQueryParameter("X-Plex-Product", device.product)
+            .addQueryParameter("X-Plex-Version", device.version)
+            .addQueryParameter("X-Plex-Platform", "Android")
+            .addQueryParameter("X-Plex-Device", "Android")
+            .addQueryParameter(
+                "X-Plex-Client-Profile-Extra",
+                "add-transcode-target(type=musicProfile&context=streaming&protocol=http&container=mp3&audioCodec=mp3)" +
+                    "+add-limitation(scope=musicCodec&scopeName=mp3&type=upperBound&name=audio.bitrate&value=$kbps)",
+            )
+            .addQueryParameter("X-Plex-Token", server.token)
+            .build()
+            .toString()
+
     fun streamUrl(server: ServerEndpoint, partKey: String): String =
         server.uri.toHttpUrl().newBuilder()
             .addPathSegments(partKey.trimStart('/'))
@@ -364,6 +407,7 @@ class PlexApi(
 
     companion object {
         const val PLEX_TV = "https://plex.tv/"
+        private const val LIBRARY_IDENTIFIER = "com.plexapp.plugins.library"
         private const val TYPE_ARTIST = "8"
         private const val TYPE_ALBUM = "9"
         private const val TYPE_TRACK = "10"

@@ -171,7 +171,7 @@ class SearchViewModel @Inject constructor(
                 emptyList()
             }
             val tracks = fromServer.ifEmpty { downloadedTracks(key) }
-            if (tracks.isNotEmpty()) playback.play(tracks, 0)
+            if (tracks.isNotEmpty()) playback.play(tracks, 0, pickStart = true)
         }
     }
 

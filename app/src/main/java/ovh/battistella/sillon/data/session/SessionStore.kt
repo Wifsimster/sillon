@@ -108,11 +108,43 @@ class SessionStore @Inject constructor(
         }
     }
 
+    /**
+     * A Sonos speaker's Jellyfin token, kept until it is revoked: when the app is killed during a
+     * Sonos session, the next start revokes it ([speakerTokenLeft]).
+     */
+    suspend fun rememberSpeakerToken(serverUri: String, token: String) {
+        store.edit {
+            it[SPEAKER_SERVER_URI] = serverUri
+            it[SPEAKER_TOKEN] = token
+        }
+    }
+
+    suspend fun speakerTokenLeft(): Pair<String, String>? {
+        val prefs = store.data.first()
+        val uri = prefs[SPEAKER_SERVER_URI] ?: return null
+        val token = prefs[SPEAKER_TOKEN] ?: return null
+        return uri to token
+    }
+
+    suspend fun forgetSpeakerToken() {
+        store.edit {
+            it.remove(SPEAKER_SERVER_URI)
+            it.remove(SPEAKER_TOKEN)
+        }
+    }
+
     suspend fun signOut() {
         store.edit { prefs ->
             val clientId = prefs[CLIENT_ID]
+            val speakerUri = prefs[SPEAKER_SERVER_URI]
+            val speakerToken = prefs[SPEAKER_TOKEN]
             prefs.clear()
             if (clientId != null) prefs[CLIENT_ID] = clientId
+            // Still to revoke on the next start.
+            if (speakerUri != null && speakerToken != null) {
+                prefs[SPEAKER_SERVER_URI] = speakerUri
+                prefs[SPEAKER_TOKEN] = speakerToken
+            }
         }
     }
 
@@ -126,5 +158,7 @@ class SessionStore @Inject constructor(
         val MUSIC_SECTION = stringPreferencesKey("music_section")
         val SERVER_KIND = stringPreferencesKey("server_kind")
         val SERVER_USER_ID = stringPreferencesKey("server_user_id")
+        val SPEAKER_SERVER_URI = stringPreferencesKey("speaker_server_uri")
+        val SPEAKER_TOKEN = stringPreferencesKey("speaker_token")
     }
 }

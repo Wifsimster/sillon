@@ -72,7 +72,7 @@ class FiveStarsCacheTest {
         val fiveStars = mockk<FiveStarsCache>(relaxed = true)
         val repository = PlexRepository(
             mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
-            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), fiveStars, mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), fiveStars, mockk(relaxed = true), mockk(relaxed = true),
         )
 
         repository.signOut()

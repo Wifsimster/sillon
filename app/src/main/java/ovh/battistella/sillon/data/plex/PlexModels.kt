@@ -47,6 +47,8 @@ data class MediaContainer(
     @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
     @SerialName("Hub") val hubs: List<PlexHub> = emptyList(),
     val playQueueID: Long? = null,
+    /** A transient token, from `/security/token`. */
+    val token: String? = null,
 )
 
 @Serializable
@@ -131,6 +133,7 @@ data class PlexMetadata(
 data class PlexMedia(
     val audioCodec: String? = null,
     val container: String? = null,
+    val bitrate: Int? = null,
     @SerialName("Part") val parts: List<PlexPart> = emptyList(),
 )
 
@@ -150,6 +153,10 @@ data class PlexStream(
     val albumGain: Float? = null,
     val peak: Float? = null,
     val albumPeak: Float? = null,
+    val codec: String? = null,
+    val samplingRate: Int? = null,
+    val bitDepth: Int? = null,
+    val bitrate: Int? = null,
 )
 
 @Serializable

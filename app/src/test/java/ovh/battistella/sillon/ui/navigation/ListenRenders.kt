@@ -33,7 +33,7 @@ import java.io.File
 
 /**
  * Renders the Listen page (online, offline with downloads, offline with nothing) and the Playlists
- * tab with the bottom bar, with synthetic data, in English and French, into `app/build/listen-renders/`.
+ * tab (with playlists, and empty) with the bottom bar, with synthetic data, in English and French, into `app/build/listen-renders/`.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -79,6 +79,7 @@ class ListenRenders {
             Page("listen-offline", Routes.LISTEN, ListenFakes(online = false, offline = OfflineMusic(tracks = 42, fiveStars = 0))),
             Page("listen-offline-nothing", Routes.LISTEN, ListenFakes(online = false, offline = OfflineMusic())),
             Page("playlists", Routes.PLAYLISTS, ListenFakes()),
+            Page("playlists-empty", Routes.PLAYLISTS, ListenFakes(playlists = emptyList())),
         ).forEach {
             compose.runOnUiThread { page = it }
             save(capture(), "${it.name}-$lang.png")

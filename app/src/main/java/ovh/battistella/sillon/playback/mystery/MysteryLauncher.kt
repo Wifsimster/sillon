@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ovh.battistella.sillon.data.rating.withoutOneStarDownloads
 import ovh.battistella.sillon.data.local.DownloadDao
 import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.repository.PlexRepository
@@ -165,7 +166,7 @@ class MysteryLauncher @Inject constructor(
         val skipped = exclude.toMutableSet()
         repeat(MAX_DRAWS) {
             val album = MysteryDraw.pick(albums, anyAlbum, exclude = skipped) ?: throw Problem(MysteryProblem.NOTHING_TO_DRAW)
-            val tracks = repository.tracksOf(album.key)
+            val tracks = repository.withoutOneStar(repository.tracksOf(album.key))
                 .filter { it.type.isEmpty() || it.type == "track" }
                 .sortedWith(compareBy({ it.parentIndex ?: 1 }, { it.index ?: Int.MAX_VALUE }))
             val playable = repository.playable(tracks)
@@ -188,8 +189,9 @@ class MysteryLauncher @Inject constructor(
         val serverId = runCatching { repository.currentServerId() }.getOrNull()
             ?: throw Problem(MysteryProblem.NOTHING_DOWNLOADED)
         val mode = settings.loudness.first()
+        val ratings = repository.ratingBook()
         val albums = withContext(Dispatchers.IO) {
-            downloads.observe(serverId).first()
+            ratings.withoutOneStarDownloads(downloads.observe(serverId).first())
                 .filter { it.albumKey != null && it.isPlayableOffline() }
                 .groupBy { it.albumKey!! }
         }

@@ -47,6 +47,8 @@ abstract class TrackCollectionViewModel(
     val state = _state.asStateFlow()
 
     val nowPlaying = playback.state
+    val ratings = playback.ratings
+    val skipOneStar = playback.skipOneStar
 
     private val _downloadStatus = MutableStateFlow(DownloadStatus())
     val downloadStatus = _downloadStatus.asStateFlow()
@@ -84,7 +86,7 @@ abstract class TrackCollectionViewModel(
         val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
         viewModelScope.launch {
             val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable)
-            playback.play(fresh.ifEmpty { playable }, start, albumSides = sidesForPlayback())
+            playback.play(fresh.ifEmpty { playable }, start, albumSides = sidesForPlayback(), pickStart = trackKey == null)
         }
     }
 
@@ -103,5 +105,11 @@ abstract class TrackCollectionViewModel(
         viewModelScope.launch {
             runCatching { downloads.delete(repository.currentServerId(), tracks.value.map { it.ratingKey }) }
         }
+    }
+
+    /** What "Play next" and "Add to queue" take: the track touched, or the whole list when [trackKey] is null. */
+    suspend fun queueable(trackKey: String?): List<PlayableTrack> {
+        val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable).ifEmpty { playable }
+        return if (trackKey == null) fresh else fresh.filter { it.ratingKey == trackKey }
     }
 }
