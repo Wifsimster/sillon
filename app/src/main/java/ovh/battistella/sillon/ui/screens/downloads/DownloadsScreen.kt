@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Checkbox
@@ -55,6 +56,7 @@ import ovh.battistella.sillon.ui.share.ShareSource
 @Composable
 fun DownloadsScreen(
     onAlbum: (String) -> Unit,
+    onBack: () -> Unit,
     contentPadding: PaddingValues,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
@@ -67,6 +69,11 @@ fun DownloadsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.library_downloads)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
+                    }
+                },
                 actions = {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.action_more))

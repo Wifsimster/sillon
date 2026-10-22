@@ -3,6 +3,7 @@ package ovh.battistella.sillon.ui.navigation
 object Routes {
     const val ARG_KEY = "key"
 
+    const val LISTEN = "listen"
     const val ARTISTS = "artists"
     const val ALBUMS = "albums"
     const val PLAYLISTS = "playlists"

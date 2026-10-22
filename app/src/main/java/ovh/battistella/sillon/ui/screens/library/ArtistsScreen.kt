@@ -30,9 +30,9 @@ import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.Message
-import ovh.battistella.sillon.ui.screens.mystery.MysteryCard
 import ovh.battistella.sillon.ui.components.Wear
 
+/** All artists. Out of the bottom bar, still an ordinary destination. */
 @Composable
 fun ArtistsScreen(
     onArtist: (String) -> Unit,
@@ -40,12 +40,10 @@ fun ArtistsScreen(
     viewModel: ArtistsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SectionGridScreen(
-        stringResource(R.string.library_artists), state, viewModel::load, onArtist, round = true, contentPadding,
-        header = { MysteryCard() },
-    )
+    SectionGridScreen(stringResource(R.string.library_artists), state, viewModel::load, onArtist, round = true, contentPadding)
 }
 
+/** All albums. Out of the bottom bar, still an ordinary destination. */
 @Composable
 fun AlbumsScreen(
     onAlbum: (String) -> Unit,
