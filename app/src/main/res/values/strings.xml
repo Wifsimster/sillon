@@ -110,4 +110,12 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_wallpaper_colors">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_hint">Follow your wallpaper (Material You) instead of Sillon\'s colours</string>
+    <string name="settings_sides">Listen by side</string>
+    <string name="settings_sides_hint">An album played in order stops at the end of each side, like a record. Flip it to hear the rest.</string>
+    <string name="side_label">Side %1$s</string>
+    <string name="side_header">Side %1$s · %2$s</string>
+    <string name="side_end_title">End of side %1$s</string>
+    <string name="side_flip_hint">Flip the record to play side %1$s</string>
+    <string name="side_flip">Flip the record</string>
+    <string name="side_end_animation">The tonearm lifts off the record</string>
 </resources>

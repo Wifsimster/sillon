@@ -2,6 +2,7 @@ package ovh.battistella.sillon.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -12,12 +13,15 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.util.EventLogger
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +35,7 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.MainActivity
+import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
@@ -41,10 +46,12 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
+    @Inject lateinit var sides: SideSession
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
+    private var sidePlayer: SidePlayer? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -82,10 +89,35 @@ class PlaybackService : MediaLibraryService() {
                 continuing = report.continuing,
             )
         }.also { it.start() }
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+        val sidePlayer = SidePlayer(
+            exo = player,
+            sides = sides,
+            describe = { end ->
+                getString(R.string.side_end_title, end.ended) to getString(R.string.side_flip_hint, end.next)
+            },
+            onEndedChanged = { end ->
+                mediaSession?.setCustomLayout(if (end != null) listOf(flipButton()) else emptyList())
+                scope.launch { runCatching { sides.save() } }
+            },
+        ).also { sidePlayer = it }
+        mediaSession = MediaLibrarySession.Builder(this, sidePlayer, LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
+        scope.launch {
+            runCatching { sides.restore() }
+            sides.planChanges.collect {
+                sidePlayer.sync()
+                runCatching { sides.save() }
+            }
+        }
     }
+
+    @OptIn(UnstableApi::class)
+    private fun flipButton(): CommandButton = CommandButton.Builder(CommandButton.ICON_SYNC)
+        .setDisplayName(getString(R.string.side_flip))
+        .setCustomIconResId(R.drawable.ic_side_flip)
+        .setSessionCommand(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
+        .build()
 
     private fun applyGain(player: Player, item: MediaItem?) {
         val gain = item?.mediaMetadata?.extras
@@ -169,6 +201,7 @@ class PlaybackService : MediaLibraryService() {
         }
         timelineReporter?.release()
         timelineReporter = null
+        sidePlayer = null
         scope.cancel()
         mediaSession?.run {
             player.release()
@@ -190,6 +223,31 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+                .add(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands)
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction != SideSession.ACTION_FLIP) {
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            }
+            sidePlayer?.flip()
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
