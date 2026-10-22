@@ -13,6 +13,7 @@ class SidePlayer(
     base: Player,
     private val exo: ExoPlayer,
     private val grouped: () -> Boolean,
+    private val inGroupMode: () -> Boolean,
     private val sides: SideSession,
     private val describe: (SideEnd) -> Pair<String, String>,
     private val onEndedChanged: (SideEnd?) -> Unit,
@@ -67,8 +68,13 @@ class SidePlayer(
         val inGroup = grouped()
         machine.grouped = inGroup
         change()
-        // While listening together, ExoGroupPlayer owns pauseAtEndOfMediaItems.
-        if (!inGroup) exo.pauseAtEndOfMediaItems = machine.pauseAtEnd
+        when {
+            !inGroup -> exo.pauseAtEndOfMediaItems = machine.pauseAtEnd
+            // Joining: the group hasn't taken the player yet, so drop a pending end of side.
+            !inGroupMode() -> exo.pauseAtEndOfMediaItems = false
+            // In a group, ExoGroupPlayer owns pauseAtEndOfMediaItems.
+            else -> Unit
+        }
         sides.publish()
         val after = sides.state.value.ended
         if (after != shown) {
@@ -82,6 +88,33 @@ class SidePlayer(
             onEndedChanged(after)
         }
     }
+
+    // A seek is the listener choosing where to go: after an end of side,
+    // replaying the last track of the side plays it instead of flipping.
+    private inline fun seeking(seek: () -> Unit) {
+        update { machine.onSeek() }
+        seek()
+    }
+
+    override fun seekTo(positionMs: Long) = seeking { super.seekTo(positionMs) }
+
+    override fun seekTo(mediaItemIndex: Int, positionMs: Long) = seeking { super.seekTo(mediaItemIndex, positionMs) }
+
+    override fun seekToDefaultPosition() = seeking { super.seekToDefaultPosition() }
+
+    override fun seekToDefaultPosition(mediaItemIndex: Int) = seeking { super.seekToDefaultPosition(mediaItemIndex) }
+
+    override fun seekToPrevious() = seeking { super.seekToPrevious() }
+
+    override fun seekToPreviousMediaItem() = seeking { super.seekToPreviousMediaItem() }
+
+    override fun seekToNext() = seeking { super.seekToNext() }
+
+    override fun seekToNextMediaItem() = seeking { super.seekToNextMediaItem() }
+
+    override fun seekBack() = seeking { super.seekBack() }
+
+    override fun seekForward() = seeking { super.seekForward() }
 
     override fun getMediaMetadata(): MediaMetadata {
         val base = super.getMediaMetadata()

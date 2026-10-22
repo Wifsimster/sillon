@@ -97,11 +97,13 @@ class PlaybackService : MediaLibraryService() {
                 continuing = report.continuing,
             )
         }.also { it.start() }
-        groupPlayer = ExoGroupPlayer(player).also(together::attach)
+        // Sides take pauseAtEndOfMediaItems back only after the group has let go of it.
+        groupPlayer = ExoGroupPlayer(player, afterExit = { sidePlayer?.sync() }).also(together::attach)
         val sidePlayer = SidePlayer(
             base = TogetherPlayer(player, together),
             exo = player,
             grouped = { together.state.value.isActive },
+            inGroupMode = { groupPlayer?.inGroupMode == true },
             sides = sides,
             describe = { end ->
                 getString(R.string.side_end_title, end.ended) to getString(R.string.side_flip_hint, end.next)
@@ -114,7 +116,8 @@ class PlaybackService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, sidePlayer, LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
-        scope.launch {
+        // Joining turns sides off at once, before the group takes the player.
+        scope.launch(Dispatchers.Main.immediate) {
             together.state.map { it.isActive }.distinctUntilChanged().collect { sidePlayer.sync() }
         }
         scope.launch {
