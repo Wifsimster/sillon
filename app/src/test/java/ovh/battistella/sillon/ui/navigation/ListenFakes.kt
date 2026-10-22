@@ -18,6 +18,7 @@ import ovh.battistella.sillon.ui.screens.library.LibraryMenuViewModel
 import ovh.battistella.sillon.ui.screens.library.NeverPlayedViewModel
 import ovh.battistella.sillon.ui.screens.library.PlaylistsViewModel
 import ovh.battistella.sillon.ui.screens.library.TileUi
+import ovh.battistella.sillon.ui.screens.listen.ListenRadiosViewModel
 import ovh.battistella.sillon.ui.screens.listen.ListenViewModel
 import ovh.battistella.sillon.ui.screens.listen.OfflineMusic
 import ovh.battistella.sillon.ui.screens.mystery.MysteryViewModel
@@ -26,7 +27,11 @@ import ovh.battistella.sillon.ui.screens.mystery.MysteryViewModel
  * The Listen and Playlists view models, with synthetic data, already in a store: the screens and
  * cards that call `hiltViewModel()` find them there, so they draw without Hilt.
  */
-internal class ListenFakes(online: Boolean = true, offline: OfflineMusic = OfflineMusic()) : ViewModelStoreOwner {
+internal class ListenFakes(
+    online: Boolean = true,
+    offline: OfflineMusic = OfflineMusic(),
+    playlists: List<TileUi> = PLAYLISTS,
+) : ViewModelStoreOwner {
     override val viewModelStore = ViewModelStore()
 
     val listen = mockk<ListenViewModel>(relaxed = true) {
@@ -37,13 +42,20 @@ internal class ListenFakes(online: Boolean = true, offline: OfflineMusic = Offli
         every { notice } returns MutableStateFlow(null)
     }
 
+    val radios = mockk<ListenRadiosViewModel>(relaxed = true) {
+        every { this@mockk.online } returns MutableStateFlow(online)
+        every { stations } returns MutableStateFlow(
+            listOf(Station("s1", null), Station("s2", "Synthetic radio"), Station("s3", "Synthetic deep cuts")),
+        )
+        every { starting } returns MutableStateFlow(null)
+    }
+
     init {
+        seed(radios)
         seed(listen)
         seed(
             mockk<PlaylistsViewModel>(relaxed = true) {
-                every { state } returns MutableStateFlow(Load.Ready(PLAYLISTS))
-                every { stations } returns MutableStateFlow(listOf(Station("s1", null), Station("s2", "Synthetic radio")))
-                every { startingStation } returns MutableStateFlow(null)
+                every { state } returns MutableStateFlow(Load.Ready(playlists))
             },
         )
         seed(

@@ -34,6 +34,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
 import ovh.battistella.sillon.ui.screens.listen.ListenScreen
 import ovh.battistella.sillon.ui.screens.listen.OfflineMusic
@@ -139,14 +140,56 @@ class ListenTabsTest {
     }
 
     @Test
-    fun `playlists keep the radios and the playlists, not the tiles that moved to listen`() {
+    fun `listen shows the radios under the tiles, each a button that starts it`() {
+        val fakes = ListenFakes()
+        compose.setContent { SillonTheme { fakes.Provide { ListenScreen(onFiveStarsList = {}, contentPadding = PaddingValues()) } } }
+
+        compose.onNodeWithText(context.getString(R.string.radios)).assertIsDisplayed()
+        listOf(context.getString(R.string.radio_library), "Synthetic radio", "Synthetic deep cuts").forEach {
+            compose.onNode(hasText(it) and hasClickAction()).assertIsDisplayed().assertIsEnabled()
+                .assert(clickLabel(context.getString(R.string.listen_radio_play)))
+        }
+        compose.onNodeWithText(context.getString(R.string.listen_radios_offline)).assertDoesNotExist()
+        compose.onNodeWithText("Synthetic radio").performClick()
+        verify { fakes.radios.play(Station("s2", "Synthetic radio")) }
+    }
+
+    @Test
+    fun `offline, the radios stay listed but off, and say why`() {
+        val fakes = ListenFakes(online = false, offline = OfflineMusic(tracks = 12))
+        compose.setContent { SillonTheme { fakes.Provide { ListenScreen(onFiveStarsList = {}, contentPadding = PaddingValues()) } } }
+
+        compose.onNodeWithText(context.getString(R.string.listen_radios_offline)).assertIsDisplayed()
+        compose.onNode(hasText("Synthetic radio") and hasClickAction()).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `the never-played albums tile has a subtitle like the others`() {
+        val fakes = ListenFakes()
+        compose.setContent { SillonTheme { fakes.Provide { ListenScreen(onFiveStarsList = {}, contentPadding = PaddingValues()) } } }
+
+        compose.onNodeWithText(context.getString(R.string.listen_never_played_albums_hint)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `playlists keep only the playlists, not the radios nor the tiles that moved to listen`() {
         val fakes = ListenFakes()
         compose.setContent { SillonTheme { fakes.Provide { PlaylistsScreen(onPlaylist = {}, contentPadding = PaddingValues()) } } }
 
-        listOf(R.string.radios, R.string.library_playlists).forEach { compose.onNodeWithText(context.getString(it)).assertIsDisplayed() }
+        compose.onNodeWithText(context.getString(R.string.library_playlists)).assertIsDisplayed()
         compose.onNodeWithText("Synthetic Mix").assertIsDisplayed()
+        listOf(context.getString(R.string.radios), context.getString(R.string.radio_library), "Synthetic radio")
+            .forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         listOf(R.string.five_stars, R.string.never_played, R.string.mystery_title)
             .forEach { compose.onNodeWithText(context.getString(it)).assertDoesNotExist() }
+    }
+
+    @Test
+    fun `playlists without any playlist say so and point to the radios`() {
+        val fakes = ListenFakes(playlists = emptyList())
+        compose.setContent { SillonTheme { fakes.Provide { PlaylistsScreen(onPlaylist = {}, contentPadding = PaddingValues()) } } }
+
+        compose.onNodeWithText(context.getString(R.string.playlists_empty)).assertIsDisplayed()
     }
 
     private fun tile(title: Int) = compose.onNode(hasText(context.getString(title)) and hasClickAction())
