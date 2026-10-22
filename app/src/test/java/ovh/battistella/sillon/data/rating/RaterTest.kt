@@ -34,7 +34,7 @@ class RaterTest {
     private val fiveStars = mockk<FiveStarsCache>(relaxed = true)
     private var jellyfin = false
     private val sent = mutableListOf<Pair<String, Int>>()
-    private var failure: Exception? = IOException("no network")
+    @Volatile private var failure: Exception? = IOException("no network")
     private val repository = mockk<PlexRepository> {
         every { isJellyfin } answers { flowOf(jellyfin) }
         coEvery { currentServerId() } returns "m1"
