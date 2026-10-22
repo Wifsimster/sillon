@@ -25,6 +25,9 @@ import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.data.repository.neverPlayedModeOf
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
+import ovh.battistella.sillon.playback.mystery.MysteryResume
+import ovh.battistella.sillon.playback.mystery.MysterySession
+import ovh.battistella.sillon.playback.mystery.SleeveArt
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,6 +37,8 @@ class MediaLibraryTree @Inject constructor(
     private val repository: PlexRepository,
     private val playbackState: PlaybackStateStore,
     private val neverPlayed: NeverPlayedRadio,
+    private val mystery: MysterySession,
+    private val sleeve: SleeveArt,
 ) {
     private val cache = mutableMapOf<String, Pair<Long, List<MediaItem>>>()
     private val cacheLock = Mutex()
@@ -107,7 +112,7 @@ class MediaLibraryTree @Inject constructor(
 
     suspend fun resumption(): MediaItemsWithStartPosition {
         val saved = playbackState.load() ?: return MediaItemsWithStartPosition(emptyList(), 0, 0L)
-        val items = repository.restoreQueue(saved.keys).map(MediaItems::from)
+        val items = MysteryResume.restore(saved.mystery, repository.restoreQueue(saved.keys), sleeve.labels(), mystery)
         val current = saved.keys.getOrNull(saved.index)
         val index = items.indexOfFirst { it.mediaId == current }
         return if (index >= 0) {

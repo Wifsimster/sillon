@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.local.DownloadDao
 import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.repository.PlexRepository
@@ -45,6 +45,27 @@ private val Context.mysteryDataStore: DataStore<Preferences> by preferencesDataS
 private val ANY_ALBUM = booleanPreferencesKey("any_album")
 
 private const val MAX_DRAWS = 5
+
+internal class Problem(val kind: MysteryProblem) : Exception(kind.name)
+
+// The draw goes over the network: a group joined meanwhile would turn the hidden album into a shared queue.
+internal suspend fun drawThenPlay(
+    draw: suspend () -> Mystery,
+    listeningTogether: () -> Boolean,
+    play: suspend (Mystery) -> Unit,
+): MysteryProblem? {
+    if (listeningTogether()) return MysteryProblem.LISTENING_TOGETHER
+    return try {
+        val mystery = draw()
+        if (listeningTogether()) return MysteryProblem.LISTENING_TOGETHER
+        play(mystery)
+        null
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        (e as? Problem)?.kind ?: MysteryProblem.FAILED
+    }
+}
 
 @Singleton
 class MysteryLauncher @Inject constructor(
@@ -88,14 +109,16 @@ class MysteryLauncher @Inject constructor(
         _problem.value = null
         val previous = session.state.value?.albumKey
         scope.launch {
-            runCatching { draw(anyAlbum.value, setOfNotNull(previous)) }
-                .onSuccess { mystery ->
+            _problem.value = drawThenPlay(
+                draw = { draw(anyAlbum.value, setOfNotNull(previous)) },
+                listeningTogether = { together.state.value.isActive },
+                play = { mystery ->
                     val labels = labels()
                     _keep.value = null
                     session.start(mystery)
                     playback.playItems(mystery.tracks.map { MysteryMask.mask(it, labels) })
-                }
-                .onFailure { _problem.value = (it as? Problem)?.kind ?: MysteryProblem.FAILED }
+                },
+            )
             _starting.value = false
         }
     }
@@ -123,16 +146,8 @@ class MysteryLauncher @Inject constructor(
         }
     }
 
-    private class Problem(val kind: MysteryProblem) : Exception(kind.name)
 
-    private suspend fun labels(): SleeveLabels = withContext(Dispatchers.Default) {
-        SleeveLabels(
-            track = { side, number -> context.getString(R.string.mystery_track_label, side, number) },
-            album = context.getString(R.string.mystery_album),
-            artworkUri = withContext(Dispatchers.IO) { art.uri },
-            artworkData = art.png,
-        )
-    }
+    private suspend fun labels(): SleeveLabels = withContext(Dispatchers.Default) { art.labels() }
 
     private suspend fun draw(anyAlbum: Boolean, exclude: Set<String>): Mystery {
         if (!isOnline()) return drawOffline(anyAlbum, exclude)

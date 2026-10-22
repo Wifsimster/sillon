@@ -22,7 +22,11 @@ object MysteryMask {
 
     fun mask(track: MysteryTrack, labels: SleeveLabels): MediaItem {
         val item = MediaItems.from(track.track)
-        val extras = Bundle(item.mediaMetadata.extras ?: Bundle()).apply { putBoolean(EXTRA_MYSTERY, true) }
+        // Only what playback needs: the album key would tell any connected controller which album it is.
+        val extras = Bundle(item.mediaMetadata.extras ?: Bundle()).apply {
+            remove(MediaItems.EXTRA_ALBUM_KEY)
+            putBoolean(EXTRA_MYSTERY, true)
+        }
         val metadata = MediaMetadata.Builder()
             .setTitle(labels.track(track.side, track.number))
             .setArtist(labels.album)

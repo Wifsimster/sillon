@@ -10,6 +10,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.playback.ArtworkProvider
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.inject.Inject
@@ -28,16 +29,26 @@ class SleeveArt @Inject constructor(
 ) {
     val png: ByteArray by lazy { render() }
 
-    val uri: Uri? by lazy {
-        runCatching {
-            val file = File(context.cacheDir, "mystery/sleeve-v1.png")
-            if (!file.isFile) {
-                file.parentFile?.mkdirs()
-                file.writeBytes(png)
-            }
-            Uri.fromFile(file)
-        }.getOrNull()
+    // Served by ArtworkProvider: the car and the system UI can't open a file:// in our cache.
+    val uri: Uri = ArtworkProvider.SLEEVE_URI
+
+    fun file(): File {
+        val file = File(context.cacheDir, "mystery/sleeve-v1.png")
+        if (!file.isFile) {
+            file.parentFile?.mkdirs()
+            val tmp = File(file.path + ".part")
+            tmp.writeBytes(png)
+            tmp.renameTo(file)
+        }
+        return file
     }
+
+    fun labels(): SleeveLabels = SleeveLabels(
+        track = { side, number -> context.getString(R.string.mystery_track_label, side, number) },
+        album = context.getString(R.string.mystery_album),
+        artworkUri = uri,
+        artworkData = png,
+    )
 
     private fun render(): ByteArray {
         val size = SIZE_PX.toFloat()
