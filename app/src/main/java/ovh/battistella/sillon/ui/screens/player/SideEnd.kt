@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,7 +55,10 @@ fun SideEndRecord(reducedMotion: Boolean, modifier: Modifier = Modifier) {
     val description = stringResource(R.string.side_end_animation)
     Box(modifier.semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            drawCircle(Brand.Vinyl, radius = size.minDimension * 0.46f)
+            val radius = size.minDimension * 0.46f
+            drawCircle(Brand.Vinyl, radius = radius)
+            // The rim keeps the record visible on the vinyl black of the dark theme.
+            drawCircle(Brand.Groove, radius = radius, style = Stroke(width = size.minDimension * 0.012f))
         }
         SillonMark(Modifier.fillMaxSize(), groove = Brand.Sleeve.copy(alpha = 0.85f), hole = Brand.Vinyl)
         Canvas(Modifier.fillMaxSize()) {
