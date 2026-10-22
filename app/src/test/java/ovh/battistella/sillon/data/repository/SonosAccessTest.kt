@@ -142,7 +142,7 @@ class SonosAccessTest {
         val jf = mockk<JellyfinApi>(relaxed = true)
         val repo = PlexRepository(
             api, store, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
-            jf, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            jf, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
         )
         val revoked = ServerEndpoint(left.first, left.second, ServerKind.JELLYFIN)
 
