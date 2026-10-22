@@ -146,6 +146,15 @@ class JellyfinApi(
             "sortBy" to "Random", "limit" to RADIO_TRACKS.toString(),
         ).map { it.toMetadata() }
 
+    suspend fun itemsPage(
+        server: ServerEndpoint,
+        deviceId: String,
+        query: List<Pair<String, String>>,
+    ): Pair<List<PlexMetadata>, Int> {
+        val page = page(server, deviceId, "Items", *query.toTypedArray())
+        return page.items.map { it.toMetadata() } to page.total
+    }
+
     fun artworkUrl(server: ServerEndpoint, thumb: String?, sizePx: Int): String? {
         val id = thumb?.takeIf { it.startsWith(JELLYFIN_IMAGE) }?.removePrefix(JELLYFIN_IMAGE) ?: return null
         return serverUrl(server, "Items/$id/Images/Primary").newBuilder()

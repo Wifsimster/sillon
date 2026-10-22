@@ -180,4 +180,28 @@ class JellyfinApiTest {
         assertEquals("/Audio/t1/stream.mp3?static=true", streamPath("t1", "mp3"))
         assertEquals("/Audio/t1/stream?static=true", streamPath("t1", null))
     }
+
+    @Test
+    fun `asks for random unplayed tracks and keeps the play count`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"Items": [{"Id": "t1", "Name": "Song", "Type": "Audio", "UserData": {"PlayCount": 0}}], "TotalRecordCount": 1}""",
+            ),
+        )
+
+        val (items, total) = api.itemsPage(
+            endpoint, "device-1",
+            ovh.battistella.sillon.data.repository.NeverPlayedQueries.jellyfinTracks("lib-1"),
+        )
+
+        assertEquals(listOf("t1"), items.map { it.ratingKey })
+        assertEquals(0, items.single().viewCount)
+        assertEquals(1, total)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/jf/Items", url.encodedPath)
+        assertEquals("user-1", url.queryParameter("userId"))
+        assertEquals("false", url.queryParameter("isPlayed"))
+        assertEquals("Random", url.queryParameter("sortBy"))
+        assertEquals("Audio", url.queryParameter("includeItemTypes"))
+    }
 }
