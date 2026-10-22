@@ -60,7 +60,12 @@ internal class ListenFakes(online: Boolean = true, offline: OfflineMusic = Offli
                 every { anyAlbum } returns MutableStateFlow(false)
             },
         )
-        seed(mockk<LibraryMenuViewModel>(relaxed = true) { every { state } returns MutableStateFlow(LibraryMenuUi()) })
+        seed(
+            mockk<LibraryMenuViewModel>(relaxed = true) {
+                every { state } returns MutableStateFlow(LibraryMenuUi())
+                every { together } returns MutableStateFlow(false)
+            },
+        )
     }
 
     @Composable
