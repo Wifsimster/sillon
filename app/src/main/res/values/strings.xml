@@ -179,8 +179,6 @@
     <string name="never_played">Never played</string>
     <string name="never_played_albums">Never played: albums</string>
     <string name="never_played_hint">Tracks you have never listened to, at random</string>
-    <string name="never_played_share">%1$d%% of your library has never been played</string>
-    <string name="never_played_count">%1$s of %2$s tracks</string>
     <string name="never_played_play">Play the never-played radio</string>
     <string name="never_played_albums_play">Rediscover a record: a never-played album at random</string>
     <string name="never_played_offline">Offline: only your downloaded tracks.</string>

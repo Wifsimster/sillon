@@ -177,8 +177,6 @@
     <string name="never_played">Jamais écouté</string>
     <string name="never_played_albums">Jamais écouté : albums</string>
     <string name="never_played_hint">Les titres que tu n\'as jamais écoutés, au hasard</string>
-    <string name="never_played_share">%1$d&#8239;%% de ta bibliothèque n\'a jamais été écoutée</string>
-    <string name="never_played_count">%1$s titres sur %2$s</string>
     <string name="never_played_play">Lancer la radio Jamais écouté</string>
     <string name="never_played_albums_play">Redécouvre un disque : un album jamais écouté, tiré au sort</string>
     <string name="never_played_offline">Hors ligne : seulement tes titres téléchargés.</string>

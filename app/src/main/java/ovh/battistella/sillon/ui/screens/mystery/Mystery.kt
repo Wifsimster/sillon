@@ -284,45 +284,6 @@ fun MysteryCard(viewModel: MysteryViewModel = hiltViewModel(), enabled: Boolean 
     }
 }
 
-@Composable
-fun MysteryStationCard(viewModel: MysteryViewModel = hiltViewModel()) {
-    val starting by viewModel.starting.collectAsStateWithLifecycle()
-    Card(
-        onClick = viewModel::start,
-        enabled = !starting,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (starting) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-                KraftSleeve(Modifier.size(20.dp).clip(RoundedCornerShape(4.dp)).clearAndSetSemantics { })
-            }
-            Text(
-                stringResource(R.string.mystery_title),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        }
-    }
-}
-
-@Composable
-fun MysteryProblemLine(viewModel: MysteryViewModel = hiltViewModel()) {
-    val problem by viewModel.problem.collectAsStateWithLifecycle()
-    problem?.let {
-        Text(
-            stringResource(it.message()),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-    }
-}
-
 private const val REVEAL_MS = 1_600
 private const val FADE_MS = 400
 private const val SLIDE_END = 0.6f
