@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -29,6 +27,7 @@ import ovh.battistella.sillon.ui.screens.library.LocalOpenTogether
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
+import ovh.battistella.sillon.ui.screens.settings.ListeningCacheSection
 import ovh.battistella.sillon.ui.screens.settings.SettingsScreen
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,8 +36,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -51,10 +52,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import ovh.battistella.sillon.data.session.Session
+import ovh.battistella.sillon.ui.components.LocalOpenDownloads
 import ovh.battistella.sillon.ui.components.MiniPlayer
 import ovh.battistella.sillon.ui.screens.library.AlbumScreen
 import ovh.battistella.sillon.ui.screens.library.ArtistScreen
 import ovh.battistella.sillon.ui.screens.library.ArtistsScreen
+import ovh.battistella.sillon.ui.screens.listen.ListenScreen
 import ovh.battistella.sillon.ui.screens.player.PlayerScreen
 import ovh.battistella.sillon.ui.screens.player.PlayerViewModel
 import ovh.battistella.sillon.ui.screens.servers.ServersScreen
@@ -74,13 +77,41 @@ fun SillonRoot(viewModel: RootViewModel = hiltViewModel()) {
 
 private data class Tab(val route: String, val label: Int, val icon: ImageVector)
 
+/**
+ * Listen, Playlists and Search. Artists and albums open from search, links and the player; the
+ * downloads from the settings. Their routes stay in the graph.
+ */
 private val tabs = listOf(
-    Tab(Routes.ARTISTS, R.string.library_artists, Icons.Rounded.Person),
-    Tab(Routes.ALBUMS, R.string.library_albums, Icons.Rounded.Album),
+    Tab(Routes.LISTEN, R.string.listen_tab, Icons.Rounded.Headphones),
     Tab(Routes.PLAYLISTS, R.string.library_playlists, Icons.AutoMirrored.Rounded.QueueMusic),
     Tab(Routes.SEARCH, R.string.library_search, Icons.Rounded.Search),
-    Tab(Routes.DOWNLOADS, R.string.library_downloads, Icons.Rounded.DownloadDone),
 )
+
+/** The first page the app opens on. */
+internal const val START_DESTINATION = Routes.LISTEN
+
+/** The tab to show for a saved one: a tab that left the bar (Artists, Albums, Downloads) falls back to Listen. */
+internal fun restoredTab(saved: String?): String =
+    saved?.takeIf { route -> tabs.any { it.route == route } } ?: START_DESTINATION
+
+internal val CurrentTabSaver: Saver<MutableState<String>, String> = Saver(
+    save = { it.value },
+    restore = { mutableStateOf(restoredTab(it)) },
+)
+
+@Composable
+internal fun SillonNavigationBar(currentTab: String, onTab: (String) -> Unit) {
+    NavigationBar {
+        tabs.forEach { tab ->
+            NavigationBarItem(
+                selected = tab.route == currentTab,
+                onClick = { onTab(tab.route) },
+                icon = { Icon(tab.icon, contentDescription = null) },
+                label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
+        }
+    }
+}
 
 @Composable
 private fun LibraryNavHost() {
@@ -90,7 +121,7 @@ private fun LibraryNavHost() {
     val backStack by navController.currentBackStackEntryAsState()
     val destination = backStack?.destination
     val onPlayerScreen = destination?.route == Routes.PLAYER
-    var currentTab by rememberSaveable { mutableStateOf(Routes.ARTISTS) }
+    var currentTab by rememberSaveable(saver = CurrentTabSaver) { mutableStateOf(START_DESTINATION) }
     LaunchedEffect(destination?.route) {
         destination?.route?.takeIf { route -> tabs.any { it.route == route } }?.let { currentTab = it }
     }
@@ -111,25 +142,16 @@ private fun LibraryNavHost() {
                             onNext = playerViewModel::next,
                         )
                     }
-                    NavigationBar {
-                        tabs.forEach { tab ->
-                            NavigationBarItem(
-                                selected = tab.route == currentTab,
-                                onClick = {
-                                    if (tab.route == currentTab) {
-                                        navController.popBackStack(tab.route, inclusive = false)
-                                    } else {
-                                        currentTab = tab.route
-                                        navController.navigate(tab.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                },
-                                icon = { Icon(tab.icon, contentDescription = null) },
-                                label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            )
+                    SillonNavigationBar(currentTab) { route ->
+                        if (route == currentTab) {
+                            navController.popBackStack(route, inclusive = false)
+                        } else {
+                            currentTab = route
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 }
@@ -143,17 +165,23 @@ private fun LibraryNavHost() {
         val back: () -> Unit = { navController.popBackStack() }
         Box(Modifier.fillMaxSize()) {
             val openTogether: () -> Unit = { navController.navigate(Routes.TOGETHER) { launchSingleTop = true } }
+            val openDownloads: () -> Unit = { navController.navigate(Routes.DOWNLOADS) { launchSingleTop = true } }
             CompositionLocalProvider(
+                LocalOpenDownloads provides openDownloads,
                 LocalOpenSettings provides { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                 LocalOpenTogether provides openTogether,
             ) {
-                NavHost(navController = navController, startDestination = Routes.ARTISTS) {
+                NavHost(navController = navController, startDestination = START_DESTINATION) {
+                    composable(Routes.LISTEN) {
+                        ListenScreen(onFiveStarsList = { navController.navigate(Routes.FIVE_STARS) }, contentPadding = bottom)
+                    }
+                    // The full artist and album grids left the bar; kept as ordinary destinations,
+                    // and for back stacks saved before the change.
                     composable(Routes.ARTISTS) { ArtistsScreen(onArtist = openArtist, contentPadding = bottom) }
                     composable(Routes.ALBUMS) { AlbumsScreen(onAlbum = openAlbum, contentPadding = bottom) }
                     composable(Routes.PLAYLISTS) {
                         PlaylistsScreen(
                             onPlaylist = { navController.navigate(Routes.playlist(it)) },
-                            onFiveStars = { navController.navigate(Routes.FIVE_STARS) },
                             contentPadding = bottom,
                         )
                     }
@@ -161,7 +189,11 @@ private fun LibraryNavHost() {
                         SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
                     }
                     composable(Routes.DOWNLOADS) {
-                        DownloadsScreen(onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) }, contentPadding = bottom)
+                        DownloadsScreen(
+                            onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) },
+                            onBack = back,
+                            contentPadding = bottom,
+                        )
                     }
                     composable(Routes.DOWNLOADED_ALBUM, arguments = keyArg) {
                         DownloadedAlbumScreen(onBack = back, contentPadding = bottom)
@@ -179,7 +211,12 @@ private fun LibraryNavHost() {
                         PlaylistScreen(onBack = back, contentPadding = bottom)
                     }
                     composable(Routes.SETTINGS) {
-                        SettingsScreen(onBack = back, contentPadding = bottom)
+                        SettingsScreen(
+                            onBack = back,
+                            onDownloads = openDownloads,
+                            contentPadding = bottom,
+                            listeningCache = { ListeningCacheSection() },
+                        )
                     }
                     composable(Routes.TOGETHER) {
                         TogetherScreen(onBack = back, contentPadding = bottom)

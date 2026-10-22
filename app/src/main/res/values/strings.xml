@@ -60,6 +60,13 @@
     <string name="settings_cache_size_no_room">Not enough free space</string>
     <string name="settings_cache_clear">Clear the cache</string>
     <string name="downloads_retry_failed">Retry failed downloads</string>
+    <string name="action_open_downloads">Open downloads</string>
+    <string name="settings_downloads">Your downloads</string>
+    <string name="settings_downloads_none">Nothing downloaded yet</string>
+    <plurals name="settings_downloads_summary">
+        <item quantity="one">%1$d album · %2$s</item>
+        <item quantity="other">%1$d albums · %2$s</item>
+    </plurals>
     <string name="download">Download</string>
     <string name="download_remove">Remove download</string>
     <string name="download_done">Downloaded</string>
@@ -180,8 +187,6 @@
     <string name="never_played">Never played</string>
     <string name="never_played_albums">Never played: albums</string>
     <string name="never_played_hint">Tracks you have never listened to, at random</string>
-    <string name="never_played_share">%1$d%% of your library has never been played</string>
-    <string name="never_played_count">%1$s of %2$s tracks</string>
     <string name="never_played_play">Play the never-played radio</string>
     <string name="never_played_albums_play">Rediscover a record: a never-played album at random</string>
     <string name="never_played_offline">Offline: only your downloaded tracks.</string>
@@ -231,4 +236,21 @@
     </plurals>
     <string name="share_card_private">The card is an image made on your phone. It carries no link, and nothing about your server.</string>
     <string name="share_card_send">Share</string>
+    <string name="listen_tab">Listen</string>
+    <string name="listen_shuffle">Shuffle</string>
+    <string name="listen_shuffle_hint">Your whole library, at random</string>
+    <string name="listen_shuffle_downloads">Offline: your downloads, at random</string>
+    <string name="listen_shuffle_action">Shuffle the whole library</string>
+    <string name="listen_nothing_downloaded">Offline, and nothing downloaded yet</string>
+    <string name="listen_five_stars_downloads">Offline: the downloaded ones, at random</string>
+    <string name="listen_five_stars_needs_server">Offline: none of them is downloaded. Back once you are online.</string>
+    <string name="listen_never_played_share">%1$d%% of your library</string>
+    <string name="listen_five_stars_list">See the list</string>
+    <string name="listen_offline">You are offline. Your downloads still play; what needs your server comes back with the connection.</string>
+    <string name="listen_from_downloads">Offline: shuffling your downloads.</string>
+    <string name="listen_five_stars_from_downloads">Offline: shuffling the downloaded ones.</string>
+    <string name="listen_offline_nothing">You are offline, and nothing is downloaded yet. The tiles come back with the connection.</string>
+    <string name="listen_no_five_stars">No 5-star tracks yet. Rate a track 5 stars and it lands here.</string>
+    <string name="listen_no_favourites">No favourites yet. Mark a track as a favourite and it lands here.</string>
+    <string name="listen_failed">That did not start. Try again.</string>
 </resources>

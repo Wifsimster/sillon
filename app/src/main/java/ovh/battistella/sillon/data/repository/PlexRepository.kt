@@ -31,6 +31,7 @@ import ovh.battistella.sillon.data.plex.TimelineState
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
+import ovh.battistella.sillon.data.settings.FiveStarsCache
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.settings.StreamQuality
@@ -100,6 +101,7 @@ class PlexRepository @Inject constructor(
     private val network: NetworkMonitor,
     private val jellyfin: JellyfinApi,
     private val sleeveWearCache: SleeveWearCache,
+    private val fiveStarsCache: FiveStarsCache,
     private val listeningCache: ListeningCache,
 ) {
     val session: Flow<Session> = sessionStore.session
@@ -125,6 +127,7 @@ class PlexRepository @Inject constructor(
     suspend fun signOut() {
         sessionStore.signOut()
         sleeveWearCache.clear()
+        fiveStarsCache.clear()
         listeningCache.clear(sweepAgain = true)
     }
 
@@ -134,6 +137,7 @@ class PlexRepository @Inject constructor(
             signOut()
         } else {
             sessionStore.clearServer()
+            fiveStarsCache.clear()
             listeningCache.clear(sweepAgain = true)
         }
     }
@@ -304,6 +308,15 @@ class PlexRepository @Inject constructor(
                 }
             },
             jellyfin = { deviceId, server -> jellyfin.instantMix(server, deviceId, artistKey) },
+        )
+    }
+
+    /** A random draw over the whole library, made by the server: nothing is downloaded beforehand. */
+    suspend fun libraryShuffleTracks(): List<PlexMetadata> {
+        val section = currentMusicSection() ?: return emptyList()
+        return onServer(
+            plex = { clientId, server -> api.sectionItems(clientId, server, section.key, LibraryShuffle.plexTracks()).metadata },
+            jellyfin = { deviceId, server -> jellyfin.randomTracks(server, deviceId, section.key) },
         )
     }
 

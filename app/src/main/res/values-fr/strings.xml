@@ -58,6 +58,14 @@
     <string name="settings_cache_size_no_room">Pas assez d\'espace libre</string>
     <string name="settings_cache_clear">Vider le cache</string>
     <string name="downloads_retry_failed">Relancer les échecs</string>
+    <string name="action_open_downloads">Ouvrir les téléchargements</string>
+    <string name="settings_downloads">Tes téléchargements</string>
+    <string name="settings_downloads_none">Rien de téléchargé pour l\'instant</string>
+    <plurals name="settings_downloads_summary">
+        <item quantity="one">%1$d album · %2$s</item>
+        <item quantity="many">%1$d albums · %2$s</item>
+        <item quantity="other">%1$d albums · %2$s</item>
+    </plurals>
     <string name="download">Télécharger</string>
     <string name="download_remove">Supprimer le téléchargement</string>
     <string name="download_done">Téléchargé</string>
@@ -177,8 +185,6 @@
     <string name="never_played">Jamais écouté</string>
     <string name="never_played_albums">Jamais écouté : albums</string>
     <string name="never_played_hint">Les titres que tu n\'as jamais écoutés, au hasard</string>
-    <string name="never_played_share">%1$d&#8239;%% de ta bibliothèque n\'a jamais été écoutée</string>
-    <string name="never_played_count">%1$s titres sur %2$s</string>
     <string name="never_played_play">Lancer la radio Jamais écouté</string>
     <string name="never_played_albums_play">Redécouvre un disque : un album jamais écouté, tiré au sort</string>
     <string name="never_played_offline">Hors ligne : seulement tes titres téléchargés.</string>
@@ -229,4 +235,21 @@
     </plurals>
     <string name="share_card_private">La carte est une image créée sur ton téléphone. Elle ne contient aucun lien, et rien sur ton serveur.</string>
     <string name="share_card_send">Partager</string>
+    <string name="listen_tab">Écouter</string>
+    <string name="listen_shuffle">Aléatoire</string>
+    <string name="listen_shuffle_hint">Toute ta bibliothèque, au hasard</string>
+    <string name="listen_shuffle_downloads">Hors ligne : tes téléchargements, au hasard</string>
+    <string name="listen_shuffle_action">Lecture aléatoire de toute ta bibliothèque</string>
+    <string name="listen_nothing_downloaded">Hors ligne, et rien de téléchargé pour l\'instant</string>
+    <string name="listen_five_stars_downloads">Hors ligne : ceux que tu as téléchargés, au hasard</string>
+    <string name="listen_five_stars_needs_server">Hors ligne : aucun n\'est téléchargé. De retour une fois connecté.</string>
+    <string name="listen_never_played_share">%1$d&#8239;%% de ta bibliothèque</string>
+    <string name="listen_five_stars_list">Voir la liste</string>
+    <string name="listen_offline">Tu es hors ligne. Tes téléchargements jouent toujours ; ce qui demande ton serveur revient avec la connexion.</string>
+    <string name="listen_from_downloads">Hors ligne : lecture aléatoire de tes téléchargements.</string>
+    <string name="listen_five_stars_from_downloads">Hors ligne : lecture aléatoire de ceux que tu as téléchargés.</string>
+    <string name="listen_offline_nothing">Tu es hors ligne, et rien n\'est encore téléchargé. Les tuiles reviennent avec la connexion.</string>
+    <string name="listen_no_five_stars">Pas encore de titres 5 étoiles. Donne 5 étoiles à un titre et il arrive ici.</string>
+    <string name="listen_no_favourites">Pas encore de favoris. Ajoute un titre à tes favoris et il arrive ici.</string>
+    <string name="listen_failed">La lecture n\'a pas démarré. Réessaie.</string>
 </resources>
