@@ -292,6 +292,15 @@ class PlexRepository @Inject constructor(
         )
     }
 
+    /** A random draw over the whole library, made by the server: nothing is downloaded beforehand. */
+    suspend fun libraryShuffleTracks(): List<PlexMetadata> {
+        val section = currentMusicSection() ?: return emptyList()
+        return onServer(
+            plex = { clientId, server -> api.sectionItems(clientId, server, section.key, LibraryShuffle.plexTracks()).metadata },
+            jellyfin = { deviceId, server -> jellyfin.randomTracks(server, deviceId, section.key) },
+        )
+    }
+
     suspend fun neverPlayedTracks(): List<PlexMetadata> {
         val section = currentMusicSection() ?: return emptyList()
         return onServer(

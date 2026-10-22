@@ -243,13 +243,13 @@ fun MysteryRevealedActions(
 }
 
 @Composable
-fun MysteryCard(viewModel: MysteryViewModel = hiltViewModel()) {
+fun MysteryCard(viewModel: MysteryViewModel = hiltViewModel(), enabled: Boolean = true) {
     val starting by viewModel.starting.collectAsStateWithLifecycle()
     val problem by viewModel.problem.collectAsStateWithLifecycle()
     val anyAlbum by viewModel.anyAlbum.collectAsStateWithLifecycle()
     Card(
         onClick = viewModel::start,
-        enabled = !starting,
+        enabled = enabled && !starting,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = Modifier.fillMaxWidth().padding(8.dp),
     ) {
@@ -273,7 +273,7 @@ fun MysteryCard(viewModel: MysteryViewModel = hiltViewModel()) {
                     Text(stringResource(it.message()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
-            FilledIconButton(onClick = viewModel::start, enabled = !starting, modifier = Modifier.size(48.dp)) {
+            FilledIconButton(onClick = viewModel::start, enabled = enabled && !starting, modifier = Modifier.size(48.dp)) {
                 if (starting) {
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {

@@ -6,16 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
@@ -29,40 +25,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.ui.components.LoadContent
-import ovh.battistella.sillon.ui.screens.mystery.MysteryProblemLine
-import ovh.battistella.sillon.ui.screens.mystery.MysteryStationCard
 
+/** The radios, then the playlists. The one-tap tiles (5 stars, never played, mystery sleeve) live on Listen. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistsScreen(
     onPlaylist: (String) -> Unit,
-    onFiveStars: () -> Unit,
     contentPadding: PaddingValues,
     viewModel: PlaylistsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val startingFiveStars by viewModel.startingFiveStars.collectAsStateWithLifecycle()
-    val isJellyfin by viewModel.isJellyfin.collectAsStateWithLifecycle()
     val stations by viewModel.stations.collectAsStateWithLifecycle()
     val startingStation by viewModel.startingStation.collectAsStateWithLifecycle()
-    val fiveStarsCard: @Composable () -> Unit = {
-        Column {
-            FiveStarsCard(
-                favourites = isJellyfin,
-                starting = startingFiveStars,
-                onOpen = onFiveStars,
-                onShuffle = viewModel::shuffleFiveStars,
-            )
-            NeverPlayedCard()
-            if (stations.isNotEmpty()) {
-                StationsRow(stations, startingStation, onPlay = viewModel::playStation)
-            }
-        }
+    val radios: (@Composable () -> Unit)? = if (stations.isEmpty()) {
+        null
+    } else {
+        { Column { StationsRow(stations, startingStation, onPlay = viewModel::playStation) } }
     }
     Scaffold(
         topBar = {
@@ -78,7 +63,7 @@ fun PlaylistsScreen(
                 onClick = onPlaylist,
                 modifier = Modifier.padding(top = padding.calculateTopPadding()),
                 contentPadding = contentPadding,
-                header = fiveStarsCard,
+                header = radios,
             )
         }
     }
@@ -94,44 +79,9 @@ fun PlaylistScreen(
 }
 
 @Composable
-private fun FiveStarsCard(favourites: Boolean, starting: Boolean, onOpen: () -> Unit, onShuffle: () -> Unit) {
-    Card(
-        onClick = onOpen,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        modifier = Modifier.fillMaxWidth().padding(8.dp),
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Star, contentDescription = null, modifier = Modifier.size(32.dp))
-            Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                Text(
-                    stringResource(if (favourites) R.string.five_stars_jellyfin else R.string.five_stars),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    stringResource(if (favourites) R.string.five_stars_jellyfin_hint else R.string.five_stars_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            FilledIconButton(onClick = onShuffle, enabled = !starting, modifier = Modifier.size(48.dp)) {
-                if (starting) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Rounded.Shuffle, contentDescription = stringResource(R.string.five_stars_shuffle))
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun StationsRow(stations: List<Station>, starting: String?, onPlay: (Station) -> Unit) {
-    Text(
-        stringResource(R.string.radios),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
-    )
+    SectionTitle(stringResource(R.string.radios))
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
-        item(key = "mystery") { MysteryStationCard() }
         items(stations, key = { it.key }) { station ->
             Card(
                 onClick = { onPlay(station) },
@@ -155,7 +105,15 @@ private fun StationsRow(stations: List<Station>, starting: String?, onPlay: (Sta
             }
         }
     }
-    MysteryProblemLine()
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp).semantics { heading() },
+    )
 }
 
 @Composable

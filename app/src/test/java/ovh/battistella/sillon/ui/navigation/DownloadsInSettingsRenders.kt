@@ -73,7 +73,7 @@ class DownloadsInSettingsRenders {
     fun `renders in French`() = renderAll("fr")
 
     private fun renderAll(lang: String) {
-        save(capture { SillonNavigationBar(Routes.ALBUMS) {} }, "bottom-bar-$PHASE-$lang.png")
+        save(capture { SillonNavigationBar(Routes.LISTEN) {} }, "bottom-bar-$PHASE-$lang.png")
         val repository = mockk<PlexRepository> { coEvery { currentServerId() } returns "s" }
         val downloads = mockk<DownloadManager>(relaxed = true) { every { observe("s") } returns flowOf(ROWS) }
         val store = SettingsStore(context)

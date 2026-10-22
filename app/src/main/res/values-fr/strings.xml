@@ -229,4 +229,21 @@
     </plurals>
     <string name="share_card_private">La carte est une image créée sur ton téléphone. Elle ne contient aucun lien, et rien sur ton serveur.</string>
     <string name="share_card_send">Partager</string>
+    <string name="listen_tab">Écouter</string>
+    <string name="listen_shuffle">Aléatoire</string>
+    <string name="listen_shuffle_hint">Toute ta bibliothèque, au hasard</string>
+    <string name="listen_shuffle_downloads">Hors ligne : tes téléchargements, au hasard</string>
+    <string name="listen_shuffle_action">Lecture aléatoire de toute ta bibliothèque</string>
+    <string name="listen_nothing_downloaded">Hors ligne, et rien de téléchargé pour l\'instant</string>
+    <string name="listen_five_stars_downloads">Hors ligne : ceux que tu as téléchargés, au hasard</string>
+    <string name="listen_five_stars_needs_server">Hors ligne : aucun n\'est téléchargé. De retour une fois connecté.</string>
+    <string name="listen_never_played_share">%1$d&#8239;%% de ta bibliothèque</string>
+    <string name="listen_five_stars_list">Voir la liste</string>
+    <string name="listen_offline">Tu es hors ligne. Tes téléchargements jouent toujours ; ce qui demande ton serveur revient avec la connexion.</string>
+    <string name="listen_from_downloads">Hors ligne : lecture aléatoire de tes téléchargements.</string>
+    <string name="listen_five_stars_from_downloads">Hors ligne : lecture aléatoire de ceux que tu as téléchargés.</string>
+    <string name="listen_offline_nothing">Tu es hors ligne, et rien n\'est encore téléchargé. Les tuiles reviennent avec la connexion.</string>
+    <string name="listen_no_five_stars">Pas encore de titres 5 étoiles. Donne 5 étoiles à un titre et il arrive ici.</string>
+    <string name="listen_no_favourites">Pas encore de favoris. Ajoute un titre à tes favoris et il arrive ici.</string>
+    <string name="listen_failed">La lecture n\'a pas démarré. Réessaie.</string>
 </resources>

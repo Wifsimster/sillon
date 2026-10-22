@@ -9,10 +9,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
@@ -29,11 +27,6 @@ class PlaylistsViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
 ) : ViewModel() {
-    val isJellyfin = repository.isJellyfin.stateIn(viewModelScope, SharingStarted.Eagerly, false)
-
-    private val _startingFiveStars = MutableStateFlow(false)
-    val startingFiveStars = _startingFiveStars.asStateFlow()
-
     private val _stations = MutableStateFlow<List<Station>>(emptyList())
     val stations = _stations.asStateFlow()
 
@@ -47,16 +40,6 @@ class PlaylistsViewModel @Inject constructor(
             runCatching { repository.playable(repository.stationTracks(station)) }
                 .onSuccess { if (it.isNotEmpty()) playback.play(it) }
             _startingStation.value = null
-        }
-    }
-
-    fun shuffleFiveStars() {
-        if (_startingFiveStars.value) return
-        _startingFiveStars.value = true
-        viewModelScope.launch {
-            runCatching { repository.playable(repository.fiveStarTracks()) }
-                .onSuccess { playback.play(it, shuffle = true) }
-            _startingFiveStars.value = false
         }
     }
 
