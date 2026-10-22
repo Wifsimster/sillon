@@ -445,19 +445,8 @@ class PlaybackService : MediaLibraryService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
-            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
-                .add(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
-                .apply {
-                    // Any app can connect to the session: only the trusted ones get to rate.
-                    if (isTrustedRater(session, controller)) {
-                        add(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY))
-                        add(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
-                        add(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
-                    }
-                }
-                .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(commands)
+                .setAvailableSessionCommands(RatingGate.commands(isTrustedRater(session, controller)))
                 .build()
         }
 
@@ -473,13 +462,17 @@ class PlaybackService : MediaLibraryService() {
             when (customCommand.customAction) {
                 SideSession.ACTION_FLIP -> sidePlayer?.flip()
                 PlaybackConnection.ACTION_RATE -> {
-                    val key = RatingGate.target(trusted, args.getString(PlaybackConnection.RATE_KEY), current)
-                        ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    val key = when (val verdict = RatingGate.check(trusted, args.getString(PlaybackConnection.RATE_KEY), current)) {
+                        is RatingGate.Verdict.Rate -> verdict.key
+                        is RatingGate.Verdict.Refuse -> return Futures.immediateFuture(SessionResult(verdict.error))
+                    }
                     rate(key, args.getInt(PlaybackConnection.RATE_STARS).takeIf { it in 1..Stars.MAX })
                 }
                 PlaybackConnection.ACTION_LOVE, PlaybackConnection.ACTION_DISLIKE -> {
-                    val key = RatingGate.target(trusted, null, current)
-                        ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    val key = when (val verdict = RatingGate.check(trusted, null, current)) {
+                        is RatingGate.Verdict.Rate -> verdict.key
+                        is RatingGate.Verdict.Refuse -> return Futures.immediateFuture(SessionResult(verdict.error))
+                    }
                     val stars = if (customCommand.customAction == PlaybackConnection.ACTION_DISLIKE) {
                         1
                     } else {
@@ -493,16 +486,18 @@ class PlaybackService : MediaLibraryService() {
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
-        // Controllers that rate with Media3's own ratings (stars, heart or thumbs). Media3 only
-        // rates the track playing, so any controller may, as before; never a hidden surprise track.
+        // Controllers that rate with Media3's own ratings (stars, heart or thumbs): the same rule as
+        // Sillon's own commands. Any app can call setRating, and pick the track playing first.
         @OptIn(UnstableApi::class)
         override fun onSetRating(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
             rating: Rating,
         ): ListenableFuture<SessionResult> {
-            val key = RatingGate.target(true, null, session.player.currentMediaItem)
-                ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            val key = when (val verdict = RatingGate.check(isTrustedRater(session, controller), null, session.player.currentMediaItem)) {
+                is RatingGate.Verdict.Rate -> verdict.key
+                is RatingGate.Verdict.Refuse -> return Futures.immediateFuture(SessionResult(verdict.error))
+            }
             val stars = when (rating) {
                 is StarRating -> if (rating.isRated) Math.round(rating.starRating * Stars.MAX / rating.maxStars).coerceIn(1, Stars.MAX) else null
                 is HeartRating -> if (rating.isRated && rating.isHeart) Stars.MAX else null
