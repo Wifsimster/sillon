@@ -118,12 +118,23 @@ class JellyfinApi(
             "filters" to "IsFavorite", "sortBy" to "SortName",
         ).map { it.toMetadata() }
 
-    suspend fun playedTracks(server: ServerEndpoint, deviceId: String, sectionKey: String): List<PlexMetadata> =
-        items(
-            server, deviceId, "Items",
-            "parentId" to sectionKey, "includeItemTypes" to "Audio", "recursive" to "true",
-            "filters" to "IsPlayed", "enableImages" to "false", "enableUserData" to "true",
-        ).map { it.toMetadata() }
+    suspend fun playedTracks(server: ServerEndpoint, deviceId: String, sectionKey: String): List<PlexMetadata> {
+        val tracks = LinkedHashMap<String, PlexMetadata>()
+        var start = 0
+        while (true) {
+            val page = page(
+                server, deviceId, "Items",
+                "parentId" to sectionKey, "includeItemTypes" to "Audio", "recursive" to "true",
+                "filters" to "IsPlayed", "sortBy" to "SortName", "enableImages" to "false",
+                "enableUserData" to "true", "startIndex" to start.toString(), "limit" to PAGE_SIZE.toString(),
+            )
+            val before = tracks.size
+            page.items.forEach { tracks[it.id] = it.toMetadata() }
+            start += page.items.size
+            val done = page.items.size < PAGE_SIZE || (page.total > 0 && start >= page.total)
+            if (done || tracks.size == before) return tracks.values.toList()
+        }
+    }
 
     suspend fun instantMix(server: ServerEndpoint, deviceId: String, itemId: String): List<PlexMetadata> =
         items(server, deviceId, "Items/$itemId/InstantMix", "limit" to RADIO_TRACKS.toString()).map { it.toMetadata() }
@@ -185,12 +196,19 @@ class JellyfinApi(
         deviceId: String,
         path: String,
         vararg query: Pair<String, String>,
-    ): List<JellyfinItem> {
+    ): List<JellyfinItem> = page(server, deviceId, path, *query).items
+
+    private suspend fun page(
+        server: ServerEndpoint,
+        deviceId: String,
+        path: String,
+        vararg query: Pair<String, String>,
+    ): JellyfinItems {
         val url = serverUrl(server, path).newBuilder().apply {
             server.userId?.let { addQueryParameter("userId", it) }
             query.forEach { (k, v) -> addQueryParameter(k, v) }
         }.build()
-        return PlexJson.decodeFromString(JellyfinItems.serializer(), get(url, deviceId, server.token)).items
+        return PlexJson.decodeFromString(JellyfinItems.serializer(), get(url, deviceId, server.token))
     }
 
     private suspend fun get(url: HttpUrl, deviceId: String, token: String? = null): String =
@@ -231,6 +249,7 @@ class JellyfinApi(
         const val SEARCH_LIMIT = 60
         const val RADIO_TRACKS = 100
         const val BATCH_SIZE = 100
+        const val PAGE_SIZE = 2_000
     }
 }
 

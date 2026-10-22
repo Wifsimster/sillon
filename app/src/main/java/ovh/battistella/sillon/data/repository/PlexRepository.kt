@@ -34,6 +34,7 @@ import ovh.battistella.sillon.data.session.SessionStore
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.wear.AlbumPlays
+import ovh.battistella.sillon.data.wear.SleeveWearCache
 import ovh.battistella.sillon.data.wear.jellyfinAlbumPlays
 import ovh.battistella.sillon.data.wear.plexAlbumPlays
 import ovh.battistella.sillon.playback.PlayableTrack
@@ -89,6 +90,7 @@ class PlexRepository @Inject constructor(
     private val settings: SettingsStore,
     private val network: NetworkMonitor,
     private val jellyfin: JellyfinApi,
+    private val sleeveWearCache: SleeveWearCache,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -110,10 +112,13 @@ class PlexRepository @Inject constructor(
         return true
     }
 
-    suspend fun signOut() = sessionStore.signOut()
+    suspend fun signOut() {
+        sessionStore.signOut()
+        sleeveWearCache.clear()
+    }
 
     suspend fun changeServer() {
-        if (jellyfinServer() != null) sessionStore.signOut() else sessionStore.clearServer()
+        if (jellyfinServer() != null) signOut() else sessionStore.clearServer()
     }
 
     suspend fun findJellyfinServer(input: String): Pair<String, JellyfinPublicInfo> {

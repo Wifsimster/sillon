@@ -75,7 +75,7 @@ class JellyfinApiTest {
     }
 
     @Test
-    fun `fetches the library's played tracks in one request for sleeve wear`() = runTest {
+    fun `fetches a small library's played tracks in one page for sleeve wear`() = runTest {
         server.enqueue(
             MockResponse().setBody(
                 """{"Items": [{"Id": "t1", "Name": "Jellyfin", "Type": "Audio", "AlbumId": "a1",
@@ -94,6 +94,39 @@ class JellyfinApiTest {
         assertEquals("IsPlayed", url.queryParameter("filters"))
         assertEquals("true", url.queryParameter("recursive"))
         assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `pages through a large library's played tracks`() = runTest {
+        fun page(from: Int, count: Int) = MockResponse().setBody(
+            (from until from + count).joinToString(",", """{"Items": [""", """], "TotalRecordCount": 2003}""") {
+                """{"Id": "t$it", "Name": "T", "Type": "Audio", "AlbumId": "a${it % 7}", "UserData": {"PlayCount": 1}}"""
+            },
+        )
+        server.enqueue(page(0, 2000))
+        server.enqueue(page(2000, 3))
+
+        val tracks = api.playedTracks(endpoint, "device-1", "music")
+
+        assertEquals(2003, tracks.size)
+        val first = server.takeRequest().requestUrl!!
+        val second = server.takeRequest().requestUrl!!
+        assertEquals("0", first.queryParameter("startIndex"))
+        assertEquals("2000", first.queryParameter("limit"))
+        assertEquals("2000", second.queryParameter("startIndex"))
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `stops paging when the server ignores the page`() = runTest {
+        val all = (0 until 2000).joinToString(",", """{"Items": [""", "]}") {
+            """{"Id": "t$it", "Name": "T", "Type": "Audio", "AlbumId": "a1", "UserData": {"PlayCount": 1}}"""
+        }
+        server.enqueue(MockResponse().setBody(all))
+        server.enqueue(MockResponse().setBody(all))
+
+        assertEquals(2000, api.playedTracks(endpoint, "device-1", "music").size)
+        assertEquals(2, server.requestCount)
     }
 
     @Test
