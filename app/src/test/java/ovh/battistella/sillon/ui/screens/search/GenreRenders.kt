@@ -27,7 +27,6 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onAllNodes
 import androidx.test.core.app.ApplicationProvider
 import coil.Coil
 import coil.ImageLoader

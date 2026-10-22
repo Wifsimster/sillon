@@ -89,7 +89,7 @@ class GenreRepositoryTest {
     }
 
     @Test
-    fun `a fresh cache is not fetched again; an old one is`() = runBlocking {
+    fun `a fresh cache is not fetched again, an old one is`() = runBlocking {
         val r = repo()
         r.refresh(now = 1_000)
         r.refresh(now = 2_000)
