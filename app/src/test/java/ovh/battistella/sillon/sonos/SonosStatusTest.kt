@@ -10,14 +10,17 @@ import org.junit.Test
 class SonosStatusTest {
     private val uuid = "RINCON_000E58AAAAAA01400"
     private val queue = "x-rincon-queue:$uuid#0"
-    private val ours = setOf("http://server/1.flac", "http://server/2.flac")
+    private val ours = setOf(
+        "http://192.168.1.5:32400/library/parts/1/file.flac?X-Plex-Token=t&a=b",
+        "http://192.168.1.5:32400/library/parts/2/My%20Song.flac?X-Plex-Token=t",
+    ).mapNotNull(::trackKey).toSet()
 
     private fun status(
         transport: String = "PLAYING",
         track: String = "2",
         rel: String = "0:00:42",
         duration: String = "0:03:10",
-        trackUri: String = "http://server/2.flac",
+        trackUri: String = "http://192.168.1.5:32400/library/parts/2/My%20Song.flac?X-Plex-Token=t",
         mediaUri: String = queue,
     ) = SonosStatus.of(
         mapOf("CurrentTransportState" to transport),
@@ -67,10 +70,23 @@ class SonosStatusTest {
     }
 
     @Test
+    fun `our track comes back whatever the speaker does to its query or encoding`() {
+        listOf(
+            "http://192.168.1.5:32400/library/parts/2/My%20Song.flac",
+            "http://192.168.1.5:32400/library/parts/2/My%20Song.flac?a=b&X-Plex-Token=t",
+            "http://192.168.1.5:32400/library/parts/2/My Song.flac?X-Plex-Token=t&amp;x=1",
+            "HTTP://192.168.1.5:32400/library/parts/2/My%20Song.flac",
+        ).forEach { assertTrue(it, status(trackUri = it).playsOurs(uuid, ours)) }
+        assertTrue(status(mediaUri = "X-RINCON-QUEUE:$uuid#0").playsOurs(uuid, ours))
+    }
+
+    @Test
     fun `another source, another queue or a foreign track means it was taken over`() {
         assertFalse(status(mediaUri = "x-sonos-spotify:spotify%3atrack%3a123").playsOurs(uuid, ours))
         assertFalse(status(mediaUri = "x-rincon-queue:RINCON_OTHER#0").playsOurs(uuid, ours))
         assertFalse(status(trackUri = "x-sonos-http:song.mp3").playsOurs(uuid, ours))
+        assertFalse(status(trackUri = "http://192.168.1.5:32400/library/parts/9/other.flac").playsOurs(uuid, ours))
+        assertFalse(status(trackUri = "http://192.168.1.99:32400/library/parts/2/My%20Song.flac").playsOurs(uuid, ours))
         assertFalse(status(mediaUri = "").playsOurs(uuid, ours))
     }
 

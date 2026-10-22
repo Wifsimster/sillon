@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.sonos
 
 import androidx.media3.common.Player
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /** `CurrentTransportState` of a Sonos group. */
 enum class Transport {
@@ -64,12 +65,15 @@ data class SonosStatus(
     val playWhenReady: Boolean get() = transport == Transport.PLAYING || transport == Transport.TRANSITIONING
 
     /**
-     * Whether the group still plays what Sillon sent: its own queue, and a track that came from
-     * Sillon. Anything else means the Sonos app (or another controller) took the speaker over.
+     * Whether the group still plays what Sillon sent: its own queue (`x-rincon-queue:<RINCON>#0`,
+     * a URI the speaker makes from its own id), and a track from Sillon's server. Tracks are
+     * compared by [trackKey] (host, port and path), never by the whole URL: the speaker may hand
+     * the query back re-encoded or reordered. Anything else means another controller took over.
      */
-    fun playsOurs(coordinatorUuid: String, ourUris: Set<String>): Boolean {
-        if (mediaUri.isNullOrBlank() || mediaUri != AvTransport.queueUri(coordinatorUuid)) return false
-        return trackUri.isNullOrBlank() || trackUri in ourUris
+    fun playsOurs(coordinatorUuid: String, ourTracks: Set<String>): Boolean {
+        if (!mediaUri.equals(AvTransport.queueUri(coordinatorUuid), ignoreCase = true)) return false
+        if (trackUri.isNullOrBlank()) return true
+        return trackKey(trackUri) in ourTracks
     }
 
     companion object {
@@ -83,4 +87,14 @@ data class SonosStatus(
                 mediaUri = mediaInfo["CurrentURI"]?.trim(),
             )
     }
+}
+
+/**
+ * What identifies a track URL across the speaker's round trip: host, port and decoded path, no
+ * query (the token and the transcode session live there). Null for anything but http(s), such as
+ * a streaming service's `x-sonos-…` track.
+ */
+fun trackKey(uri: String): String? {
+    val url = uri.trim().toHttpUrlOrNull() ?: return null
+    return "${url.host.lowercase()}:${url.port}/${url.pathSegments.joinToString("/")}"
 }

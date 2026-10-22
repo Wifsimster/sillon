@@ -127,7 +127,7 @@ class SonosPlayer(
         val now = SonosStatus.of(transport, positionInfo, media)
         status = now
         position = if (now.isPlaying) PositionSupplier.getExtrapolating(now.positionMs, 1f) else PositionSupplier.getConstant(now.positionMs)
-        val ours = entries.isEmpty() || now.playsOurs(group.coordinator.uuid, entries.mapTo(HashSet()) { it.track.uri })
+        val ours = entries.isEmpty() || now.playsOurs(group.coordinator.uuid, entries.mapNotNullTo(HashSet()) { trackKey(it.track.uri) })
         health.polled(now, ours)?.let(::lose)
     }
 
