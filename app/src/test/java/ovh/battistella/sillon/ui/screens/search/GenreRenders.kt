@@ -120,7 +120,9 @@ class GenreRenders {
             Page("home") { SearchHome(homeUi(online = true), {}, {}, PaddingValues()) },
             Page("home-offline") { SearchHome(homeUi(online = false), {}, {}, PaddingValues()) },
             Page("genre") { GenrePage(genreUi(online = true), false, false, {}, {}, {}, {}, PaddingValues()) },
-            Page("genre-offline") { GenrePage(genreUi(online = false), false, true, {}, {}, {}, {}, PaddingValues()) },
+            Page("genre-offline") { GenrePage(genreUi(online = false), false, false, {}, {}, {}, {}, PaddingValues()) },
+            // After a shuffle that found no track to play.
+            Page("genre-nothing-to-play") { GenrePage(genreUi(online = true), false, true, {}, {}, {}, {}, PaddingValues()) },
             Page("genre-missing") { GenrePage(GenrePageUi(found = false, loading = false), false, false, {}, {}, {}, {}, PaddingValues()) },
             Page("all") { GenreList(GenreListUi(genres(), loading = false), {}, {}, PaddingValues()) },
             Page("all-offline-none") { GenreList(GenreListUi(online = false, loading = false), {}, {}, PaddingValues()) },
@@ -141,12 +143,16 @@ class GenreRenders {
         "Heavy Metal" to 1, "Chanson" to 1,
     ).map { (label, count) -> GenreTileUi(Genres.normalize(label), label, count) }
 
+    private fun offlineGenres(): List<GenreTileUi> = listOf("Rock" to 4, "Jazz" to 2, "Électronique" to 1)
+        .map { (label, count) -> GenreTileUi(Genres.normalize(label), label, count) }
+
     private fun homeUi(online: Boolean) = SearchHomeUi(
         recent = albums("r", 4),
         classics = albums("c", 4),
         online = online,
         // Online: twelve tiles ending on "Heavy Metal, 1 album", and more behind "All genres".
-        genres = if (online) genres().filter { it.label != "Blues" }.take(Genres.VISIBLE) else genres().take(3),
+        // Offline: only the genres of downloaded albums, counted on those albums.
+        genres = if (online) genres().filter { it.label != "Blues" }.take(Genres.VISIBLE) else offlineGenres(),
         moreGenres = online,
     )
 
