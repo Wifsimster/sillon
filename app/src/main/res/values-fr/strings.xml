@@ -41,6 +41,16 @@
     <string name="search_hint">Artistes, albums, titres</string>
     <string name="search_clear">Effacer</string>
     <string name="search_no_results">Aucun résultat pour « %1$s ».</string>
+    <string name="search_home_recent">Écoutés récemment</string>
+    <string name="search_home_classics">Tes classiques</string>
+    <string name="search_home_empty">Les albums que tu écoutes apparaîtront ici.</string>
+    <string name="search_home_offline">Hors ligne : seulement tes albums téléchargés.</string>
+    <string name="search_home_offline_empty">Tu es hors ligne, et aucun de tes albums récents ou les plus écoutés n\'est téléchargé. Ils reviennent avec la connexion.</string>
+    <string name="search_home_classics_need_wear">Active l\'usure des pochettes dans les réglages pour voir les albums que tu écoutes le plus.</string>
+    <string name="search_home_loading">Chargement de tes albums</string>
+    <string name="search_home_album">%1$s, %2$s</string>
+    <string name="search_home_open">Ouvrir l\'album</string>
+    <string name="search_home_play">Lire l\'album</string>
     <string name="action_more">Plus d\'options</string>
 
     <string name="library_downloads">Téléchargés</string>

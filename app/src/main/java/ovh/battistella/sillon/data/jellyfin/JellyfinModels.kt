@@ -67,6 +67,7 @@ data class JellyfinItem(
 data class JellyfinUserData(
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
     @SerialName("PlayCount") val playCount: Int = 0,
+    @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )
 
 const val JELLYFIN_IMAGE = "jellyfin-item:"
@@ -104,6 +105,7 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         parentThumb = albumImage,
         userRating = if (userData?.isFavorite == true) 10f else null,
         viewCount = userData?.playCount,
+        lastViewedAt = parseServerDate(userData?.lastPlayedDate)?.div(1_000),
         normalizationGain = normalizationGain,
         media = if (type == "Audio") {
             listOf(PlexMedia(container = container, parts = listOf(PlexPart(key = streamPath(id, container)))))

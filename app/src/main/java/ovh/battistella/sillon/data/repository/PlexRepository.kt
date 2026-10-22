@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ovh.battistella.sillon.data.home.HomeAlbum
+import ovh.battistella.sillon.data.home.SearchHome
 import ovh.battistella.sillon.data.jellyfin.JellyfinApi
 import ovh.battistella.sillon.data.jellyfin.JellyfinAuthResult
 import ovh.battistella.sillon.data.jellyfin.JellyfinPublicInfo
@@ -370,6 +372,27 @@ class PlexRepository @Inject constructor(
             plex = { clientId, server -> api.metadataBatch(clientId, server, keys) },
             jellyfin = { deviceId, server -> jellyfin.itemsByIds(server, deviceId, keys) },
         ).associate { it.ratingKey to (it.viewCount ?: 0) }
+    }
+
+    /** The albums last played on the server, newest first. */
+    suspend fun recentAlbums(): List<HomeAlbum> {
+        val section = currentMusicSection() ?: return emptyList()
+        return onServer(
+            plex = { clientId, server ->
+                SearchHome.plexRecent(api.sectionItems(clientId, server, section.key, SearchHome.plexRecentQuery()).metadata)
+            },
+            jellyfin = { deviceId, server ->
+                SearchHome.recentFromTracks(jellyfin.itemsPage(server, deviceId, SearchHome.jellyfinRecentQuery(section.key)).first)
+            },
+        )
+    }
+
+    suspend fun itemsByKeys(keys: List<String>): List<PlexMetadata> {
+        if (keys.isEmpty()) return emptyList()
+        return onServer(
+            plex = { clientId, server -> api.metadataBatch(clientId, server, keys) },
+            jellyfin = { deviceId, server -> jellyfin.itemsByIds(server, deviceId, keys) },
+        )
     }
 
     suspend fun playlists(): List<PlexMetadata> = onServer(
