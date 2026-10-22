@@ -47,6 +47,8 @@ abstract class TrackCollectionViewModel(
     val state = _state.asStateFlow()
 
     val nowPlaying = playback.state
+    val ratings = playback.ratings
+    val skipOneStar = playback.skipOneStar
 
     private val _downloadStatus = MutableStateFlow(DownloadStatus())
     val downloadStatus = _downloadStatus.asStateFlow()
@@ -84,7 +86,7 @@ abstract class TrackCollectionViewModel(
         val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
         viewModelScope.launch {
             val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable)
-            playback.play(fresh.ifEmpty { playable }, start, albumSides = sidesForPlayback())
+            playback.play(fresh.ifEmpty { playable }, start, albumSides = sidesForPlayback(), pickStart = trackKey == null)
         }
     }
 

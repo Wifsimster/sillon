@@ -48,7 +48,7 @@ class SonosAccessTest {
 
     private val repository = PlexRepository(
         api, sessionStore, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
-        mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+        mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
     )
 
     private fun track(key: String, codec: String, rate: Int) = PlexMetadata(
@@ -107,7 +107,7 @@ class SonosAccessTest {
         }
         val repo = PlexRepository(
             api, store, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
-            jf, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            jf, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
         )
 
         val access = repo.openSonosAccess()

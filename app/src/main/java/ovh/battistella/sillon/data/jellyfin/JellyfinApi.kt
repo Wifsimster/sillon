@@ -145,6 +145,30 @@ class JellyfinApi(
             "filters" to "IsFavorite", "sortBy" to "SortName",
         ).map { it.toMetadata() }
 
+    /**
+     * Jellyfin has no stars: 5 stars is a favourite, 1 star a dislike, and clearing removes both.
+     * [stars] 2 to 4 aren't sent (see [ovh.battistella.sillon.data.rating.JellyfinStars]).
+     */
+    suspend fun rate(server: ServerEndpoint, deviceId: String, id: String, stars: Int?) {
+        val favourite = userUrl(server, "UserFavoriteItems/$id")
+        val like = userUrl(server, "UserItems/$id/Rating")
+        when (stars) {
+            5 -> {
+                send("POST", favourite, deviceId, server.token)
+                send("DELETE", like, deviceId, server.token)
+            }
+            1 -> {
+                send("DELETE", favourite, deviceId, server.token)
+                send("POST", like.newBuilder().addQueryParameter("likes", "false").build(), deviceId, server.token)
+            }
+            null -> {
+                send("DELETE", favourite, deviceId, server.token)
+                send("DELETE", like, deviceId, server.token)
+            }
+            else -> throw IllegalArgumentException("Jellyfin keeps 1 or 5 stars, not $stars")
+        }
+    }
+
     suspend fun playedTracks(server: ServerEndpoint, deviceId: String, sectionKey: String): List<PlexMetadata> {
         val tracks = LinkedHashMap<String, PlexMetadata>()
         var start = 0
@@ -305,6 +329,16 @@ class JellyfinApi(
                 .post(json.toRequestBody("application/json".toMediaType()))
                 .build(),
         )
+
+    private suspend fun send(method: String, url: HttpUrl, deviceId: String, token: String?): String =
+        client.fetch(
+            Request.Builder().url(url).headers(deviceId, token)
+                .method(method, if (method == "DELETE") null else "".toRequestBody("application/json".toMediaType()))
+                .build(),
+        )
+
+    private fun userUrl(server: ServerEndpoint, path: String): HttpUrl =
+        serverUrl(server, path).newBuilder().apply { server.userId?.let { addQueryParameter("userId", it) } }.build()
 
     private fun Request.Builder.headers(deviceId: String, token: String?, name: String = device.deviceName): Request.Builder = apply {
         val auth = buildString {

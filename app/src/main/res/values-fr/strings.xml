@@ -294,6 +294,28 @@
     <string name="listen_never_played_albums_hint">Un disque entier que tu n\'as jamais écouté</string>
     <string name="listen_radio_play">Lancer cette radio</string>
     <string name="listen_radios_offline">Hors ligne : les radios passent par ton serveur. Elles reviennent avec la connexion.</string>
+    <!-- Noter en écoutant -->
+    <plurals name="rating_give">
+        <item quantity="one">Noter %d étoile</item>
+        <item quantity="many">Noter %d étoiles</item>
+        <item quantity="other">Noter %d étoiles</item>
+    </plurals>
+    <plurals name="rating_given">
+        <item quantity="one">Noté %d étoile</item>
+        <item quantity="many">Noté %d étoiles</item>
+        <item quantity="other">Noté %d étoiles</item>
+    </plurals>
+    <string name="rating_none">Pas noté</string>
+    <string name="rating_clear">Effacer la note</string>
+    <string name="rating_love">J\'adore (5 étoiles)</string>
+    <string name="rating_love_undo">Retirer les 5 étoiles</string>
+    <string name="rating_dislike">Pas pour moi (1 étoile, suivant)</string>
+    <string name="rating_waiting">Hors ligne : ta note partira dès que tu seras connecté.</string>
+    <string name="rating_failed">Ta note n\'est pas arrivée sur le serveur. Touche pour réessayer.</string>
+    <string name="rating_jellyfin_only">Jellyfin ne garde que 1 étoile (je n\'aime pas) et 5 étoiles (favori).</string>
+    <string name="settings_skip_one_star">Sauter les titres à 1 étoile</string>
+    <string name="settings_skip_one_star_hint">Dans les albums et les playlists. Touche un titre pour l\'écouter quand même. L\'aléatoire et les radios ne les jouent jamais.</string>
+    <string name="track_skipped">Sauté quand on lit dans l\'ordre</string>
     <string name="output_open">Lire sur…</string>
     <string name="output_open_active">Lecture sur %1$s. Changer de sortie</string>
     <string name="output_title">Lire sur</string>

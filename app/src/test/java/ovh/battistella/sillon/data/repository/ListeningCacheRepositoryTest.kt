@@ -62,7 +62,7 @@ class ListeningCacheRepositoryTest {
         coEvery { versions(any(), any(), any()) } returns CachedVersions.NONE
     }
 
-    private val repository = PlexRepository(api, sessionStore, downloads, settings, network, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), cache)
+    private val repository = PlexRepository(api, sessionStore, downloads, settings, network, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), cache, mockk(relaxed = true))
 
     private fun track(key: String) =
         PlexMetadata(ratingKey = key, title = key, media = listOf(PlexMedia(parts = listOf(PlexPart("/library/parts/$key/file.flac")))))
