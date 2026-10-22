@@ -37,7 +37,7 @@
     <string name="library_playlists">Playlists</string>
     <string name="library_tracks">Titres</string>
     <string name="library_search">Recherche</string>
-    <string name="playlists_empty">Aucune playlist musicale sur ce serveur.</string>
+    <string name="playlists_empty">Aucune playlist musicale sur ce serveur pour l\'instant. Les radios sont dans Écouter.</string>
     <string name="search_hint">Artistes, albums, titres</string>
     <string name="search_clear">Effacer</string>
     <string name="search_no_results">Aucun résultat pour « %1$s ».</string>
@@ -262,4 +262,7 @@
     <string name="listen_no_five_stars">Pas encore de titres 5 étoiles. Donne 5 étoiles à un titre et il arrive ici.</string>
     <string name="listen_no_favourites">Pas encore de favoris. Ajoute un titre à tes favoris et il arrive ici.</string>
     <string name="listen_failed">La lecture n\'a pas démarré. Réessaie.</string>
+    <string name="listen_never_played_albums_hint">Un disque entier que tu n\'as jamais écouté</string>
+    <string name="listen_radio_play">Lancer cette radio</string>
+    <string name="listen_radios_offline">Hors ligne : les radios passent par ton serveur. Elles reviennent avec la connexion.</string>
 </resources>
