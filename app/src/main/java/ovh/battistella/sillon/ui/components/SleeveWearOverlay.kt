@@ -8,13 +8,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.wear.SleeveWear
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
 import kotlin.random.Random
 
 @Immutable
@@ -64,7 +66,7 @@ fun Modifier.sleeveWear(wear: Wear): Modifier = drawWithCache {
     }
 
     if (wear.level >= 1) {
-        val depth = s * (0.10f + 0.02f * wear.level)
+        val depth = s * (0.05f + 0.015f * wear.level)
         val tone = Aged.copy(alpha = (0.10f + 0.04f * (wear.level - 1)) * a)
         val w = size.width
         val h = size.height
@@ -85,8 +87,8 @@ fun Modifier.sleeveWear(wear: Wear): Modifier = drawWithCache {
             Offset(size.width, size.height),
             Offset(0f, size.height),
         ).shuffled(random).take(wear.level)
-        val radius = s * (0.10f + 0.02f * (wear.level - 2))
-        val scuff = Paper.copy(alpha = (0.26f + 0.06f * (wear.level - 2)) * a)
+        val radius = s * (0.06f + 0.01f * (wear.level - 2))
+        val scuff = Paper.copy(alpha = (0.30f + 0.06f * (wear.level - 2)) * a)
         corners.forEach { corner ->
             val brush = Brush.radialGradient(listOf(scuff, Color.Transparent), center = corner, radius = radius)
             ops += { drawCircle(brush, radius = radius, center = corner) }
@@ -94,33 +96,27 @@ fun Modifier.sleeveWear(wear: Wear): Modifier = drawWithCache {
     }
 
     if (wear.level >= 3) {
+        // The disc pressing through the sleeve: a soft pale band, a little stronger on one side.
         val center = Offset(
             size.width / 2f + s * (random.nextFloat() - 0.5f) * 0.03f,
             size.height / 2f + s * (random.nextFloat() - 0.5f) * 0.03f,
         )
-        val ringRadius = s * 0.455f
-        val width = s * 0.035f
-        val strong = if (wear.level >= 4) 1.4f else 1f
-        val base = Paper.copy(alpha = 0.06f * strong * a)
-        val bright = Paper.copy(alpha = 0.11f * strong * a)
-        val shade = Vinyl.copy(alpha = 0.06f * strong * a)
-        val arcs = List(3) { i -> (i * 120f + random.nextFloat() * 60f) to (50f + random.nextFloat() * 60f) }
-        val topLeft = Offset(center.x - ringRadius, center.y - ringRadius)
-        val ringSize = Size(ringRadius * 2, ringRadius * 2)
-        ops += { drawCircle(base, radius = ringRadius, center = center, style = Stroke(width)) }
-        ops += { drawCircle(shade, radius = ringRadius - width * 0.8f, center = center, style = Stroke(width * 0.3f)) }
-        arcs.forEach { (start, sweep) ->
-            ops += {
-                drawArc(
-                    bright,
-                    startAngle = start,
-                    sweepAngle = sweep,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = ringSize,
-                    style = Stroke(width * 0.6f, cap = StrokeCap.Round),
-                )
-            }
+        val ringRadius = s * 0.44f
+        val band = s * 0.045f
+        val strength = if (wear.level >= 4) 0.16f else 0.11f
+        val angle = random.nextFloat() * 2f * PI.toFloat()
+        val lean = Offset(cos(angle), sin(angle)) * (s * 0.012f)
+        listOf(center to strength, center + lean to strength * 0.6f).forEach { (c, alpha) ->
+            val outer = ringRadius + band
+            val brush = Brush.radialGradient(
+                0f to Color.Transparent,
+                (ringRadius - band) / outer to Color.Transparent,
+                ringRadius / outer to Paper.copy(alpha = alpha * a),
+                1f to Color.Transparent,
+                center = c,
+                radius = outer,
+            )
+            ops += { drawCircle(brush, radius = outer, center = c) }
         }
     }
 
