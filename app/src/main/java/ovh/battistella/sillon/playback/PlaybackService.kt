@@ -9,6 +9,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.HeartRating
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Rating
@@ -54,6 +55,7 @@ import ovh.battistella.sillon.data.settings.SavedQueue
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
+import ovh.battistella.sillon.playback.mystery.MysteryMask
 import ovh.battistella.sillon.playback.mystery.MysterySession
 import ovh.battistella.sillon.playback.mystery.MysteryWatcher
 import ovh.battistella.sillon.playback.mystery.toSaved
@@ -109,6 +111,9 @@ class PlaybackService : MediaLibraryService() {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) startQueueSaver(player) else saveQueue(player)
             }
+
+            // Revealing a surprise sleeve unmasks the track in place: the heart comes back.
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) = refreshButtons()
         })
         player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
         val oneStar = { item: MediaItem -> rater.state.value.book.isOneStar(item.mediaId, MediaItems.ratingOf(item)) }
@@ -141,6 +146,7 @@ class PlaybackService : MediaLibraryService() {
             grouped = { together.state.value.isActive },
             inGroupMode = { groupPlayer?.inGroupMode == true },
             sides = sides,
+            chose = { index -> skipper?.chose(index) },
             describe = { end ->
                 getString(R.string.side_end_title, end.ended) to getString(R.string.side_flip_hint, end.next)
             },
@@ -181,14 +187,17 @@ class PlaybackService : MediaLibraryService() {
         .setSessionCommand(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
         .build()
 
-    /** The notification, lock screen and car: flip at the end of a side, else the heart and the thumb down. */
+    /**
+     * The notification, lock screen and car: flip at the end of a side, else the heart and the
+     * thumb down. None on a surprise sleeve not revealed yet: the heart would tell its rating.
+     */
     @OptIn(UnstableApi::class)
     private fun refreshButtons() {
         val session = mediaSession ?: return
         val item = session.player.currentMediaItem
         val buttons = when {
             sides.state.value.ended != null -> listOf(flipButton())
-            item == null || item.mediaId.isBlank() -> emptyList()
+            item == null || item.mediaId.isBlank() || MysteryMask.isMasked(item) -> emptyList()
             else -> {
                 val loved = Stars.isFiveStars(rater.state.value.book.ratingOf(item.mediaId, MediaItems.ratingOf(item)))
                 listOf(loveButton(loved), dislikeButton())
@@ -338,6 +347,14 @@ class PlaybackService : MediaLibraryService() {
         )
     }
 
+    // The app itself (its own uid), the system, the notification and Android Auto.
+    @OptIn(UnstableApi::class)
+    private fun isTrustedRater(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
+        libraryTree.isCallerTrusted(controller) ||
+            session.isMediaNotificationController(controller) ||
+            session.isAutoCompanionController(controller) ||
+            session.isAutomotiveController(controller)
+
     private inner class LibraryCallback : MediaLibrarySession.Callback {
         @OptIn(UnstableApi::class)
         override fun onConnect(
@@ -346,9 +363,14 @@ class PlaybackService : MediaLibraryService() {
         ): MediaSession.ConnectionResult {
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .add(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
-                .add(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY))
-                .add(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
-                .add(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
+                .apply {
+                    // Any app can connect to the session: only the trusted ones get to rate.
+                    if (isTrustedRater(session, controller)) {
+                        add(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY))
+                        add(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
+                        add(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
+                    }
+                }
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
@@ -363,37 +385,39 @@ class PlaybackService : MediaLibraryService() {
             args: Bundle,
         ): ListenableFuture<SessionResult> {
             val current = session.player.currentMediaItem
+            val trusted = isTrustedRater(session, controller)
             when (customCommand.customAction) {
                 SideSession.ACTION_FLIP -> sidePlayer?.flip()
                 PlaybackConnection.ACTION_RATE -> {
-                    val key = args.getString(PlaybackConnection.RATE_KEY) ?: current?.mediaId
-                    if (key.isNullOrBlank()) return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    val key = RatingGate.target(trusted, args.getString(PlaybackConnection.RATE_KEY), current)
+                        ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                     rate(key, args.getInt(PlaybackConnection.RATE_STARS).takeIf { it in 1..Stars.MAX })
                 }
                 PlaybackConnection.ACTION_LOVE, PlaybackConnection.ACTION_DISLIKE -> {
-                    val item = current?.takeIf { it.mediaId.isNotBlank() }
+                    val key = RatingGate.target(trusted, null, current)
                         ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                     val stars = if (customCommand.customAction == PlaybackConnection.ACTION_DISLIKE) {
                         1
                     } else {
-                        val loved = Stars.isFiveStars(rater.state.value.book.ratingOf(item.mediaId, MediaItems.ratingOf(item)))
+                        val loved = Stars.isFiveStars(rater.state.value.book.ratingOf(key, MediaItems.ratingOf(current)))
                         if (loved) null else Stars.MAX
                     }
-                    rate(item.mediaId, stars)
+                    rate(key, stars)
                 }
                 else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
-        // Controllers that rate with Media3's own ratings (stars, heart or thumbs).
+        // Controllers that rate with Media3's own ratings (stars, heart or thumbs). Media3 only
+        // rates the track playing, so any controller may, as before; never a hidden surprise track.
         @OptIn(UnstableApi::class)
         override fun onSetRating(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
             rating: Rating,
         ): ListenableFuture<SessionResult> {
-            val key = session.player.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() }
+            val key = RatingGate.target(true, null, session.player.currentMediaItem)
                 ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
             val stars = when (rating) {
                 is StarRating -> if (rating.isRated) Math.round(rating.starRating * Stars.MAX / rating.maxStars).coerceIn(1, Stars.MAX) else null

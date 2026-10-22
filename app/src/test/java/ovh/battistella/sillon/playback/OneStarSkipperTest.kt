@@ -58,6 +58,32 @@ class OneStarSkipperTest {
     }
 
     @Test
+    fun `a 1-star track picked from the queue plays`() {
+        queue("a1", "b1", "c1", "d1", "e1")
+
+        skipper.chose(3)
+        exo.seekToDefaultPosition(3)
+        idle()
+
+        assertEquals("d1", current())
+    }
+
+    @Test
+    fun `after a pick, next jumps over 1-star tracks again`() {
+        queue("a1", "b1", "c1", "d1", "e1")
+        skipper.chose(3)
+        exo.seekToDefaultPosition(3)
+        idle()
+
+        exo.seekToPreviousMediaItem()
+        idle()
+        exo.seekToNextMediaItem()
+        idle()
+
+        assertEquals("e1", current())
+    }
+
+    @Test
     fun `going back to a 1-star track plays it`() {
         queue("a1", "b1", "c1", "d1", "e1", start = 2)
 

@@ -45,10 +45,19 @@ class OneStarSkipper(
     private val grouped: () -> Boolean,
     private val holding: () -> Boolean,
 ) : Player.Listener {
+    private var chosen: Int? = null
+
+    /** The listener picks the track at [index] from the queue: it plays, even rated 1 star. */
+    fun chose(index: Int) {
+        chosen = index
+    }
+
     override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
         val from = oldPosition.mediaItemIndex
         val to = newPosition.mediaItemIndex
-        if (from == to || to == C.INDEX_UNSET) return
+        val picked = reason == Player.DISCONTINUITY_REASON_SEEK && chosen == to
+        chosen = null
+        if (picked || from == to || to == C.INDEX_UNSET) return
         val forward = if (player.shuffleModeEnabled) to == next(from) else to > from
         if (!OneStarSkip.shouldSkip(reason, forward, enabled(), grouped(), holding())) return
         moveFrom(to)
