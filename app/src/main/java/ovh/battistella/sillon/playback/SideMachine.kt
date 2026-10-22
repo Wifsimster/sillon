@@ -76,6 +76,10 @@ class SideMachine {
         return SideEnd(active.labels[end], active.labels[end + 1], active.firstIndexOf(end + 1)).also { ended = it }
     }
 
+    fun onSeek() {
+        ended = null
+    }
+
     fun flip(): Int? {
         val end = ended ?: return null
         ended = null

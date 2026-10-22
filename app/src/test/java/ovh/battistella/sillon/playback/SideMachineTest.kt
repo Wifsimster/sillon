@@ -137,4 +137,14 @@ class SideMachineTest {
         assertTrue(machine.pauseAtEnd)
         assertEquals("A", machine.state.current)
     }
+
+    @Test
+    fun `replaying the last track of a side after its end plays the track instead of flipping`() {
+        val machine = machineAt(1)
+        machine.onPausedAtEndOfItem()
+        machine.onSeek()
+        assertNull(machine.state.ended)
+        assertNull(machine.flip())
+        assertTrue(machine.pauseAtEnd)
+    }
 }
