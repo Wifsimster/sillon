@@ -50,6 +50,7 @@ class SonosPlayer(
     /** Called instead of loading refused items: they go back to the phone. */
     private val onRefused: suspend (items: List<MediaItem>, index: Int, positionMs: Long) -> Unit,
     private val onLost: suspend (SonosLoss) -> Unit,
+    now: () -> Long = SystemClock::elapsedRealtime,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
     private class Entry(val uid: Long, val item: MediaItem, val track: SonosTrack)
 
@@ -63,10 +64,8 @@ class SonosPlayer(
     private var repeatMode = Player.REPEAT_MODE_OFF
     private var volume = 0
     private var poller: Job? = null
-    private var failures = 0
-    private var foreign = 0
+    private val health = SonosHealth(now)
     private var ticks = 0
-    private var waitingSince: Long? = null
     private var lost = false
 
     /** Sends [items] to the speaker and starts following it. Throws when the speaker refuses. */
@@ -93,6 +92,7 @@ class SonosPlayer(
     /** Pauses the speaker before the phone takes over; quiet when it is already stopped. */
     suspend fun pauseSpeaker() {
         poller?.cancel()
+        health.pauseAsked()
         commands.withLock {
             runCatching { poll() }
             if (status?.playWhenReady == true) runCatching { client.call(base, AvTransport.pause()) }
@@ -104,9 +104,8 @@ class SonosPlayer(
             delay(if (status?.playWhenReady == true) POLL_MS else IDLE_POLL_MS)
             commands.withLock {
                 runCatching { poll() }.onFailure {
-                    failures++
-                    Log.w(TAG, "poll failed ($failures): ${it.message}")
-                    if (failures >= MAX_FAILURES) lose(SonosLoss.UNREACHABLE)
+                    Log.w(TAG, "poll failed: ${it.message}")
+                    health.pollFailed()?.let(::lose)
                 }
             }
             if (!lost) invalidateState()
@@ -127,15 +126,9 @@ class SonosPlayer(
         }
         val now = SonosStatus.of(transport, positionInfo, media)
         status = now
-        failures = 0
         position = if (now.isPlaying) PositionSupplier.getExtrapolating(now.positionMs, 1f) else PositionSupplier.getConstant(now.positionMs)
-        if (now.isPlaying) waitingSince = null
         val ours = entries.isEmpty() || now.playsOurs(group.coordinator.uuid, entries.mapTo(HashSet()) { it.track.uri })
-        foreign = if (ours) 0 else foreign + 1
-        when {
-            foreign >= FOREIGN_POLLS -> lose(SonosLoss.TAKEN_OVER)
-            waitingSince?.let { SystemClock.elapsedRealtime() - it > START_TIMEOUT_MS } == true -> lose(SonosLoss.COULD_NOT_PLAY)
-        }
+        health.polled(now, ours)?.let(::lose)
     }
 
     private fun lose(reason: SonosLoss) {
@@ -165,7 +158,7 @@ class SonosPlayer(
 
     private suspend fun startPlaying() {
         client.call(base, AvTransport.play())
-        if (waitingSince == null) waitingSince = SystemClock.elapsedRealtime()
+        health.playAsked()
     }
 
     /** Runs [block] after the commands already sent, then reads the speaker back. */
@@ -208,12 +201,18 @@ class SonosPlayer(
     }
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean) = send {
-        if (playWhenReady) startPlaying() else client.call(base, AvTransport.pause())
+        if (playWhenReady) startPlaying() else pauseSpeakerNow()
     }
 
     override fun handlePrepare(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
-    override fun handleStop() = send { client.call(base, AvTransport.pause()) }
+    override fun handleStop() = send { pauseSpeakerNow() }
+
+    private suspend fun pauseSpeakerNow() {
+        // A pause before the speaker reported playing must not end the session as "couldn't play".
+        health.pauseAsked()
+        client.call(base, AvTransport.pause())
+    }
 
     override fun handleRelease(): ListenableFuture<*> {
         poller?.cancel()
@@ -312,9 +311,6 @@ class SonosPlayer(
         const val POLL_MS = 1_000L
         const val IDLE_POLL_MS = 4_000L
         const val SLOW_POLL_EVERY = 5
-        const val MAX_FAILURES = 8
-        const val FOREIGN_POLLS = 3
-        const val START_TIMEOUT_MS = 20_000L
         const val MAX_VOLUME = 100
         const val VOLUME_STEP = 2
 
