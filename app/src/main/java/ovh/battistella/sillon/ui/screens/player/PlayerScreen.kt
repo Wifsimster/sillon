@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Radio
@@ -74,6 +75,7 @@ import ovh.battistella.sillon.ui.screens.mystery.MysteryCover
 import ovh.battistella.sillon.ui.screens.mystery.MysteryHiddenActions
 import ovh.battistella.sillon.ui.screens.mystery.MysteryReveal
 import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
+import ovh.battistella.sillon.ui.screens.queue.QueueSheet
 import ovh.battistella.sillon.ui.share.ShareCardSheet
 import ovh.battistella.sillon.ui.share.ShareSource
 
@@ -114,6 +116,7 @@ fun PlayerScreen(
     val output by outputViewModel.output.collectAsStateWithLifecycle()
     val notice by outputViewModel.notice.collectAsStateWithLifecycle()
     var choosingOutput by remember { mutableStateOf(false) }
+    var showingQueue by remember { mutableStateOf(false) }
     PlayerContent(
         state = state,
         startingRadio = startingRadio,
@@ -131,8 +134,10 @@ fun PlayerScreen(
         outputNotice = notice,
         onOutput = { choosingOutput = true },
         onNoticeSeen = outputViewModel::noticeSeen,
+        onQueue = { showingQueue = true },
     )
     if (choosingOutput) OutputSheet(onDismiss = { choosingOutput = false }, viewModel = outputViewModel)
+    if (showingQueue) QueueSheet(onDismiss = { showingQueue = false })
 }
 
 @Composable
@@ -153,6 +158,7 @@ fun PlayerContent(
     outputNotice: OutputNotice? = null,
     onOutput: (() -> Unit)? = null,
     onNoticeSeen: () -> Unit = {},
+    onQueue: (() -> Unit)? = null,
 ) {
     val reducedMotion = rememberReducedMotion()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
@@ -203,6 +209,7 @@ fun PlayerContent(
             },
             onOutput = onOutput,
             outputName = (output as? Output.OnSonos)?.group?.name ?: (output as? Output.Connecting)?.group?.name,
+            onQueue = onQueue.takeIf { state.hasMedia },
         )
         if (onOutput != null) OutputBanner(output, outputNotice, onOpen = onOutput, onNoticeSeen = onNoticeSeen)
         Crossfade(sides.ended, label = "side end") { end ->
@@ -364,12 +371,18 @@ fun PlayerHeader(
     onOutput: (() -> Unit)? = null,
     /** The Sonos group the music plays on, or null on the phone. */
     outputName: String? = null,
+    onQueue: (() -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         IconButton(onClick = onClose) {
             Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
         }
         Spacer(Modifier.weight(1f))
+        if (onQueue != null) {
+            IconButton(onClick = onQueue) {
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.queue_open))
+            }
+        }
         if (onShareCard != null) {
             IconButton(onClick = onShareCard) {
                 Icon(Icons.Rounded.Share, stringResource(R.string.share_card))

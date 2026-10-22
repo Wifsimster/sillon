@@ -106,4 +106,10 @@ abstract class TrackCollectionViewModel(
             runCatching { downloads.delete(repository.currentServerId(), tracks.value.map { it.ratingKey }) }
         }
     }
+
+    /** What "Play next" and "Add to queue" take: the track touched, or the whole list when [trackKey] is null. */
+    suspend fun queueable(trackKey: String?): List<PlayableTrack> {
+        val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable).ifEmpty { playable }
+        return if (trackKey == null) fresh else fresh.filter { it.ratingKey == trackKey }
+    }
 }
