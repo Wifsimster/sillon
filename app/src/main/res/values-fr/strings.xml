@@ -147,7 +147,6 @@
     <string name="queue_remove">Retirer</string>
     <string name="queue_move_up">Monter</string>
     <string name="queue_move_down">Descendre</string>
-    <string name="queue_drag">Glisser pour réordonner</string>
     <string name="queue_read_only">Lecture seule</string>
     <string name="queue_together">Écoute synchronisée : la file du groupe est en lecture seule ici.</string>
     <string name="queue_on_speaker">Lecture sur %1$s : les changements faits ici vont à l\'enceinte.</string>

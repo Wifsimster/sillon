@@ -5,15 +5,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import org.junit.Assert.assertEquals
@@ -139,13 +145,43 @@ class QueueSheetTest {
     fun draggingTheHandleMovesByWholeRows() {
         show(queueOf("a", "b", "c", "d"), current = 0)
         val rowHeight = compose.onNodeWithText("Song b").fetchSemanticsNode().size.height.toFloat()
-        compose.onAllNodesWithContentDescription("Drag to reorder", useUnmergedTree = true)[0].performTouchInput {
+        compose.onAllNodesWithTag(DRAG_HANDLE_TAG, useUnmergedTree = true)[0].performTouchInput {
             down(center)
             repeat(10) { moveBy(Offset(0f, rowHeight * 1.1f / 10f + 2f)) }
             up()
         }
         compose.waitForIdle()
         assertEquals(1 to 2, actions.moved)
+    }
+
+    @Test
+    fun removingOneCopyOfARepeatedTrackLeavesTheOtherUsable() {
+        fun ui(items: List<MediaItem>) =
+            QueueModel.build(QueueSnapshot(QueueItem.of(items), items.indices.toList(), 0), QueueContext())
+        var state by mutableStateOf(ui(queueOf("a", "b", "X", "c", "X")))
+        compose.setContent {
+            SillonTheme(darkTheme = true) {
+                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) { QueueSheetContent(state, actions) }
+            }
+        }
+        compose.onAllNodesWithText("Song X")[0].performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        assertEquals(2, actions.removed)
+
+        // The player drops index 2: the second copy is now the only one, at index 3.
+        state = ui(queueOf("a", "b", "c", "X"))
+        compose.waitForIdle()
+        compose.onNodeWithText("Song X").assertIsDisplayed()
+        compose.onNodeWithText("Song X").performClick()
+        assertEquals(3, actions.jumped)
+    }
+
+    @Test
+    fun handleIsSilentForTalkBack() {
+        show(queueOf("a", "b", "c"), current = 0)
+        val handle = compose.onAllNodesWithTag(DRAG_HANDLE_TAG, useUnmergedTree = true)[0].fetchSemanticsNode()
+        assertNull(handle.config.getOrNull(SemanticsProperties.ContentDescription))
+        assertEquals(listOf("Remove", "Move down"), compose.onNodeWithText("Song b").customActionLabels())
     }
 
     @Test
@@ -165,7 +201,7 @@ class QueueSheetTest {
         compose.onNodeWithText("Song c").performClick()
         assertNull(actions.jumped)
         assertTrue(compose.onNodeWithText("Song c").customActionLabels().isEmpty())
-        compose.onAllNodesWithContentDescription("Drag to reorder", useUnmergedTree = true).assertCountEquals(0)
+        compose.onAllNodesWithTag(DRAG_HANDLE_TAG, useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test

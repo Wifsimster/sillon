@@ -150,7 +150,6 @@
     <string name="queue_remove">Remove</string>
     <string name="queue_move_up">Move up</string>
     <string name="queue_move_down">Move down</string>
-    <string name="queue_drag">Drag to reorder</string>
     <string name="queue_read_only">Read-only</string>
     <string name="queue_together">Listening together: the group\'s queue is read-only here.</string>
     <string name="queue_on_speaker">Playing on %1$s: changes here go to the speaker.</string>

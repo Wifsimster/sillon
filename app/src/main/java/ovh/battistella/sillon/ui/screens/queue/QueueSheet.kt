@@ -36,6 +36,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -62,6 +64,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
+
+const val DRAG_HANDLE_TAG = "queue-drag-handle"
 
 /** The queue playing now: the track on, what comes next, and what already played (folded). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,42 +140,44 @@ fun QueueSheetContent(state: QueueUi, actions: QueueActions, modifier: Modifier 
             Column(
                 Modifier
                     .zIndex(if (position == from) 1f else 0f)
-                    .graphicsLayer { translationY = shift }
-                    .onSizeChanged { rowPx = it.height.toFloat() },
+                    .graphicsLayer { translationY = shift },
             ) {
-                UpNextRow(
-                    row = row,
-                    editable = state.editable,
-                    onJump = { actions.jump(row.item.index) },
-                    onRemove = { actions.remove(row.item.index) },
-                    onMoveUp = QueueModel.move(state.upNext, position, position - 1)
-                        ?.takeIf { state.canReorder }
-                        ?.let { (item, to) -> { actions.move(item, to) } },
-                    onMoveDown = QueueModel.move(state.upNext, position, position + 1)
-                        ?.takeIf { state.canReorder }
-                        ?.let { (item, to) -> { actions.move(item, to) } },
-                    dragHandle = if (state.canReorder) {
-                        Modifier.pointerInput(row.item.id) {
-                            detectVerticalDragGestures(
-                                onDragStart = {
-                                    dragged = row.item.id
-                                    dragOffset = 0f
-                                },
-                                onVerticalDrag = { change, amount ->
-                                    change.consume()
-                                    dragOffset += amount
-                                },
-                                onDragEnd = ::endDrag,
-                                onDragCancel = {
-                                    dragged = null
-                                    dragOffset = 0f
-                                },
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                )
+                // Only the track row is measured: an end-of-side marker under it would make drags overshoot.
+                Box(Modifier.onSizeChanged { rowPx = it.height.toFloat() }) {
+                    UpNextRow(
+                        row = row,
+                        editable = state.editable,
+                        onJump = { actions.jump(row.item.index) },
+                        onRemove = { actions.remove(row.item.index) },
+                        onMoveUp = QueueModel.move(state.upNext, position, position - 1)
+                            ?.takeIf { state.canReorder }
+                            ?.let { (item, to) -> { actions.move(item, to) } },
+                        onMoveDown = QueueModel.move(state.upNext, position, position + 1)
+                            ?.takeIf { state.canReorder }
+                            ?.let { (item, to) -> { actions.move(item, to) } },
+                        dragHandle = if (state.canReorder) {
+                            Modifier.pointerInput(row.item.id) {
+                                detectVerticalDragGestures(
+                                    onDragStart = {
+                                        dragged = row.item.id
+                                        dragOffset = 0f
+                                    },
+                                    onVerticalDrag = { change, amount ->
+                                        change.consume()
+                                        dragOffset += amount
+                                    },
+                                    onDragEnd = ::endDrag,
+                                    onDragCancel = {
+                                        dragged = null
+                                        dragOffset = 0f
+                                    },
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    )
+                }
                 row.sideBreak?.let { SideBreakRow(it) }
             }
         }
@@ -274,35 +280,40 @@ private fun UpNextRow(
     val jumpLabel = stringResource(R.string.queue_jump)
     val readOnly = stringResource(R.string.queue_read_only)
     val remove by rememberUpdatedState(onRemove)
-    Removable(enabled = editable, onRemove = { remove() }) {
-        ListItem(
-            headlineContent = { Text(titleOf(row.item), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            supportingContent = row.item.artist?.let { artist -> @Composable { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
-            leadingContent = { Artwork(row.item.artworkUri, Modifier.size(40.dp), cornerRadius = 6.dp) },
-            trailingContent = dragHandle?.let { handle ->
-                @Composable {
-                    Icon(
-                        Icons.Rounded.DragHandle,
-                        contentDescription = stringResource(R.string.queue_drag),
-                        modifier = handle.size(48.dp).padding(12.dp),
-                    )
-                }
-            },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            modifier = if (editable) {
-                Modifier
-                    .clickable(onClickLabel = jumpLabel, onClick = onJump)
-                    .semantics {
-                        customActions = listOfNotNull(
-                            CustomAccessibilityAction(removeLabel) { onRemove(); true },
-                            onMoveUp?.let { CustomAccessibilityAction(upLabel) { it(); true } },
-                            onMoveDown?.let { CustomAccessibilityAction(downLabel) { it(); true } },
+    // Ids of repeated tracks shift when one copy goes: a fresh swipe state per media index keeps the
+    // copy that stays from inheriting the dismissed one.
+    key(row.item.index) {
+        Removable(enabled = editable, onRemove = { remove() }) {
+            ListItem(
+                headlineContent = { Text(titleOf(row.item), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = row.item.artist?.let { artist -> @Composable { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
+                leadingContent = { Artwork(row.item.artworkUri, Modifier.size(40.dp), cornerRadius = 6.dp) },
+                trailingContent = dragHandle?.let { handle ->
+                    @Composable {
+                        // TalkBack moves tracks with the Move up / Move down actions.
+                        Icon(
+                            Icons.Rounded.DragHandle,
+                            contentDescription = null,
+                            modifier = handle.testTag(DRAG_HANDLE_TAG).size(48.dp).padding(12.dp),
                         )
                     }
-            } else {
-                Modifier.semantics(mergeDescendants = true) { stateDescription = readOnly }
-            },
-        )
+                },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                modifier = if (editable) {
+                    Modifier
+                        .clickable(onClickLabel = jumpLabel, onClick = onJump)
+                        .semantics {
+                            customActions = listOfNotNull(
+                                CustomAccessibilityAction(removeLabel) { onRemove(); true },
+                                onMoveUp?.let { CustomAccessibilityAction(upLabel) { it(); true } },
+                                onMoveDown?.let { CustomAccessibilityAction(downLabel) { it(); true } },
+                            )
+                        }
+                } else {
+                    Modifier.semantics(mergeDescendants = true) { stateDescription = readOnly }
+                },
+            )
+        }
     }
 }
 

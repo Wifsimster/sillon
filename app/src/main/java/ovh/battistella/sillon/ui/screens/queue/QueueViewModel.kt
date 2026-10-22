@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.playback.NeverPlayedRadio
@@ -61,14 +62,25 @@ enum class QueuePlace { NEXT, END }
 @HiltViewModel
 class QueueEditViewModel @Inject constructor(
     private val queue: QueueConnection,
+    together: ListenTogether,
 ) : ViewModel() {
-    fun add(place: QueuePlace, tracks: suspend () -> List<PlayableTrack>) {
+    /**
+     * A listening group only appends (SyncPlay has no "next"), so "Play next" is offered only
+     * outside a group; "Add to queue" adds to the group's queue.
+     */
+    val canPlayNext: StateFlow<Boolean> = together.state.map { !it.isActive }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    /** [onQueued] runs once the tracks are handed to the player, not when there were none to add. */
+    fun add(place: QueuePlace, tracks: suspend () -> List<PlayableTrack>, onQueued: () -> Unit) {
         viewModelScope.launch {
             val chosen = runCatching { tracks() }.getOrDefault(emptyList())
+            if (chosen.isEmpty()) return@launch
             when (place) {
                 QueuePlace.NEXT -> queue.playNext(chosen)
                 QueuePlace.END -> queue.append(chosen)
             }
+            onQueued()
         }
     }
 }
