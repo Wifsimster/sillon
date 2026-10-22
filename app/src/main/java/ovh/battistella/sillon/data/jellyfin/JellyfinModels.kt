@@ -61,6 +61,14 @@ data class JellyfinItem(
     @SerialName("AlbumPrimaryImageTag") val albumPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: JellyfinUserData? = null,
     @SerialName("NormalizationGain") val normalizationGain: Float? = null,
+    @SerialName("Genres") val genres: List<String> = emptyList(),
+    @SerialName("AlbumArtists") val albumArtists: List<JellyfinNameId> = emptyList(),
+)
+
+@Serializable
+data class JellyfinNameId(
+    @SerialName("Id") val id: String = "",
+    @SerialName("Name") val name: String = "",
 )
 
 @Serializable

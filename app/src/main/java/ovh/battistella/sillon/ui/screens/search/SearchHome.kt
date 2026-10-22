@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,13 +36,15 @@ import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Message
 import ovh.battistella.sillon.ui.screens.library.TileUi
 
-/** The search page before anything is typed: the albums played lately and the most played ones. */
+/** The search page before anything is typed: the albums played lately, the most played ones, and the genres. */
 @Composable
 fun SearchHome(
     ui: SearchHomeUi,
     onAlbum: (String) -> Unit,
     onPlayAlbum: (String) -> Unit,
     contentPadding: PaddingValues,
+    onGenre: (String) -> Unit = {},
+    onAllGenres: () -> Unit = {},
 ) {
     when {
         ui.loading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -64,6 +67,17 @@ fun SearchHome(
             } else if (ui.classicsNeedWear) {
                 item { RowTitle(stringResource(R.string.search_home_classics)) }
                 item { Note(stringResource(R.string.search_home_classics_need_wear)) }
+            }
+            if (ui.genres.isNotEmpty()) {
+                item { RowTitle(stringResource(R.string.search_genres)) }
+                item { GenreGrid(ui.genres, onGenre) }
+                if (ui.moreGenres) {
+                    item {
+                        TextButton(onClick = onAllGenres, modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+                            Text(stringResource(R.string.search_genres_all))
+                        }
+                    }
+                }
             }
         }
     }

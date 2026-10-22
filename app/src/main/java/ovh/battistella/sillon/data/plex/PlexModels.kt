@@ -100,6 +100,7 @@ data class PlexMetadata(
     val grandparentThumb: String? = null,
     val composite: String? = null,
     @SerialName("Media") val media: List<PlexMedia> = emptyList(),
+    @SerialName("Genre") val genres: List<PlexTag> = emptyList(),
 ) {
     val artwork: String? get() = thumb ?: composite ?: parentThumb ?: grandparentThumb
 
@@ -154,4 +155,9 @@ data class PlexStream(
 @Serializable
 data class PlexStations(
     @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
+)
+
+@Serializable
+data class PlexTag(
+    val tag: String = "",
 )

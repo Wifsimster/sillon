@@ -26,6 +26,8 @@ import ovh.battistella.sillon.ui.screens.library.LocalOpenSettings
 import ovh.battistella.sillon.ui.screens.library.LocalOpenTogether
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
+import ovh.battistella.sillon.ui.screens.search.GenreScreen
+import ovh.battistella.sillon.ui.screens.search.GenresScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
 import ovh.battistella.sillon.ui.screens.settings.ListeningCacheSection
 import ovh.battistella.sillon.ui.screens.settings.SettingsScreen
@@ -190,6 +192,20 @@ private fun LibraryNavHost() {
                             onArtist = openArtist,
                             onAlbum = openAlbum,
                             onDownloadedAlbum = { navController.navigate(Routes.downloadedAlbum(it)) },
+                            contentPadding = bottom,
+                            onGenre = { navController.navigate(Routes.genre(it)) },
+                            onAllGenres = { navController.navigate(Routes.GENRES) { launchSingleTop = true } },
+                        )
+                    }
+                    composable(Routes.GENRES) {
+                        GenresScreen(onGenre = { navController.navigate(Routes.genre(it)) }, onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.GENRE, arguments = keyArg) {
+                        GenreScreen(
+                            onAlbum = openAlbum,
+                            onDownloadedAlbum = { navController.navigate(Routes.downloadedAlbum(it)) },
+                            onArtist = openArtist,
+                            onBack = back,
                             contentPadding = bottom,
                         )
                     }

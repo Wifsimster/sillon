@@ -176,6 +176,10 @@ class JellyfinApi(
         return page.items.map { it.toMetadata() } to page.total
     }
 
+    /** One page of raw items, for callers that need fields [toMetadata] does not keep. */
+    suspend fun rawPage(server: ServerEndpoint, deviceId: String, query: List<Pair<String, String>>): JellyfinItems =
+        page(server, deviceId, "Items", *query.toTypedArray())
+
     /** The track's lyrics (Jellyfin 10.9 and later), or null when it has none. */
     suspend fun lyrics(server: ServerEndpoint, deviceId: String, id: String): String? = try {
         get(serverUrl(server, "Audio/$id/Lyrics"), deviceId, server.token)
