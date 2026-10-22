@@ -1,7 +1,9 @@
 package ovh.battistella.sillon.playback
 
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -13,6 +15,7 @@ class NeverPlayedRefill(
 ) : Player.Listener {
     private var loading: Job? = null
 
+    @OptIn(UnstableApi::class)
     override fun onPositionDiscontinuity(
         oldPosition: Player.PositionInfo,
         newPosition: Player.PositionInfo,
