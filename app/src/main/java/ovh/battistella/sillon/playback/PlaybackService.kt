@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
@@ -49,6 +50,13 @@ import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.mystery.MysterySession
 import ovh.battistella.sillon.playback.mystery.MysteryWatcher
 import ovh.battistella.sillon.playback.mystery.toSaved
+import ovh.battistella.sillon.sonos.OutputNotice
+import ovh.battistella.sillon.sonos.OutputRequest
+import ovh.battistella.sillon.sonos.SonosHandover
+import ovh.battistella.sillon.sonos.SonosLocks
+import ovh.battistella.sillon.sonos.SonosOutput
+import ovh.battistella.sillon.sonos.SonosPlayer
+import ovh.battistella.sillon.sonos.SonosRefusal
 import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
 
@@ -62,6 +70,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var neverPlayed: NeverPlayedRadio
     @Inject lateinit var sides: SideSession
     @Inject lateinit var listeningCache: ListeningCache
+    @Inject lateinit var sonosOutput: SonosOutput
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -69,6 +78,14 @@ class PlaybackService : MediaLibraryService() {
     private var mysteryWatcher: MysteryWatcher? = null
     private var groupPlayer: ExoGroupPlayer? = null
     private var sidePlayer: SidePlayer? = null
+    private var exo: ExoPlayer? = null
+    private var sonos: SonosPlayer? = null
+    private var sonosReporter: TimelineReporter? = null
+    private var sonosHandover: SonosHandover? = null
+    private val sonosLocks by lazy { SonosLocks(this) }
+    private val sonosLockListener = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = sonosLocks.hold(playWhenReady)
+    }
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -84,6 +101,19 @@ class PlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+        exo = player
+        sonosHandover = SonosHandover(
+            phone = player,
+            scope = scope,
+            client = sonosOutput.client,
+            openAccess = repository::openSonosAccess,
+            tracks = repository::sonosTracks,
+            refuse = { items -> SonosRefusal.refuses(items, mystery.state.value) },
+            togetherActive = { together.state.value.isActive },
+            show = sonosOutput::set,
+            tell = sonosOutput::tell,
+            attach = ::attachSonos,
+        )
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
@@ -98,17 +128,7 @@ class PlaybackService : MediaLibraryService() {
             }
         })
         player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
-        timelineReporter = TimelineReporter(player, scope) send@{ report ->
-            val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
-            repository.reportPlayback(
-                server = server,
-                ratingKey = report.ratingKey,
-                state = report.state,
-                timeMs = report.timeMs,
-                durationMs = report.durationMs,
-                continuing = report.continuing,
-            )
-        }.also { it.start() }
+        timelineReporter = TimelineReporter(player, scope, ::report).also { it.start() }
         // Sides take pauseAtEndOfMediaItems back only after the group has let go of it.
         groupPlayer = ExoGroupPlayer(player, afterExit = { sidePlayer?.sync() }).also(together::attach)
         mysteryWatcher = MysteryWatcher(player, mystery, scope, together.state.map { it.isActive }).also { it.start() }
@@ -134,11 +154,60 @@ class PlaybackService : MediaLibraryService() {
             together.state.map { it.isActive }.distinctUntilChanged().collect { sidePlayer.sync() }
         }
         scope.launch {
+            sonosOutput.requests.collect { request ->
+                when (request) {
+                    is OutputRequest.PlayOn -> sonosHandover?.playOn(request.group)
+                    OutputRequest.BackToPhone -> sonosHandover?.backToPhone(resume = true)
+                }
+            }
+        }
+        // Listen together plays on each phone: joining a group brings the music back here.
+        scope.launch {
+            together.state.map { it.isActive }.distinctUntilChanged().collect { active ->
+                if (active && sonos != null) {
+                    sonosHandover?.backToPhone(resume = false)
+                    sonosOutput.tell(OutputNotice.TOGETHER_ON_PHONE)
+                }
+            }
+        }
+        scope.launch {
             runCatching { sides.restore() }
             sides.planChanges.collect {
                 sidePlayer.sync()
                 runCatching { sides.save() }
             }
+        }
+    }
+
+    private suspend fun report(report: TimelineReport) {
+        val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return
+        repository.reportPlayback(
+            server = server,
+            ratingKey = report.ratingKey,
+            state = report.state,
+            timeMs = report.timeMs,
+            durationMs = report.durationMs,
+            continuing = report.continuing,
+        )
+    }
+
+    /** The Sonos player behind the media session now, or null for the phone's: reports, locks, sides. */
+    @OptIn(UnstableApi::class)
+    private fun attachSonos(player: SonosPlayer?) {
+        sonosReporter?.release()
+        sonosReporter = null
+        sonos?.removeListener(sonosLockListener)
+        sonos = player
+        if (player != null) {
+            // Sides pause the phone's player between faces; the speaker plays the record through.
+            sides.setPlan(null)
+            player.addListener(sonosLockListener)
+            sonosLocks.hold(player.playWhenReady)
+            mediaSession?.player = player
+            sonosReporter = TimelineReporter(player, scope, ::report).also { it.start() }
+        } else {
+            sonosLocks.hold(false)
+            sidePlayer?.let { mediaSession?.player = it }
         }
     }
 
@@ -237,6 +306,7 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         mediaSession?.player?.let { player ->
             snapshot(player)?.let { queue -> runBlocking { runCatching { playbackState.save(queue) } } }
@@ -248,11 +318,15 @@ class PlaybackService : MediaLibraryService() {
         groupPlayer?.let(together::detach)
         groupPlayer = null
         sidePlayer = null
+        // The speaker plays on by itself; Sillon only stops following it, and ends the speaker's own
+        // token (bounded wait: the service is going away).
+        sonosHandover?.let { handover -> runBlocking { withTimeoutOrNull(ACCESS_CLOSE_MS) { handover.release() } } }
+        sonosHandover = null
+        sonosLocks.hold(false)
         scope.cancel()
-        mediaSession?.run {
-            player.release()
-            release()
-        }
+        mediaSession?.release()
+        exo?.release()
+        exo = null
         mediaSession = null
         super.onDestroy()
     }
@@ -399,5 +473,6 @@ class PlaybackService : MediaLibraryService() {
         const val SESSION_ACTIVITY_REQUEST_CODE = 3_001
         const val QUEUE_SAVE_INTERVAL_MS = 15_000L
         const val MAX_SAVED_TRACKS = 500
+        const val ACCESS_CLOSE_MS = 2_000L
     }
 }
