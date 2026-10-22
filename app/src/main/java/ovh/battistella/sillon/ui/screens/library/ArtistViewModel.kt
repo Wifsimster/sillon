@@ -19,7 +19,7 @@ import ovh.battistella.sillon.ui.components.toFailed
 import ovh.battistella.sillon.ui.navigation.Routes
 import javax.inject.Inject
 
-data class ArtistUi(val name: String, val artworkUrl: String?, val albums: List<TileUi>)
+data class ArtistUi(val name: String, val artworkUrl: String?, val albums: List<TileUi>, val years: List<Int> = emptyList())
 
 @HiltViewModel
 class ArtistViewModel @Inject constructor(
@@ -28,7 +28,7 @@ class ArtistViewModel @Inject constructor(
     private val playback: PlaybackConnection,
     sleeveWear: SleeveWearRepository,
 ) : ViewModel() {
-    private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+    val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     val wear: StateFlow<Map<String, Int>> =
         sleeveWear.levels.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -59,8 +59,8 @@ class ArtistViewModel @Inject constructor(
             _state.value = runCatching {
                 val server = repository.endpoint()
                 val artist = async { repository.metadata(key) }
-                val albums = repository.albumsOf(key)
-                    .sortedByDescending { it.year ?: 0 }
+                val records = repository.albumsOf(key).sortedByDescending { it.year ?: 0 }
+                val albums = records
                     .map {
                         TileUi(
                             it.ratingKey,
@@ -75,6 +75,7 @@ class ArtistViewModel @Inject constructor(
                         name = a?.title.orEmpty(),
                         artworkUrl = repository.artworkUrl(server, a?.thumb, HEADER_ART_PX),
                         albums = albums,
+                        years = records.mapNotNull { it.year },
                     ),
                 )
             }.getOrElse { it.toFailed() }

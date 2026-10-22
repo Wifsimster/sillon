@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -69,6 +70,8 @@ import ovh.battistella.sillon.ui.screens.mystery.MysteryCover
 import ovh.battistella.sillon.ui.screens.mystery.MysteryHiddenActions
 import ovh.battistella.sillon.ui.screens.mystery.MysteryReveal
 import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
+import ovh.battistella.sillon.ui.share.ShareCardSheet
+import ovh.battistella.sillon.ui.share.ShareSource
 
 interface PlayerControls {
     fun radioFromCurrent()
@@ -136,6 +139,7 @@ fun PlayerContent(
     val view = LocalView.current
     val revealedAnnouncement = stringResource(R.string.mystery_revealed, state.title, state.artist)
     val announcement by rememberUpdatedState(revealedAnnouncement)
+    var shareSource by remember { mutableStateOf<ShareSource?>(null) }
 
     val tint by animateColorAsState(
         coverColor(state.artworkUri) ?: MaterialTheme.colorScheme.background,
@@ -159,6 +163,21 @@ fun PlayerContent(
             radioEnabled = state.hasMedia,
             onRadio = controls::radioFromCurrent,
             showRadio = !hidden,
+            // A card of a hidden surprise would give the album away.
+            onShareCard = if (state.hasMedia && !hidden) {
+                {
+                    shareSource = ShareSource(
+                        kind = ShareSource.Kind.TRACK,
+                        key = state.currentKey,
+                        title = state.title,
+                        artist = state.artist.ifBlank { null },
+                        album = state.album.ifBlank { null },
+                        artworkUri = state.artworkUri,
+                    )
+                }
+            } else {
+                null
+            },
         )
         Crossfade(sides.ended, label = "side end") { end ->
             Column(
@@ -251,6 +270,7 @@ fun PlayerContent(
             }
         }
     }
+    shareSource?.let { ShareCardSheet(it, onDismiss = { shareSource = null }) }
 }
 
 @Composable
@@ -313,12 +333,18 @@ fun PlayerHeader(
     radioEnabled: Boolean,
     onRadio: () -> Unit,
     showRadio: Boolean = true,
+    onShareCard: (() -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         IconButton(onClick = onClose) {
             Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
         }
         Spacer(Modifier.weight(1f))
+        if (onShareCard != null) {
+            IconButton(onClick = onShareCard) {
+                Icon(Icons.Rounded.Share, stringResource(R.string.share_card))
+            }
+        }
         IconButton(onClick = onTogether) {
             Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
         }

@@ -97,7 +97,7 @@ class DownloadedAlbumViewModel @Inject constructor(
     private val settings: SettingsStore,
     sleeveWear: SleeveWearRepository,
 ) : ViewModel() {
-    private val albumKey: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+    val albumKey: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     val wear: StateFlow<Wear?> = sleeveWear.levels
         .map { Wear.of(it, albumKey) }

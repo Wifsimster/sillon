@@ -202,4 +202,25 @@
     <string name="mystery_none_offline">Offline: no downloaded album with at least 4 tracks.</string>
     <string name="mystery_failed">Couldn\'t draw a mystery sleeve. Try again.</string>
     <string name="mystery_together">Not while listening together: everyone in the session would see the album.</string>
+    <string name="share_card">Share a card</string>
+    <string name="share_card_preview">%1$s card for %2$s</string>
+    <string name="share_card_format">Format</string>
+    <string name="share_card_square">Square</string>
+    <string name="share_card_story">Story</string>
+    <string name="share_card_style">Style</string>
+    <string name="share_card_vinyl">Vinyl</string>
+    <string name="share_card_label">Label</string>
+    <string name="share_card_polaroid">Polaroid</string>
+    <string name="share_card_note">A few words (optional)</string>
+    <string name="share_card_note_count">%1$d/%2$d</string>
+    <string name="share_card_quote">“%1$s”</string>
+    <string name="share_card_stars">Show my rating</string>
+    <string name="share_card_stars_jellyfin">Jellyfin has favourites, not star ratings: a favourite shows as 5 stars.</string>
+    <string name="share_card_lyrics">Quote the lyrics</string>
+    <plurals name="share_card_lyrics_hint">
+        <item quantity="one">Up to %1$d line</item>
+        <item quantity="other">Up to %1$d lines</item>
+    </plurals>
+    <string name="share_card_private">The card is an image made on your phone. It carries no link, and nothing about your server.</string>
+    <string name="share_card_send">Share</string>
 </resources>

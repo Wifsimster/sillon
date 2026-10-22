@@ -12,6 +12,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import ovh.battistella.sillon.data.plex.PlexDevice
 import ovh.battistella.sillon.data.plex.PlexDirectory
+import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.plex.PlexHub
 import ovh.battistella.sillon.data.plex.PlexJson
 import ovh.battistella.sillon.data.plex.PlexMetadata
@@ -175,6 +176,13 @@ class JellyfinApi(
         return page.items.map { it.toMetadata() } to page.total
     }
 
+    /** The track's lyrics (Jellyfin 10.9 and later), or null when it has none. */
+    suspend fun lyrics(server: ServerEndpoint, deviceId: String, id: String): String? = try {
+        get(serverUrl(server, "Audio/$id/Lyrics"), deviceId, server.token)
+    } catch (e: PlexHttpException) {
+        if (e.code == HTTP_NOT_FOUND) null else throw e
+    }
+
     fun artworkUrl(server: ServerEndpoint, thumb: String?, sizePx: Int): String? {
         val id = thumb?.takeIf { it.startsWith(JELLYFIN_IMAGE) }?.removePrefix(JELLYFIN_IMAGE) ?: return null
         return serverUrl(server, "Items/$id/Images/Primary").newBuilder()
@@ -279,6 +287,7 @@ class JellyfinApi(
         const val RADIO_TRACKS = 100
         const val BATCH_SIZE = 100
         const val PAGE_SIZE = 2_000
+        const val HTTP_NOT_FOUND = 404
     }
 }
 

@@ -66,6 +66,12 @@ go, with no ads, no tracking and no subscription.
   except listening together.
 - 📊 **Your server stays in sync.** What you play shows under *Now playing* on
   your server, lands in the history and counts as played, like the official apps.
+- 💌 **Music postcards.** From the player, an album or an artist, *Share a card*
+  makes an image of the cover with the title, the artist and the year, square or
+  story-sized, in three styles: Vinyl, Label and Polaroid. Add a few words, your
+  rating, or two lines of the lyrics when your server has them. The card is drawn
+  on your phone, carries no link and says nothing about your server, and it works
+  offline with your downloads.
 - 🔒 **Private.** No account but your server's, no analytics, no ads. Your
   server token never leaves the app.
 - 🎨 **A look of its own.** Vinyl blacks, sleeve cream and label amber, titles in

@@ -21,7 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -117,6 +119,8 @@ class MysteryRenderTest {
         )
         save(capture { MysteryPlayer(hidden, MYSTERY) }, "player-hidden-$lang.png")
         save(capture { MysteryPlayer(hidden, MYSTERY.copy(offline = true)) }, "player-hidden-offline-$lang.png")
+        // A postcard of the hidden album would give it away.
+        compose.onAllNodesWithContentDescription(context.getString(R.string.share_card)).assertCountEquals(0)
 
         val shown = hidden.copy(
             currentKey = "3",
@@ -131,6 +135,7 @@ class MysteryRenderTest {
         save(capture(frameMs = 700) { MysteryPlayer(shown, revealed) }, "reveal-sliding-$lang.png")
         compose.mainClock.autoAdvance = true
         save(capture { MysteryPlayer(shown, revealed.copy(revealSeen = true)) }, "reveal-done-$lang.png")
+        compose.onAllNodesWithContentDescription(context.getString(R.string.share_card)).assertCountEquals(1)
         save(capture { MysteryPlayer(shown, revealed.copy(revealSeen = true), keep = KeepResult.KEPT) }, "reveal-kept-$lang.png")
     }
 
