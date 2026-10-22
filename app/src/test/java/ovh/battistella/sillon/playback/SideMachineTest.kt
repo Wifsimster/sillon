@@ -117,4 +117,24 @@ class SideMachineTest {
         assertEquals(SideEnd("A", "B", 2), machine.state.ended)
         assertEquals(2, machine.flip())
     }
+
+    @Test
+    fun `listening together turns sides off and drops the ended side`() {
+        val machine = machineAt(1)
+        machine.onPausedAtEndOfItem()
+        machine.grouped = true
+        assertEquals(SideState(), machine.state)
+        assertFalse(machine.pauseAtEnd)
+        assertNull(machine.onPausedAtEndOfItem())
+        assertNull(machine.flip())
+    }
+
+    @Test
+    fun `sides come back once the group session is over`() {
+        val machine = machineAt(1)
+        machine.grouped = true
+        machine.grouped = false
+        assertTrue(machine.pauseAtEnd)
+        assertEquals("A", machine.state.current)
+    }
 }

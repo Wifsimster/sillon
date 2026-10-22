@@ -29,6 +29,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
@@ -98,6 +100,7 @@ class PlaybackService : MediaLibraryService() {
         val sidePlayer = SidePlayer(
             base = TogetherPlayer(player, together),
             exo = player,
+            grouped = { together.state.value.isActive },
             sides = sides,
             describe = { end ->
                 getString(R.string.side_end_title, end.ended) to getString(R.string.side_flip_hint, end.next)
@@ -110,6 +113,9 @@ class PlaybackService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, sidePlayer, LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
+        scope.launch {
+            together.state.map { it.isActive }.distinctUntilChanged().collect { sidePlayer.sync() }
+        }
         scope.launch {
             runCatching { sides.restore() }
             sides.planChanges.collect {

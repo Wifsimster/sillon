@@ -39,7 +39,9 @@ go, with no ads, no tracking and no subscription.
   big covers, a mini-player always within reach.
 - 📻 **Radios.** Your server's library radios (Library, Deep Cuts, Time
   Travel…), Plex's *Mixes for you*, a radio for every artist, and from the
-  player, a radio of tracks that sound like the one playing.
+  player, a radio of tracks that sound like the one playing. **Never played**
+  plays only the tracks you have never listened to, or draws an album you have
+  never played: the card tells you how much of your library is still waiting.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
@@ -95,7 +97,7 @@ is rebuilt on every push.
 | **Playback** | Background play, notification and lock-screen controls, Bluetooth and headset buttons, gapless albums, shuffle, repeat, loudness levelling (per track or album) |
 | **Sides** | *Listen by side*: an album played in order stops at the end of side A, like a record, until you flip it (in the app, the notification and Android Auto) |
 | **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
-| **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), also in the car |
+| **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), *Never played* (tracks or whole albums, Plex and Jellyfin), also in the car |
 | **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |
 | **Resume** | The queue and position are remembered: *play* on a headset, Bluetooth or in the car resumes where the music stopped, even after the app was closed |
 | **Offline** | Album and playlist downloads with covers, a Downloads tab that works with no network |
@@ -182,6 +184,11 @@ in GitHub Actions; pushes to `main` are released with semantic-release
 - Sonic features (*Mixes for you*, tracks that sound alike) need Plex Pass and
   *Sonic analysis* enabled on the music library; until the analysis has run,
   the track radio falls back to the artist's radio.
+- *Never played* uses the play counts kept by your server (`viewCount` on Plex,
+  `PlayCount` on Jellyfin). A track skipped within 30 seconds isn't offered
+  again until the app restarts; nothing about skips is saved. Offline, the radio
+  draws from your downloads, using the play counts saved the last time Sillon
+  reached the server.
 - Loudness levelling only turns tracks down (the player can't amplify), as
   ReplayGain targets a quieter reference than most modern masters: with it on,
   turn the phone volume up a little. Plex needs *loudness analysis* enabled on
@@ -190,7 +197,8 @@ in GitHub Actions; pushes to `main` are released with semantic-release
   C–D for disc 2…) or side markers in the track titles (`A1`, `Side B`); without
   them, the album is cut at the track boundary closest to half its length.
   Albums under 12 minutes or with fewer than 4 tracks play straight through.
-  Shuffle, radios and playlists are never cut.
+  Shuffle, radios and playlists are never cut, and sides are off while
+  listening together (the group decides when to pause).
 - Sillon is an independent client, not affiliated with Plex Inc. or the
   Jellyfin project. Plex and Jellyfin are trademarks of their owners; the logos
   come from [simple-icons](https://simpleicons.org/) (CC0). Screenshots show

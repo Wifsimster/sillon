@@ -21,7 +21,17 @@ class SideMachine {
     private var index: Int = -1
     private var shuffle: Boolean = false
 
-    private val activePlan: SidePlan? get() = plan?.takeIf { !shuffle && it.matches(queue) }
+    /**
+     * True while listening together: the group's queue and pauses belong to
+     * the Jellyfin SyncPlay group, so sides are off and any ended side is dropped.
+     */
+    var grouped: Boolean = false
+        set(value) {
+            field = value
+            if (value) ended = null
+        }
+
+    private val activePlan: SidePlan? get() = plan?.takeIf { !grouped && !shuffle && it.matches(queue) }
 
     val state: SideState
         get() {

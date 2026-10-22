@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.ExoPlayer
 class SidePlayer(
     base: Player,
     private val exo: ExoPlayer,
+    private val grouped: () -> Boolean,
     private val sides: SideSession,
     private val describe: (SideEnd) -> Pair<String, String>,
     private val onEndedChanged: (SideEnd?) -> Unit,
@@ -63,8 +64,11 @@ class SidePlayer(
     }
 
     private fun update(change: () -> Unit) {
+        val inGroup = grouped()
+        machine.grouped = inGroup
         change()
-        exo.pauseAtEndOfMediaItems = machine.pauseAtEnd
+        // While listening together, ExoGroupPlayer owns pauseAtEndOfMediaItems.
+        if (!inGroup) exo.pauseAtEndOfMediaItems = machine.pauseAtEnd
         sides.publish()
         val after = sides.state.value.ended
         if (after != shown) {
