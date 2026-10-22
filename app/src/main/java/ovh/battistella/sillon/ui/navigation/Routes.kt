@@ -15,6 +15,7 @@ object Routes {
     const val ALBUM = "album/{$ARG_KEY}"
     const val PLAYER = "player"
     const val SETTINGS = "settings"
+    const val TOGETHER = "together"
 
     fun artist(key: String) = "artist/${android.net.Uri.encode(key)}"
     fun album(key: String) = "album/${android.net.Uri.encode(key)}"

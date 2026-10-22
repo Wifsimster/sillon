@@ -62,6 +62,7 @@ class LibraryMenuViewModel @Inject constructor(
 }
 
 val LocalOpenSettings = staticCompositionLocalOf<() -> Unit> { {} }
+val LocalOpenTogether = staticCompositionLocalOf<() -> Unit> { {} }
 
 @Composable
 fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
@@ -87,6 +88,14 @@ fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
             }
             HorizontalDivider()
         }
+        val openTogether = LocalOpenTogether.current
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.together_open)) },
+            onClick = {
+                open = false
+                openTogether()
+            },
+        )
         val openSettings = LocalOpenSettings.current
         DropdownMenuItem(
             text = { Text(stringResource(R.string.settings)) },

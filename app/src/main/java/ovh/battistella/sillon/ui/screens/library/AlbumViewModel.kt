@@ -6,15 +6,19 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.AlbumSides
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.playback.Side
+import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.navigation.Routes
 import javax.inject.Inject
 
@@ -33,9 +37,14 @@ class AlbumViewModel @Inject constructor(
     private val repository: PlexRepository,
     playback: PlaybackConnection,
     downloads: DownloadManager,
+    sleeveWear: SleeveWearRepository,
     private val settings: SettingsStore,
 ) : TrackCollectionViewModel(repository, playback, downloads) {
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+
+    val wear: StateFlow<Wear?> = sleeveWear.levels
+        .map { Wear.of(it, key) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val listenBySide = settings.listenBySide.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 

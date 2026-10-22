@@ -10,11 +10,12 @@ import androidx.media3.exoplayer.ExoPlayer
 
 @OptIn(UnstableApi::class)
 class SidePlayer(
+    base: Player,
     private val exo: ExoPlayer,
     private val sides: SideSession,
     private val describe: (SideEnd) -> Pair<String, String>,
     private val onEndedChanged: (SideEnd?) -> Unit,
-) : ForwardingPlayer(exo) {
+) : ForwardingPlayer(base) {
     private val listeners = mutableListOf<Player.Listener>()
     private var queue: List<String> = emptyList()
     private var shown: SideEnd? = null

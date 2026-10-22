@@ -3,9 +3,11 @@ package ovh.battistella.sillon.playback
 import android.content.Context
 import android.os.Bundle
 import android.os.Process
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaSession
@@ -16,7 +18,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.plex.PlexMetadata
+import ovh.battistella.sillon.data.repository.NEVER_PLAYED_ALBUMS_STATION
+import ovh.battistella.sillon.data.repository.NEVER_PLAYED_STATION
+import ovh.battistella.sillon.data.repository.NeverPlayedMode
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.repository.Station
+import ovh.battistella.sillon.data.repository.neverPlayedModeOf
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SettingsStore
 import javax.inject.Inject
@@ -27,6 +34,7 @@ class MediaLibraryTree @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: PlexRepository,
     private val playbackState: PlaybackStateStore,
+    private val neverPlayed: NeverPlayedRadio,
     private val settings: SettingsStore,
     private val sides: SideSession,
 ) {
@@ -77,7 +85,8 @@ class MediaLibraryTree @Inject constructor(
         val node = single?.let { BrowseIds.parse(it.mediaId) }
         if (node == BrowseNode.Resume) return resumption()
         if (node is BrowseNode.Station) {
-            val tracks = playable(repository.stationTracks(ovh.battistella.sillon.data.repository.Station(node.key, null)))
+            neverPlayedModeOf(node.key)?.let { return neverPlayedStart(it) }
+            val tracks = playable(repository.stationTracks(Station(node.key, null)))
             return MediaItemsWithStartPosition(tracks, 0, C.TIME_UNSET)
         }
         if (node is BrowseNode.Track) {
@@ -95,6 +104,12 @@ class MediaLibraryTree @Inject constructor(
         val resolved = resolveEach(items)
         val start = if (startIndex == C.INDEX_UNSET) 0 else startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
         return MediaItemsWithStartPosition(resolved, start, startPositionMs)
+    }
+
+    @OptIn(UnstableApi::class)
+    private suspend fun neverPlayedStart(mode: NeverPlayedMode): MediaItemsWithStartPosition {
+        val tracks = (neverPlayed.start(mode) as? RadioStart.Ready)?.tracks.orEmpty().map(MediaItems::from)
+        return MediaItemsWithStartPosition(tracks, 0, C.TIME_UNSET)
     }
 
     suspend fun recentRoot(): MediaItem? =
@@ -151,7 +166,7 @@ class MediaLibraryTree @Inject constructor(
             repository.albums(section.key).map { folderFor(BrowseNode.Album(it.ratingKey), it) }
         }.orEmpty()
         BrowseNode.Playlists -> repository.playlists().map { folderFor(BrowseNode.Playlist(it.ratingKey), it) }
-        BrowseNode.Radios -> repository.stations().map { station ->
+        BrowseNode.Radios -> (neverPlayedStations() + runCatching { repository.stations() }.getOrDefault(emptyList())).map { station ->
             val metadata = MediaMetadata.Builder()
                 .setTitle(station.title ?: context.getString(R.string.radio_library))
                 .setIsBrowsable(false)
@@ -165,6 +180,11 @@ class MediaLibraryTree @Inject constructor(
         BrowseNode.Recent -> listOfNotNull(resumeItem())
         BrowseNode.Resume, is BrowseNode.Track, is BrowseNode.Station, null -> emptyList()
     }
+
+    private fun neverPlayedStations(): List<Station> = listOf(
+        Station(NEVER_PLAYED_STATION, context.getString(R.string.never_played)),
+        Station(NEVER_PLAYED_ALBUMS_STATION, context.getString(R.string.never_played_albums)),
+    )
 
     private suspend fun topLevel(): List<MediaItem> = listOf(
         folder(

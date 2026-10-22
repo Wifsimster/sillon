@@ -54,6 +54,7 @@ import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.PopularityBars
 import ovh.battistella.sillon.ui.components.RatingStars
+import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.components.formatDuration
 
 @Composable
@@ -62,8 +63,9 @@ fun AlbumScreen(
     contentPadding: PaddingValues,
     viewModel: AlbumViewModel = hiltViewModel(),
 ) {
+    val wear by viewModel.wear.collectAsStateWithLifecycle()
     val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
-    TrackCollectionRoute(viewModel, onBack, contentPadding, listenBySide, viewModel::setListenBySide)
+    TrackCollectionRoute(viewModel, onBack, contentPadding, wear, listenBySide, viewModel::setListenBySide)
 }
 
 @Composable
@@ -71,6 +73,7 @@ fun TrackCollectionRoute(
     viewModel: TrackCollectionViewModel,
     onBack: () -> Unit,
     contentPadding: PaddingValues,
+    wear: Wear? = null,
     listenBySide: Boolean = false,
     onListenBySideChange: ((Boolean) -> Unit)? = null,
 ) {
@@ -85,6 +88,7 @@ fun TrackCollectionRoute(
         onPlay = viewModel::play,
         onShuffle = viewModel::shuffle,
         contentPadding = contentPadding,
+        wear = wear,
         listenBySide = listenBySide,
         onListenBySideChange = onListenBySideChange,
         actions = {
@@ -127,6 +131,7 @@ fun TrackCollectionScreen(
     onPlay: (String?) -> Unit,
     onShuffle: () -> Unit,
     contentPadding: PaddingValues,
+    wear: Wear? = null,
     listenBySide: Boolean = false,
     onListenBySideChange: ((Boolean) -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
@@ -151,7 +156,7 @@ fun TrackCollectionScreen(
             ) {
                 val sideToggle = onListenBySideChange?.takeIf { album.sides.isNotEmpty() }
                 item {
-                    AlbumHeader(album, onPlay = { onPlay(null) }, onShuffle = onShuffle) {
+                    AlbumHeader(album, wear, onPlay = { onPlay(null) }, onShuffle = onShuffle) {
                         if (sideToggle != null) ListenBySideChip(listenBySide, sideToggle)
                     }
                 }
@@ -237,13 +242,13 @@ private fun SideHeader(side: Side) {
 }
 
 @Composable
-private fun AlbumHeader(album: AlbumUi, onPlay: () -> Unit, onShuffle: () -> Unit, extra: @Composable () -> Unit = {}) {
+private fun AlbumHeader(album: AlbumUi, wear: Wear?, onPlay: () -> Unit, onShuffle: () -> Unit, extra: @Composable () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Artwork(album.artworkUrl, Modifier.size(240.dp), cornerRadius = 12.dp)
+        Artwork(album.artworkUrl, Modifier.size(240.dp), cornerRadius = 12.dp, wear = wear)
         Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         val subtitle = listOfNotNull(album.artist, album.year?.toString()).joinToString(" · ")
         if (subtitle.isNotEmpty()) {

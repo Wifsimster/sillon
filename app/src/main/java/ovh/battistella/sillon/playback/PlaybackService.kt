@@ -39,6 +39,7 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
+import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -46,11 +47,14 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
+    @Inject lateinit var together: ListenTogether
+    @Inject lateinit var neverPlayed: NeverPlayedRadio
     @Inject lateinit var sides: SideSession
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
+    private var groupPlayer: ExoGroupPlayer? = null
     private var sidePlayer: SidePlayer? = null
 
     @OptIn(UnstableApi::class)
@@ -78,6 +82,7 @@ class PlaybackService : MediaLibraryService() {
                 if (isPlaying) startQueueSaver(player) else saveQueue(player)
             }
         })
+        player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
             repository.reportPlayback(
@@ -89,7 +94,9 @@ class PlaybackService : MediaLibraryService() {
                 continuing = report.continuing,
             )
         }.also { it.start() }
+        groupPlayer = ExoGroupPlayer(player).also(together::attach)
         val sidePlayer = SidePlayer(
+            base = TogetherPlayer(player, together),
             exo = player,
             sides = sides,
             describe = { end ->
@@ -201,6 +208,8 @@ class PlaybackService : MediaLibraryService() {
         }
         timelineReporter?.release()
         timelineReporter = null
+        groupPlayer?.let(together::detach)
+        groupPlayer = null
         sidePlayer = null
         scope.cancel()
         mediaSession?.run {
