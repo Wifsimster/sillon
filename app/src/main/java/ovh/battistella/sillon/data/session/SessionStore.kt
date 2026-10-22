@@ -136,7 +136,6 @@ class SessionStore @Inject constructor(
     suspend fun signOut() {
         store.edit { prefs ->
             val clientId = prefs[CLIENT_ID]
-            prefs.clear()
             val speakerUri = prefs[SPEAKER_SERVER_URI]
             val speakerToken = prefs[SPEAKER_TOKEN]
             prefs.clear()
