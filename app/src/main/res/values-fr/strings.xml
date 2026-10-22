@@ -50,6 +50,13 @@
     <string name="downloads_empty">Rien de téléchargé pour l\'instant. Ouvre un album ou une playlist et touche Télécharger pour l\'écouter sans connexion.</string>
     <string name="downloads_wifi_only">Télécharger en Wi-Fi uniquement</string>
     <string name="downloads_retry_failed">Relancer les échecs</string>
+    <string name="action_open_downloads">Ouvrir les téléchargements</string>
+    <string name="settings_downloads">Tes téléchargements</string>
+    <string name="settings_downloads_none">Rien de téléchargé pour l\'instant</string>
+    <plurals name="settings_downloads_summary">
+        <item quantity="one">%1$d album · %2$s</item>
+        <item quantity="other">%1$d albums · %2$s</item>
+    </plurals>
     <string name="download">Télécharger</string>
     <string name="download_remove">Supprimer le téléchargement</string>
     <string name="download_done">Téléchargé</string>

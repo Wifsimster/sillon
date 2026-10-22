@@ -1,5 +1,7 @@
 package ovh.battistella.sillon.ui.screens.settings
 
+import android.text.format.Formatter
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,6 +9,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -21,6 +25,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -30,20 +36,32 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.settings.StreamQuality
 import ovh.battistella.sillon.download.DownloadManager
+import ovh.battistella.sillon.ui.screens.downloads.DownloadsTotal
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsStore,
     private val downloads: DownloadManager,
+    repository: PlexRepository,
 ) : ViewModel() {
+    val downloadsTotal: StateFlow<DownloadsTotal?> = flow {
+        val serverId = runCatching { repository.currentServerId() }.getOrNull()
+        if (serverId == null) emit(DownloadsTotal.NONE) else emitAll(downloads.observe(serverId).map(DownloadsTotal::of))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val wifiQuality = settings.wifiQuality.stateIn(viewModelScope, SharingStarted.Eagerly, StreamQuality.ORIGINAL)
     val mobileQuality = settings.mobileQuality.stateIn(viewModelScope, SharingStarted.Eagerly, StreamQuality.KBPS_320)
     val downloadWifiOnly = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
@@ -86,6 +104,7 @@ class SettingsViewModel @Inject constructor(
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onDownloads: () -> Unit,
     contentPadding: PaddingValues,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -96,6 +115,7 @@ fun SettingsScreen(
     val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
     val sleeveWear by viewModel.sleeveWear.collectAsStateWithLifecycle()
     val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
+    val downloadsTotal by viewModel.downloadsTotal.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -113,6 +133,21 @@ fun SettingsScreen(
             modifier = Modifier.padding(top = padding.calculateTopPadding()),
             contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + 16.dp),
         ) {
+            // The downloads come first: they are also the way to the music when there is no connection.
+            item { SectionTitle(stringResource(R.string.library_downloads)) }
+            item { DownloadsEntry(downloadsTotal, onDownloads) }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.downloads_wifi_only)) },
+                    trailingContent = { Switch(checked = downloadWifiOnly, onCheckedChange = null) },
+                    modifier = Modifier.toggleable(
+                        value = downloadWifiOnly,
+                        role = Role.Switch,
+                        onValueChange = viewModel::setDownloadWifiOnly,
+                    ),
+                )
+            }
+            item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.settings_quality_wifi)) }
             item { QualityChoices(wifiQuality, viewModel::setWifiQuality) }
             item { HorizontalDivider() }
@@ -185,21 +220,33 @@ fun SettingsScreen(
                     )
                 }
             }
-            item { HorizontalDivider() }
-            item { SectionTitle(stringResource(R.string.library_downloads)) }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.downloads_wifi_only)) },
-                    trailingContent = { Switch(checked = downloadWifiOnly, onCheckedChange = null) },
-                    modifier = Modifier.toggleable(
-                        value = downloadWifiOnly,
-                        role = Role.Switch,
-                        onValueChange = viewModel::setDownloadWifiOnly,
-                    ),
-                )
-            }
         }
     }
+}
+
+@Composable
+private fun DownloadsEntry(total: DownloadsTotal?, onClick: () -> Unit) {
+    val context = LocalContext.current
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.settings_downloads)) },
+        supportingContent = {
+            Text(
+                when {
+                    total == null -> ""
+                    total.albums == 0 -> stringResource(R.string.settings_downloads_none)
+                    else -> pluralStringResource(
+                        R.plurals.settings_downloads_summary,
+                        total.albums,
+                        total.albums,
+                        Formatter.formatShortFileSize(context, total.bytes),
+                    )
+                },
+            )
+        },
+        leadingContent = { Icon(Icons.Rounded.DownloadDone, contentDescription = null) },
+        trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
+        modifier = Modifier.clickable(role = Role.Button, onClick = onClick),
+    )
 }
 
 @Composable

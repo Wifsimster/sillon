@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
@@ -51,6 +50,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import ovh.battistella.sillon.data.session.Session
+import ovh.battistella.sillon.ui.components.LocalOpenDownloads
 import ovh.battistella.sillon.ui.components.MiniPlayer
 import ovh.battistella.sillon.ui.screens.library.AlbumScreen
 import ovh.battistella.sillon.ui.screens.library.ArtistScreen
@@ -79,8 +79,21 @@ private val tabs = listOf(
     Tab(Routes.ALBUMS, R.string.library_albums, Icons.Rounded.Album),
     Tab(Routes.PLAYLISTS, R.string.library_playlists, Icons.AutoMirrored.Rounded.QueueMusic),
     Tab(Routes.SEARCH, R.string.library_search, Icons.Rounded.Search),
-    Tab(Routes.DOWNLOADS, R.string.library_downloads, Icons.Rounded.DownloadDone),
 )
+
+@Composable
+internal fun SillonNavigationBar(currentTab: String, onTab: (String) -> Unit) {
+    NavigationBar {
+        tabs.forEach { tab ->
+            NavigationBarItem(
+                selected = tab.route == currentTab,
+                onClick = { onTab(tab.route) },
+                icon = { Icon(tab.icon, contentDescription = null) },
+                label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
+        }
+    }
+}
 
 @Composable
 private fun LibraryNavHost() {
@@ -111,25 +124,16 @@ private fun LibraryNavHost() {
                             onNext = playerViewModel::next,
                         )
                     }
-                    NavigationBar {
-                        tabs.forEach { tab ->
-                            NavigationBarItem(
-                                selected = tab.route == currentTab,
-                                onClick = {
-                                    if (tab.route == currentTab) {
-                                        navController.popBackStack(tab.route, inclusive = false)
-                                    } else {
-                                        currentTab = tab.route
-                                        navController.navigate(tab.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                },
-                                icon = { Icon(tab.icon, contentDescription = null) },
-                                label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            )
+                    SillonNavigationBar(currentTab) { route ->
+                        if (route == currentTab) {
+                            navController.popBackStack(route, inclusive = false)
+                        } else {
+                            currentTab = route
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 }
@@ -143,7 +147,9 @@ private fun LibraryNavHost() {
         val back: () -> Unit = { navController.popBackStack() }
         Box(Modifier.fillMaxSize()) {
             val openTogether: () -> Unit = { navController.navigate(Routes.TOGETHER) { launchSingleTop = true } }
+            val openDownloads: () -> Unit = { navController.navigate(Routes.DOWNLOADS) { launchSingleTop = true } }
             CompositionLocalProvider(
+                LocalOpenDownloads provides openDownloads,
                 LocalOpenSettings provides { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                 LocalOpenTogether provides openTogether,
             ) {
@@ -161,7 +167,11 @@ private fun LibraryNavHost() {
                         SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
                     }
                     composable(Routes.DOWNLOADS) {
-                        DownloadsScreen(onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) }, contentPadding = bottom)
+                        DownloadsScreen(
+                            onAlbum = { navController.navigate(Routes.downloadedAlbum(it)) },
+                            onBack = back,
+                            contentPadding = bottom,
+                        )
                     }
                     composable(Routes.DOWNLOADED_ALBUM, arguments = keyArg) {
                         DownloadedAlbumScreen(onBack = back, contentPadding = bottom)
@@ -179,7 +189,7 @@ private fun LibraryNavHost() {
                         PlaylistScreen(onBack = back, contentPadding = bottom)
                     }
                     composable(Routes.SETTINGS) {
-                        SettingsScreen(onBack = back, contentPadding = bottom)
+                        SettingsScreen(onBack = back, onDownloads = openDownloads, contentPadding = bottom)
                     }
                     composable(Routes.TOGETHER) {
                         TogetherScreen(onBack = back, contentPadding = bottom)

@@ -41,7 +41,7 @@ data class DownloadedAlbum(
     val sizeBytes: Long,
 )
 
-private const val NO_ALBUM = "_"
+internal const val NO_ALBUM = "_"
 
 private fun artworkUri(rows: List<DownloadEntity>): String? =
     rows.firstNotNullOfOrNull { it.artworkPath }?.let { Uri.fromFile(File(it)).toString() }

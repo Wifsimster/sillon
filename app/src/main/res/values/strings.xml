@@ -52,6 +52,13 @@
     <string name="downloads_empty">Nothing downloaded yet. Open an album or a playlist and tap Download to listen without a connection.</string>
     <string name="downloads_wifi_only">Download on Wi-Fi only</string>
     <string name="downloads_retry_failed">Retry failed downloads</string>
+    <string name="action_open_downloads">Open downloads</string>
+    <string name="settings_downloads">Your downloads</string>
+    <string name="settings_downloads_none">Nothing downloaded yet</string>
+    <plurals name="settings_downloads_summary">
+        <item quantity="one">%1$d album · %2$s</item>
+        <item quantity="other">%1$d albums · %2$s</item>
+    </plurals>
     <string name="download">Download</string>
     <string name="download_remove">Remove download</string>
     <string name="download_done">Downloaded</string>
