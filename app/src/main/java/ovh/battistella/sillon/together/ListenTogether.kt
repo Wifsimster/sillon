@@ -169,7 +169,7 @@ class ListenTogether @Inject constructor(
         val before = _state.value
         val step = TogetherMachine.reduce(before, event)
         _state.value = step.state
-        if (event is SessionEvent.Server && event.event is SyncPlayEvent.Joined) onJoined(event.event.group)
+        if (step.state is TogetherState.InGroup && event is SessionEvent.Server && event.event is SyncPlayEvent.Joined) onJoined(event.event.group)
         step.effects.forEach { apply(it) }
         if (before.isActive && !step.state.isActive) tearDown((step.state as? TogetherState.Ended)?.reason ?: EndReason.Left)
     }

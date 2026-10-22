@@ -144,4 +144,16 @@ class ListenTogetherTest {
         runCurrent()
         assertTrue(together.state.value is TogetherState.InGroup)
     }
+
+    @Test
+    fun `a GroupJoined queued behind a cancel does not put the player in group mode`() = session {
+        connect()
+        together.cancel()
+        listener.captured.onMessage(socket, joined())
+        runCurrent()
+
+        assertEquals(TogetherState.Off, together.state.value)
+        verify(exactly = 0) { groupPlayer.enterGroupMode() }
+        verify(exactly = 0) { groupPlayer.pause() }
+    }
 }
