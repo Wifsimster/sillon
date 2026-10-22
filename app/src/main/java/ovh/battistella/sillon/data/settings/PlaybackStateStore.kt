@@ -22,7 +22,20 @@ data class SavedQueue(
     val positionMs: Long,
     val title: String = "",
     val artist: String = "",
+    val mystery: SavedMystery? = null,
 )
+
+@Serializable
+data class SavedMystery(
+    val albumKey: String,
+    val tracks: List<SavedMysteryTrack>,
+    val offline: Boolean = false,
+    val revealed: Boolean = false,
+    val left: List<String> = emptyList(),
+)
+
+@Serializable
+data class SavedMysteryTrack(val key: String, val side: Int, val number: Int)
 
 @Singleton
 class PlaybackStateStore @Inject constructor(

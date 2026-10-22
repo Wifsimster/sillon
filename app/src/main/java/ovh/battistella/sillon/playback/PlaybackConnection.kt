@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.playback.mystery.MysteryMask
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -138,6 +140,17 @@ class PlaybackConnection @Inject constructor(
         }
     }
 
+    fun playItems(items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        sides.setPlan(null)
+        withController {
+            shuffleModeEnabled = false
+            setMediaItems(items, 0, 0L)
+            prepare()
+            play()
+        }
+    }
+
     fun replaceUpcoming(tracks: List<PlayableTrack>) {
         withController {
             val items = tracks.map(MediaItems::from).filter { it.mediaId != currentMediaItem?.mediaId }
@@ -206,12 +219,13 @@ class PlaybackConnection @Inject constructor(
         val metadata = item?.mediaMetadata
         _state.value = PlayerUiState(
             isConnected = true,
-            currentKey = item?.mediaId?.takeIf { it.isNotBlank() },
+            currentKey = item?.mediaId?.takeIf { it.isNotBlank() }
+                ?.let { if (MysteryMask.isMasked(item)) MysteryMask.HIDDEN_KEY else it },
             title = metadata?.title?.toString().orEmpty(),
             artist = metadata?.artist?.toString().orEmpty(),
             album = metadata?.albumTitle?.toString().orEmpty(),
             artworkUri = metadata?.artworkUri?.toString(),
-            albumKey = metadata?.extras?.getString(MediaItems.EXTRA_ALBUM_KEY),
+            albumKey = metadata?.extras?.getString(MediaItems.EXTRA_ALBUM_KEY)?.takeUnless { MysteryMask.isMasked(item) },
             isPlaying = c.isPlaying,
             isBuffering = c.playbackState == Player.STATE_BUFFERING,
             positionMs = c.currentPosition.coerceAtLeast(0),

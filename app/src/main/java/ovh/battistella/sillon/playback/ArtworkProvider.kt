@@ -17,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import ovh.battistella.sillon.BuildConfig
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.playback.mystery.SleeveArt
 import java.io.File
 import java.io.FileNotFoundException
 import java.security.MessageDigest
@@ -28,6 +29,7 @@ class ArtworkProvider : ContentProvider() {
     interface Dependencies {
         fun repository(): PlexRepository
         fun okHttpClient(): OkHttpClient
+        fun sleeveArt(): SleeveArt
     }
 
     private val deps by lazy {
@@ -37,6 +39,10 @@ class ArtworkProvider : ContentProvider() {
     override fun onCreate(): Boolean = true
 
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+        if (uri == SLEEVE_URI) {
+            val sleeve = runCatching { deps.sleeveArt().file() }.getOrElse { throw FileNotFoundException("No sleeve") }
+            return ParcelFileDescriptor.open(sleeve, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
         val thumb = thumbOf(uri) ?: throw FileNotFoundException("Not a cover: $uri")
         val file = cached(thumb)
         if (!file.isFile) download(thumb, file)
@@ -68,7 +74,7 @@ class ArtworkProvider : ContentProvider() {
         }
     }
 
-    override fun getType(uri: Uri): String = "image/jpeg"
+    override fun getType(uri: Uri): String = if (uri == SLEEVE_URI) "image/png" else "image/jpeg"
 
     override fun query(uri: Uri, p: Array<out String>?, s: String?, a: Array<out String>?, o: String?): Cursor? = null
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
@@ -80,6 +86,8 @@ class ArtworkProvider : ContentProvider() {
         const val AUTHORITY = "${BuildConfig.APPLICATION_ID}.artwork"
 
         private const val SIZE_PX = 400
+
+        val SLEEVE_URI: Uri = Uri.Builder().scheme("content").authority(AUTHORITY).appendPath("sleeve").appendPath("v1").build()
 
         fun uriFor(thumb: String?): Uri? {
             if (thumb.isNullOrBlank()) return null

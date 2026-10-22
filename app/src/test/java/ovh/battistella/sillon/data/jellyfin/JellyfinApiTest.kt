@@ -182,6 +182,29 @@ class JellyfinApiTest {
     }
 
     @Test
+    fun `creates a playlist with the album tracks, then adds more`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"Id": "pl-1"}"""))
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        api.createPlaylist(endpoint, "device-1", "Surprises", listOf("t1", "t2"))
+        api.addToPlaylist(endpoint, "device-1", "pl-1", listOf("t3", "t4"))
+
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/jf/Playlists", create.requestUrl!!.encodedPath)
+        val body = create.body.readUtf8()
+        assertTrue(body, body.contains("\"Name\":\"Surprises\""))
+        assertTrue(body, body.contains("\"Ids\":[\"t1\",\"t2\"]"))
+        assertTrue(body, body.contains("\"UserId\":\"user-1\""))
+        assertTrue(body, body.contains("\"MediaType\":\"Audio\""))
+        val add = server.takeRequest()
+        assertEquals("POST", add.method)
+        assertEquals("/jf/Playlists/pl-1/Items", add.requestUrl!!.encodedPath)
+        assertEquals("t3,t4", add.requestUrl!!.queryParameter("ids"))
+        assertEquals("user-1", add.requestUrl!!.queryParameter("userId"))
+    }
+
+    @Test
     fun `asks for random unplayed tracks and keeps the play count`() = runTest {
         server.enqueue(
             MockResponse().setBody(

@@ -42,6 +42,9 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
+import ovh.battistella.sillon.playback.mystery.MysterySession
+import ovh.battistella.sillon.playback.mystery.MysteryWatcher
+import ovh.battistella.sillon.playback.mystery.toSaved
 import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
 
@@ -50,6 +53,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
+    @Inject lateinit var mystery: MysterySession
     @Inject lateinit var together: ListenTogether
     @Inject lateinit var neverPlayed: NeverPlayedRadio
     @Inject lateinit var sides: SideSession
@@ -57,6 +61,7 @@ class PlaybackService : MediaLibraryService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
+    private var mysteryWatcher: MysteryWatcher? = null
     private var groupPlayer: ExoGroupPlayer? = null
     private var sidePlayer: SidePlayer? = null
 
@@ -99,6 +104,7 @@ class PlaybackService : MediaLibraryService() {
         }.also { it.start() }
         // Sides take pauseAtEndOfMediaItems back only after the group has let go of it.
         groupPlayer = ExoGroupPlayer(player, afterExit = { sidePlayer?.sync() }).also(together::attach)
+        mysteryWatcher = MysteryWatcher(player, mystery, scope, together.state.map { it.isActive }).also { it.start() }
         val sidePlayer = SidePlayer(
             base = TogetherPlayer(player, together),
             exo = player,
@@ -173,6 +179,7 @@ class PlaybackService : MediaLibraryService() {
             positionMs = player.currentPosition.coerceAtLeast(0),
             title = current?.mediaMetadata?.title?.toString().orEmpty(),
             artist = current?.mediaMetadata?.artist?.toString().orEmpty(),
+            mystery = mystery.state.value?.takeIf { m -> keys.any(m::contains) }?.toSaved(),
         )
     }
 
@@ -180,6 +187,12 @@ class PlaybackService : MediaLibraryService() {
         val uris = items.mapNotNull { it.mediaMetadata.artworkUri }
         runCatching { ArtworkProvider.grant(this, browser.packageName, uris) }
             .onFailure { Log.w(TAG, "artwork grant to ${browser.packageName} failed", it) }
+    }
+
+    // The mystery sleeve sits in the now-playing metadata, not in a browse result.
+    private fun grantSleeve(browser: MediaSession.ControllerInfo) {
+        runCatching { ArtworkProvider.grant(this, browser.packageName, listOf(ArtworkProvider.SLEEVE_URI)) }
+            .onFailure { Log.w(TAG, "sleeve grant to ${browser.packageName} failed", it) }
     }
 
     private val fellBack = mutableSetOf<String>()
@@ -218,6 +231,8 @@ class PlaybackService : MediaLibraryService() {
         }
         timelineReporter?.release()
         timelineReporter = null
+        mysteryWatcher?.release()
+        mysteryWatcher = null
         groupPlayer?.let(together::detach)
         groupPlayer = null
         sidePlayer = null
@@ -280,9 +295,11 @@ class PlaybackService : MediaLibraryService() {
                     LibraryResult.ofError(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
                 }
                 params?.isRecent == true -> libraryTree.recentRoot()
+                    .also { grantSleeve(browser) }
                     ?.let { LibraryResult.ofItem(it, libraryTree.rootParams()) }
                     ?: LibraryResult.ofError(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
                 else -> LibraryResult.ofItem(libraryTree.root(), libraryTree.rootParams())
+                    .also { grantSleeve(browser) }
             }
         }
 

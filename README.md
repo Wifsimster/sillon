@@ -46,6 +46,9 @@ go, with no ads, no tracking and no subscription.
   edges, worn corners, a ring. One switch in Settings turns it off.
 - 👥 **Listen together.** Several phones play the same track at the same moment,
   through your own server. Jellyfin only: Plex offers no way to do it.
+- 🎁 **Mystery sleeve.** One tap plays a whole album you rarely listen to,
+  hidden behind a kraft sleeve in the app, the notification and the car. It
+  reveals itself after the third track, or when you ask.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
@@ -109,6 +112,7 @@ is rebuilt on every push.
 | **Sides** | *Listen by side*: an album played in order stops at the end of side A, like a record, until you flip it (in the app, the notification and Android Auto) |
 | **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
 | **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), *Never played* (tracks or whole albums, Plex and Jellyfin), also in the car |
+| **Surprise** | Mystery sleeve: a whole album drawn at random (rarely played first, or any album), hidden in the app, the notification, the lock screen and the car until the third track or *Reveal*; *Keep* adds it to a *Surprises* playlist; offline, drawn from your downloads |
 | **Covers** | Sleeve wear: covers age with your plays (yellowed edges, worn corners, ring wear, a crease) on the album grids, the album page and the player; on by default, off in Settings → Appearance |
 | **Together** | Listen together on Jellyfin (SyncPlay): shared play, pause, skip and seek; the notification, headset buttons and Android Auto control the group. Not available on Plex |
 | **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |
@@ -208,6 +212,9 @@ in GitHub Actions; pushes to `main` are released with semantic-release
 - *Listen together* uses Jellyfin's SyncPlay: your Jellyfin account must be
   allowed to use it, and gapless playback is off during a session. How it works
   and its limits: [docs/listen-together.md](docs/listen-together.md).
+- A *Mystery sleeve* can't stay hidden from a listen together session, which
+  shares the queue with every phone: it reveals itself when you join one, and
+  can't be drawn during one.
 - Loudness levelling only turns tracks down (the player can't amplify), as
   ReplayGain targets a quieter reference than most modern masters: with it on,
   turn the phone volume up a little. Plex needs *loudness analysis* enabled on

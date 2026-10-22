@@ -30,6 +30,7 @@ import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.Message
+import ovh.battistella.sillon.ui.screens.mystery.MysteryCard
 import ovh.battistella.sillon.ui.components.Wear
 
 @Composable
@@ -39,7 +40,10 @@ fun ArtistsScreen(
     viewModel: ArtistsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SectionGridScreen(stringResource(R.string.library_artists), state, viewModel::load, onArtist, round = true, contentPadding)
+    SectionGridScreen(
+        stringResource(R.string.library_artists), state, viewModel::load, onArtist, round = true, contentPadding,
+        header = { MysteryCard() },
+    )
 }
 
 @Composable
@@ -65,6 +69,7 @@ private fun SectionGridScreen(
     onClick: (String) -> Unit,
     round: Boolean,
     contentPadding: PaddingValues,
+    header: (@Composable () -> Unit)? = null,
     wear: (String) -> Wear? = { null },
 ) {
     Scaffold(
@@ -86,6 +91,7 @@ private fun SectionGridScreen(
                     round = round,
                     modifier = Modifier.padding(top = padding.calculateTopPadding()),
                     contentPadding = contentPadding,
+                    header = header,
                     wear = wear,
                 )
             }

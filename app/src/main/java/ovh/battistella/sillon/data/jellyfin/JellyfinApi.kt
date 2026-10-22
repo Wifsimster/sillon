@@ -1,5 +1,7 @@
 package ovh.battistella.sillon.data.jellyfin
 
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.HttpUrl
@@ -100,6 +102,24 @@ class JellyfinApi(
 
     suspend fun playlistItems(server: ServerEndpoint, deviceId: String, playlistId: String): List<PlexMetadata> =
         items(server, deviceId, "Playlists/$playlistId/Items").map { it.toMetadata() }
+
+    suspend fun createPlaylist(server: ServerEndpoint, deviceId: String, name: String, ids: List<String>) {
+        val body = buildJsonObject {
+            put("Name", name)
+            put("Ids", JsonArray(ids.map(::JsonPrimitive)))
+            server.userId?.let { put("UserId", it) }
+            put("MediaType", "Audio")
+        }
+        post(serverUrl(server, "Playlists"), deviceId, server.token, body.toString())
+    }
+
+    suspend fun addToPlaylist(server: ServerEndpoint, deviceId: String, playlistId: String, ids: List<String>) {
+        val url = serverUrl(server, "Playlists/$playlistId/Items").newBuilder()
+            .addQueryParameter("ids", ids.joinToString(","))
+            .apply { server.userId?.let { addQueryParameter("userId", it) } }
+            .build()
+        post(url, deviceId, server.token, "")
+    }
 
     suspend fun search(server: ServerEndpoint, deviceId: String, sectionKey: String, query: String): List<PlexHub> {
         val found = items(

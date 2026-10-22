@@ -9,6 +9,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.rememberUpdatedState
 import coil.imageLoader
 import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
@@ -55,12 +57,36 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
-import ovh.battistella.sillon.playback.PlayerUiState
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.formatDuration
+import ovh.battistella.sillon.playback.PlayerUiState
+import ovh.battistella.sillon.playback.SideState
+import ovh.battistella.sillon.playback.mystery.KeepResult
+import ovh.battistella.sillon.playback.mystery.Mystery
+import ovh.battistella.sillon.playback.mystery.MysteryMask
+import ovh.battistella.sillon.ui.components.Wear
+import ovh.battistella.sillon.ui.screens.mystery.MysteryCover
+import ovh.battistella.sillon.ui.screens.mystery.MysteryHiddenActions
+import ovh.battistella.sillon.ui.screens.mystery.MysteryReveal
+import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
 import ovh.battistella.sillon.ui.share.ShareCardSheet
 import ovh.battistella.sillon.ui.share.ShareSource
+
+interface PlayerControls {
+    fun radioFromCurrent()
+    fun reveal()
+    fun revealSeen()
+    fun keepSurprise()
+    fun anotherSurprise()
+    fun flipSide()
+    fun playPause()
+    fun next()
+    fun previous()
+    fun seekTo(positionMs: Long)
+    fun toggleShuffle()
+    fun cycleRepeat()
+}
 
 @Composable
 fun PlayerScreen(
@@ -70,10 +96,49 @@ fun PlayerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
+    val mystery by viewModel.mystery.collectAsStateWithLifecycle()
+    val mysteryStarting by viewModel.mysteryStarting.collectAsStateWithLifecycle()
+    val keeping by viewModel.keeping.collectAsStateWithLifecycle()
+    val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val sides by viewModel.sides.collectAsStateWithLifecycle()
+    PlayerContent(
+        state = state,
+        startingRadio = startingRadio,
+        mystery = mystery,
+        mysteryStarting = mysteryStarting,
+        keeping = keeping,
+        keep = keep,
+        wear = wear,
+        sides = sides,
+        controls = viewModel,
+        onClose = onClose,
+        onTogether = onTogether,
+    )
+}
+
+@Composable
+fun PlayerContent(
+    state: PlayerUiState,
+    startingRadio: Boolean,
+    mystery: Mystery?,
+    mysteryStarting: Boolean,
+    keeping: Boolean,
+    keep: KeepResult?,
+    wear: Wear?,
+    controls: PlayerControls,
+    onClose: () -> Unit,
+    onTogether: () -> Unit,
+    sides: SideState = SideState(),
+) {
     val reducedMotion = rememberReducedMotion()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
+    val surprise = mystery?.takeIf { state.currentKey == MysteryMask.HIDDEN_KEY || it.contains(state.currentKey.orEmpty()) }
+    val hidden = surprise != null && !surprise.revealed
+    val revealing = surprise != null && surprise.revealed && !surprise.revealSeen
+    val view = LocalView.current
+    val revealedAnnouncement = stringResource(R.string.mystery_revealed, state.title, state.artist)
+    val announcement by rememberUpdatedState(revealedAnnouncement)
     var shareSource by remember { mutableStateOf<ShareSource?>(null) }
 
     val tint by animateColorAsState(
@@ -96,8 +161,10 @@ fun PlayerScreen(
             onTogether = onTogether,
             startingRadio = startingRadio,
             radioEnabled = state.hasMedia,
-            onRadio = viewModel::radioFromCurrent,
-            onShareCard = if (state.hasMedia) {
+            onRadio = controls::radioFromCurrent,
+            showRadio = !hidden,
+            // A card of a hidden surprise would give the album away.
+            onShareCard = if (state.hasMedia && !hidden) {
                 {
                     shareSource = ShareSource(
                         kind = ShareSource.Kind.TRACK,
@@ -117,18 +184,38 @@ fun PlayerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                val coverModifier = Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f)
                 if (end != null) {
-                    SideEndRecord(reducedMotion, Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f))
-                    SideEndPanel(end, onFlip = viewModel::flipSide)
+                    SideEndRecord(reducedMotion, coverModifier)
+                    SideEndPanel(end, onFlip = controls::flipSide)
                 } else {
-                    Artwork(
-                        state.artworkUri,
-                        Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
-                        cornerRadius = 16.dp,
-                        wear = wear,
-                    )
+                    when {
+                        hidden -> MysteryCover(coverModifier)
+                        revealing -> MysteryReveal(
+                            coverUri = state.artworkUri,
+                            onDone = {
+                                controls.revealSeen()
+                                view.announceForAccessibility(announcement)
+                            },
+                            modifier = coverModifier,
+                        )
+                        else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
+                    }
                     NowPlayingTitle(state, sides.current)
                 }
+            }
+        }
+        surprise?.let {
+            if (hidden) {
+                MysteryHiddenActions(onReveal = controls::reveal, offline = it.offline)
+            } else {
+                MysteryRevealedActions(
+                    keeping = keeping,
+                    keep = keep,
+                    starting = mysteryStarting,
+                    onKeep = controls::keepSurprise,
+                    onAnother = controls::anotherSurprise,
+                )
             }
         }
 
@@ -139,7 +226,7 @@ fun PlayerScreen(
                 valueRange = 0f..duration,
                 onValueChange = { scrubbing = it },
                 onValueChangeFinished = {
-                    scrubbing?.let { viewModel.seekTo(it.toLong()) }
+                    scrubbing?.let { controls.seekTo(it.toLong()) }
                     scrubbing = null
                 },
                 enabled = state.durationMs > 0,
@@ -157,23 +244,23 @@ fun PlayerScreen(
         ) {
             val active = MaterialTheme.colorScheme.primary
             val inactive = MaterialTheme.colorScheme.onSurfaceVariant
-            IconButton(onClick = viewModel::toggleShuffle) {
+            IconButton(onClick = controls::toggleShuffle) {
                 Icon(Icons.Rounded.Shuffle, stringResource(R.string.album_shuffle), tint = if (state.shuffle) active else inactive)
             }
-            IconButton(onClick = viewModel::previous) {
+            IconButton(onClick = controls::previous) {
                 Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.player_previous), Modifier.size(36.dp))
             }
-            FilledIconButton(onClick = viewModel::playPause, modifier = Modifier.size(72.dp)) {
+            FilledIconButton(onClick = controls::playPause, modifier = Modifier.size(72.dp)) {
                 if (state.isPlaying) {
                     Icon(Icons.Rounded.Pause, stringResource(R.string.player_pause), Modifier.size(40.dp))
                 } else {
                     Icon(Icons.Rounded.PlayArrow, stringResource(R.string.player_play), Modifier.size(40.dp))
                 }
             }
-            IconButton(onClick = viewModel::next, enabled = state.hasNext) {
+            IconButton(onClick = controls::next, enabled = state.hasNext) {
                 Icon(Icons.Rounded.SkipNext, stringResource(R.string.player_next), Modifier.size(36.dp))
             }
-            IconButton(onClick = viewModel::cycleRepeat) {
+            IconButton(onClick = controls::cycleRepeat) {
                 val (icon, tint) = when (state.repeatMode) {
                     Player.REPEAT_MODE_ONE -> Icons.Rounded.RepeatOne to active
                     Player.REPEAT_MODE_ALL -> Icons.Rounded.Repeat to active
@@ -245,6 +332,7 @@ fun PlayerHeader(
     startingRadio: Boolean,
     radioEnabled: Boolean,
     onRadio: () -> Unit,
+    showRadio: Boolean = true,
     onShareCard: (() -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -260,10 +348,10 @@ fun PlayerHeader(
         IconButton(onClick = onTogether) {
             Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
         }
-        if (startingRadio) {
-            CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-        } else {
-            IconButton(onClick = onRadio, enabled = radioEnabled) {
+        when {
+            !showRadio -> Unit
+            startingRadio -> CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+            else -> IconButton(onClick = onRadio, enabled = radioEnabled) {
                 Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
             }
         }
