@@ -266,4 +266,35 @@
     <string name="listen_never_played_albums_hint">A whole record you have never played</string>
     <string name="listen_radio_play">Start this radio</string>
     <string name="listen_radios_offline">Offline: the radios play from your server. Back once you are online.</string>
+    <string name="output_open">Play on…</string>
+    <string name="output_open_active">Playing on %1$s. Change where the music plays</string>
+    <string name="output_title">Play on</string>
+    <string name="output_phone">This phone</string>
+    <string name="output_selected">Selected</string>
+    <string name="output_not_selected">Not selected</string>
+    <plurals name="output_rooms">
+        <item quantity="one">Sonos · %1$d room</item>
+        <item quantity="other">Sonos · %1$d rooms</item>
+    </plurals>
+    <string name="output_playing_on">Playing on %1$s</string>
+    <string name="output_connecting">Sending the queue to %1$s…</string>
+    <string name="output_connecting_short">Connecting…</string>
+    <string name="output_searching">Looking for Sonos speakers on this Wi-Fi…</string>
+    <string name="output_none">No Sonos speaker found on this Wi-Fi.</string>
+    <string name="output_rescan">Search again</string>
+    <string name="output_block_nothing">Play something first, then send it to a speaker.</string>
+    <string name="output_block_together">Listen together plays on each phone. Leave the session to play on Sonos.</string>
+    <string name="output_block_mystery">A mystery sleeve stays on this phone: the Sonos app would show the album.</string>
+    <string name="output_sonos_note">The speaker fetches the music from your server itself, over your Wi-Fi. On Sonos, sides, listen together, the listening cache and volume levelling stay off; the speaker\'s own volume applies.</string>
+    <string name="output_notice_unreachable">The Sonos speaker stopped answering. The music is back on this phone, paused.</string>
+    <string name="output_notice_could_not_play">The Sonos speaker could not play: it may not reach your server. The music is back on this phone, paused.</string>
+    <string name="output_notice_taken_over">Something else plays on the Sonos speaker now. Sillon let it go.</string>
+    <string name="output_notice_failed">The Sonos speaker did not take the queue. The music stays on this phone.</string>
+    <string name="output_notice_mystery">Mystery sleeves play on this phone: the Sonos app would show the album.</string>
+    <string name="output_notice_together">Listen together plays on each phone: the music is back here.</string>
+    <string name="output_notice_ok">OK</string>
+    <string name="together_not_on_sonos">Listen together, not while playing on Sonos</string>
+    <string name="output_notice_plex_token">Your Plex server gave no temporary token for the speaker, and Sillon won\'t hand it your account\'s. The music stays on this phone.</string>
+    <string name="output_notice_jellyfin_token">Your Jellyfin server gave no token for the speaker: Sonos needs Quick Connect, turned on in the server\'s dashboard. The music stays on this phone.</string>
+    <string name="output_notice_mystery_not_added">The mystery sleeve wasn\'t added to the Sonos queue: the Sonos app would show the album. Back on this phone, it can play.</string>
 </resources>
