@@ -43,6 +43,16 @@
     <string name="search_hint">Artists, albums, tracks</string>
     <string name="search_clear">Clear</string>
     <string name="search_no_results">Nothing found for “%1$s”.</string>
+    <string name="search_home_recent">Recently played</string>
+    <string name="search_home_classics">Your classics</string>
+    <string name="search_home_empty">The albums you play will show up here.</string>
+    <string name="search_home_offline">Offline: only your downloaded albums.</string>
+    <string name="search_home_offline_empty">You are offline, and none of your recent or most played albums is downloaded. They come back with the connection.</string>
+    <string name="search_home_classics_need_wear">Turn on sleeve wear in Settings to see the albums you play the most.</string>
+    <string name="search_home_loading">Loading your albums</string>
+    <string name="search_home_album">%1$s, %2$s</string>
+    <string name="search_home_open">Open the album</string>
+    <string name="search_home_play">Play the album</string>
     <string name="action_more">More options</string>
 
     <string name="library_downloads">Downloads</string>

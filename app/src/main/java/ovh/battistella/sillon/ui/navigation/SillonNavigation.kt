@@ -186,7 +186,12 @@ private fun LibraryNavHost() {
                         )
                     }
                     composable(Routes.SEARCH) {
-                        SearchScreen(onArtist = openArtist, onAlbum = openAlbum, contentPadding = bottom)
+                        SearchScreen(
+                            onArtist = openArtist,
+                            onAlbum = openAlbum,
+                            onDownloadedAlbum = { navController.navigate(Routes.downloadedAlbum(it)) },
+                            contentPadding = bottom,
+                        )
                     }
                     composable(Routes.DOWNLOADS) {
                         DownloadsScreen(

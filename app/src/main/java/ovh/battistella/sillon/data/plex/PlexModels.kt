@@ -91,6 +91,8 @@ data class PlexMetadata(
     val ratingCount: Long? = null,
     val viewCount: Int? = null,
     val viewedLeafCount: Int? = null,
+    /** Last play, in seconds since the epoch. */
+    val lastViewedAt: Long? = null,
     @SerialName("Stations") val stations: PlexStations? = null,
     val normalizationGain: Float? = null,
     val thumb: String? = null,
