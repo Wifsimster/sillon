@@ -131,6 +131,8 @@ class PlaybackService : MediaLibraryService() {
             tell = sonosOutput::tell,
             attach = ::attachSonos,
         )
+        // A speaker token left by a Sonos session the app didn't get to end (killed): revoke it.
+        scope.launch { runCatching { repository.revokeLeftoverSpeakerToken() } }
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)

@@ -65,6 +65,10 @@ class SonosPlayer(
     private var shuffle = false
     private var repeatMode = Player.REPEAT_MODE_OFF
     private var volume = 0
+
+    /** The volume the last key press asked for, until the speaker has it: quick presses add up. */
+    private var targetVolume: Int? = null
+    private var muted = false
     private var poller: Job? = null
     private val health = SonosHealth(now)
     private var ticks = 0
@@ -125,6 +129,7 @@ class SonosPlayer(
                 repeatMode = mode.second
             }
             runCatching { volume = client.call(base, AvTransport.groupVolume())["CurrentVolume"]?.toIntOrNull() ?: volume }
+            runCatching { client.call(base, AvTransport.groupMute())["CurrentMute"]?.let { muted = it == "1" } }
         }
         val now = SonosStatus.of(transport, positionInfo, media)
         status = now
@@ -198,7 +203,8 @@ class SonosPlayer(
             .setShuffleModeEnabled(shuffle)
             .setRepeatMode(repeatMode)
             .setDeviceInfo(DEVICE_INFO)
-            .setDeviceVolume(volume)
+            .setDeviceVolume(targetVolume ?: volume)
+            .setIsDeviceMuted(muted)
             .build()
     }
 
@@ -298,17 +304,24 @@ class SonosPlayer(
         client.call(base, AvTransport.setPlayMode(shuffle, repeatMode))
     }
 
-    override fun handleSetDeviceVolume(deviceVolume: Int, flags: Int) = send {
-        volume = deviceVolume.coerceIn(0, MAX_VOLUME)
-        client.call(base, AvTransport.setGroupVolume(volume))
+    override fun handleSetDeviceVolume(deviceVolume: Int, flags: Int): ListenableFuture<*> {
+        val wanted = deviceVolume.coerceIn(0, MAX_VOLUME)
+        targetVolume = wanted
+        return send {
+            client.call(base, AvTransport.setGroupVolume(wanted))
+            volume = wanted
+            if (targetVolume == wanted) targetVolume = null
+        }
     }
 
-    override fun handleIncreaseDeviceVolume(flags: Int) = handleSetDeviceVolume(volume + VOLUME_STEP, flags)
+    // From the volume asked last, not the one the speaker had: a held key keeps moving it.
+    override fun handleIncreaseDeviceVolume(flags: Int) = handleSetDeviceVolume((targetVolume ?: volume) + VOLUME_STEP, flags)
 
-    override fun handleDecreaseDeviceVolume(flags: Int) = handleSetDeviceVolume(volume - VOLUME_STEP, flags)
+    override fun handleDecreaseDeviceVolume(flags: Int) = handleSetDeviceVolume((targetVolume ?: volume) - VOLUME_STEP, flags)
 
     override fun handleSetDeviceMuted(muted: Boolean, flags: Int) = send {
         client.call(base, AvTransport.setGroupMute(muted))
+        this.muted = muted
     }
 
     private companion object {

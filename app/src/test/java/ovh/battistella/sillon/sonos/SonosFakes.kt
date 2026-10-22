@@ -25,10 +25,17 @@ class FakeSpeaker : SoapCaller {
     /** False: a Pause isn't reflected yet in the next polls. */
     var pauseShows = true
 
+    var volume = 12
+    var muted = false
+
+    /** True: every call fails, as with a speaker unplugged. */
+    var unreachable = false
+
     fun count(action: String) = calls.count { it.action == action }
 
     override suspend fun call(baseUrl: String, call: SoapCall): Map<String, String> {
         calls += call
+        if (unreachable) throw java.io.IOException("connect timed out")
         val args = call.args.toMap()
         return when (call.action) {
             "GetTransportInfo" -> mapOf("CurrentTransportState" to transport)
@@ -40,7 +47,10 @@ class FakeSpeaker : SoapCaller {
             )
             "GetMediaInfo" -> mapOf("CurrentURI" to mediaUri)
             "GetTransportSettings" -> mapOf("PlayMode" to "NORMAL")
-            "GetGroupVolume" -> mapOf("CurrentVolume" to "12")
+            "GetGroupVolume" -> mapOf("CurrentVolume" to "$volume")
+            "SetGroupVolume" -> emptyMap<String, String>().also { volume = args.getValue("DesiredVolume").toInt() }
+            "GetGroupMute" -> mapOf("CurrentMute" to if (muted) "1" else "0")
+            "SetGroupMute" -> emptyMap<String, String>().also { muted = args["DesiredMute"] == "1" }
             "RemoveAllTracksFromQueue" -> emptyMap<String, String>().also { queue.clear() }
             "AddMultipleURIsToQueue" -> emptyMap<String, String>().also {
                 val uris = args.getValue("EnqueuedURIs").split(' ')

@@ -281,4 +281,54 @@ class SonosHandoverTest {
         val polls = speaker.count("GetTransportInfo") - before
         assertTrue("$polls polls", polls in 30..45)
     }
+
+    @Test
+    fun `quick volume key presses add up on the speaker`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a")
+        val handover = handover()
+        handover.playOn(group)
+        val player = handover.player!!
+
+        // Three presses before the first SetGroupVolume has gone out.
+        repeat(3) { player.increaseDeviceVolume(0) }
+        runCurrent()
+
+        assertEquals(18, speaker.volume)
+        assertEquals(18, player.deviceVolume)
+    }
+
+    @Test
+    fun `mute shows in the player, also when set from the Sonos app`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a")
+        val handover = handover()
+        handover.playOn(group)
+        val player = handover.player!!
+
+        player.setDeviceMuted(true, 0)
+        runCurrent()
+        assertTrue(speaker.muted)
+        assertTrue(player.isDeviceMuted)
+
+        speaker.muted = false
+        wait(6_000)
+        assertFalse(player.isDeviceMuted)
+    }
+
+    @Test
+    fun `an unreachable speaker hands the music back without waiting on it again`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a", "b")
+        val handover = handover()
+        handover.playOn(group)
+
+        speaker.unreachable = true
+        wait(10_000)
+        val callsWhenLost = speaker.calls.size
+        wait(30_000)
+
+        assertEquals(listOf(OutputNotice.UNREACHABLE), told)
+        assertNull(handover.player)
+        assertEquals("no pause sent to a dead speaker", 0, speaker.count("Pause"))
+        assertEquals("nothing polled after the loss", callsWhenLost, speaker.calls.size)
+        assertEquals(1, closed)
+    }
 }

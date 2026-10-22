@@ -78,8 +78,9 @@ class SonosHandover(
                 tell(OutputNotice.MYSTERY_ON_PHONE)
             },
             onLost = { reason ->
-                // Someone else plays on the speaker now: leave it alone.
-                backToPhone(resume = false, pause = reason != SonosLoss.TAKEN_OVER)
+                // Taken over: someone else plays on the speaker now, leave it alone. Unreachable: a
+                // pause would only wait for it again before the phone gets the music back.
+                backToPhone(resume = false, pause = reason == SonosLoss.COULD_NOT_PLAY)
                 tell(
                     when (reason) {
                         SonosLoss.UNREACHABLE -> OutputNotice.UNREACHABLE

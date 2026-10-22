@@ -575,16 +575,38 @@ class PlexRepository @Inject constructor(
             }
             ServerKind.JELLYFIN -> {
                 val clientId = sessionStore.clientId()
-                // Always the same speaker device: signing it in again replaces a token left behind.
+                runCatching { revokeLeftoverSpeakerToken() }
+                // Always the same speaker device: signing it in again also replaces a token left behind.
                 val speaker = "$clientId-sonos"
                 val token = try {
                     jellyfin.speakerToken(endpoint, clientId, speaker)
                 } catch (e: Exception) {
                     throw SonosAccessException(SonosAccessException.Reason.JELLYFIN_TOKEN, e)
                 }
-                SonosAccess(endpoint.copy(token = token), deviceId = speaker) { jellyfin.signOut(endpoint, speaker, token) }
+                // Kept until revoked, so a session cut short by a killed app is revoked on the next start.
+                sessionStore.rememberSpeakerToken(endpoint.uri, token)
+                SonosAccess(endpoint.copy(token = token), deviceId = speaker) {
+                    jellyfin.signOut(endpoint, speaker, token)
+                    sessionStore.forgetSpeakerToken()
+                }
             }
         }
+    }
+
+    /**
+     * Revokes a Sonos speaker's Jellyfin token that outlived its session (the app was killed, or
+     * the server was down when the session ended). Forgotten once the server takes the logout or
+     * no longer knows the token; kept for the next try when the server can't be reached.
+     */
+    suspend fun revokeLeftoverSpeakerToken() {
+        val (uri, token) = sessionStore.speakerTokenLeft() ?: return
+        val clientId = sessionStore.clientId()
+        try {
+            jellyfin.signOut(ServerEndpoint(uri, token, ServerKind.JELLYFIN), "$clientId-sonos", token)
+        } catch (e: PlexHttpException) {
+            if (e.code != 401 && e.code != 403) throw e
+        }
+        sessionStore.forgetSpeakerToken()
     }
 
     /**
