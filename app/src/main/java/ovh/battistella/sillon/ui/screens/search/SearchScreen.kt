@@ -45,10 +45,12 @@ import ovh.battistella.sillon.ui.screens.library.TrackRow
 fun SearchScreen(
     onArtist: (String) -> Unit,
     onAlbum: (String) -> Unit,
+    onDownloadedAlbum: (String) -> Unit,
     contentPadding: PaddingValues,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val home by viewModel.home.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
 
@@ -72,7 +74,13 @@ fun SearchScreen(
         )
 
         when (val s = state) {
-            SearchState.Idle -> Unit
+            SearchState.Idle -> SearchHome(
+                home,
+                // Without a connection the album page can't load: the downloaded copy opens instead.
+                onAlbum = if (home.online) onAlbum else onDownloadedAlbum,
+                onPlayAlbum = viewModel::playAlbum,
+                contentPadding = contentPadding,
+            )
             SearchState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }

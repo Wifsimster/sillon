@@ -53,6 +53,9 @@ data class PlayerUiState(
     val hasMedia: Boolean get() = currentKey != null
 }
 
+/** The album playing now, as background listeners need it: no position, so it changes only with the album or play state. */
+data class PlayingAlbum(val albumKey: String, val album: String, val artist: String)
+
 @Singleton
 class PlaybackConnection @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -66,6 +69,11 @@ class PlaybackConnection @Inject constructor(
     val skipOneStar: StateFlow<Boolean> = settings.skipOneStar.stateIn(scope, SharingStarted.Eagerly, true)
     private val _state = MutableStateFlow(PlayerUiState())
     val state = _state.asStateFlow()
+
+    private val _playingAlbum = MutableStateFlow<PlayingAlbum?>(null)
+
+    /** Null while paused or stopped. Collecting it does not keep the position ticker running. */
+    val playingAlbum = _playingAlbum.asStateFlow()
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
@@ -121,6 +129,7 @@ class PlaybackConnection @Inject constructor(
         controller = null
         controllerFuture = null
         _state.value = _state.value.copy(isConnected = false, isPlaying = false)
+        _playingAlbum.value = null
     }
 
     private fun withController(action: MediaController.() -> Unit) {
@@ -266,6 +275,9 @@ class PlaybackConnection @Inject constructor(
             repeatMode = c.repeatMode,
             serverRating = MediaItems.ratingOf(item),
         )
+        _playingAlbum.value = _state.value.let { s ->
+            s.albumKey?.takeIf { s.isPlaying }?.let { PlayingAlbum(it, s.album, s.artist) }
+        }
     }
 
     companion object {
