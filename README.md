@@ -115,6 +115,7 @@ is rebuilt on every push.
 | **Surprise** | Mystery sleeve: a whole album drawn at random (rarely played first, or any album), hidden in the app, the notification, the lock screen and the car until the third track or *Reveal*; *Keep* adds it to a *Surprises* playlist; offline, drawn from your downloads |
 | **Covers** | Sleeve wear: covers age with your plays (yellowed edges, worn corners, ring wear, a crease) on the album grids, the album page and the player; on by default, off in Settings → Appearance |
 | **Together** | Listen together on Jellyfin (SyncPlay): shared play, pause, skip and seek; the notification, headset buttons and Android Auto control the group. Not available on Plex |
+| **Sonos** | *Play on…* sends the queue to a Sonos speaker or group on your Wi-Fi, over the local network (no Sonos account, no cloud); the player, the notification, the lock screen and the volume keys drive it, and the music comes back to the phone where it stood. Plex and Jellyfin |
 | **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |
 | **Resume** | The queue and position are remembered: *play* on a headset, Bluetooth or in the car resumes where the music stopped, even after the app was closed |
 | **Offline** | Album and playlist downloads with covers, a Downloads tab that works with no network |
@@ -173,6 +174,7 @@ app/src/main/java/ovh/battistella/sillon/
 ├─ download/         Download queue and WorkManager worker
 ├─ playback/         Media3 service, Android Auto tree, radios, play reports
 ├─ together/         Listen together: clock sync, session, drift correction
+├─ sonos/            Play on Sonos: SSDP discovery, UPnP/SOAP control, the Sonos player
 ├─ ui/               Compose screens, navigation, theme, components
 └─ di/               Hilt module
 ```
@@ -225,6 +227,12 @@ in GitHub Actions; pushes to `main` are released with semantic-release
   Albums under 12 minutes or with fewer than 4 tracks play straight through.
   Shuffle, radios and playlists are never cut, and sides are off while
   listening together (the group decides when to pause).
+- *Play on…* (Sonos) uses the speakers' local UPnP control, which Sonos calls
+  unsupported and lets you turn off in the Sonos app; the speaker fetches the
+  music from your server itself, so it must reach it. Sides, listen together,
+  the listening cache and loudness levelling are off on Sonos, and a hidden
+  mystery sleeve stays on the phone. Details, formats and limits:
+  [docs/sonos.md](docs/sonos.md).
 - Sillon is an independent client, not affiliated with Plex Inc. or the
   Jellyfin project. Plex and Jellyfin are trademarks of their owners; the logos
   come from [simple-icons](https://simpleicons.org/) (CC0). Screenshots show

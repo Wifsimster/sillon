@@ -315,6 +315,40 @@ class PlexApi(
             .build()
             .toString()
 
+    /**
+     * A transient (delegation) token: a stand-in for the account token in URLs handed to another
+     * device, here a Sonos speaker. Plex expires it on its own and on a server restart.
+     */
+    suspend fun transientToken(clientId: String, server: ServerEndpoint): String? =
+        get(clientId, server, "security/token", "type" to "delegation", "scope" to "all").token?.takeIf { it.isNotBlank() }
+
+    /** A plain-HTTP MP3 transcode (no HLS) for a Sonos speaker, which fetches it itself. */
+    fun sonosTranscodeUrl(server: ServerEndpoint, clientId: String, ratingKey: String, kbps: Int, session: String): String =
+        server.uri.toHttpUrl().newBuilder()
+            .addPathSegments("music/:/transcode/universal/start.mp3")
+            .addQueryParameter("path", "/library/metadata/$ratingKey")
+            .addQueryParameter("mediaIndex", "0")
+            .addQueryParameter("partIndex", "0")
+            .addQueryParameter("protocol", "http")
+            .addQueryParameter("directPlay", "0")
+            .addQueryParameter("directStream", "0")
+            .addQueryParameter("musicBitrate", kbps.toString())
+            .addQueryParameter("session", session)
+            .addQueryParameter("X-Plex-Session-Identifier", session)
+            .addQueryParameter("X-Plex-Client-Identifier", clientId)
+            .addQueryParameter("X-Plex-Product", device.product)
+            .addQueryParameter("X-Plex-Version", device.version)
+            .addQueryParameter("X-Plex-Platform", "Android")
+            .addQueryParameter("X-Plex-Device", "Android")
+            .addQueryParameter(
+                "X-Plex-Client-Profile-Extra",
+                "add-transcode-target(type=musicProfile&context=streaming&protocol=http&container=mp3&audioCodec=mp3)" +
+                    "+add-limitation(scope=musicCodec&scopeName=mp3&type=upperBound&name=audio.bitrate&value=$kbps)",
+            )
+            .addQueryParameter("X-Plex-Token", server.token)
+            .build()
+            .toString()
+
     fun streamUrl(server: ServerEndpoint, partKey: String): String =
         server.uri.toHttpUrl().newBuilder()
             .addPathSegments(partKey.trimStart('/'))
