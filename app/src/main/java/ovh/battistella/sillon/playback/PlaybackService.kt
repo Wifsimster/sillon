@@ -34,6 +34,7 @@ import ovh.battistella.sillon.MainActivity
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
+import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -41,11 +42,13 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var libraryTree: MediaLibraryTree
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
+    @Inject lateinit var together: ListenTogether
     @Inject lateinit var neverPlayed: NeverPlayedRadio
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
+    private var groupPlayer: ExoGroupPlayer? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -84,7 +87,8 @@ class PlaybackService : MediaLibraryService() {
                 continuing = report.continuing,
             )
         }.also { it.start() }
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+        groupPlayer = ExoGroupPlayer(player).also(together::attach)
+        mediaSession = MediaLibrarySession.Builder(this, TogetherPlayer(player, together), LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
     }
@@ -171,6 +175,8 @@ class PlaybackService : MediaLibraryService() {
         }
         timelineReporter?.release()
         timelineReporter = null
+        groupPlayer?.let(together::detach)
+        groupPlayer = null
         scope.cancel()
         mediaSession?.run {
             player.release()

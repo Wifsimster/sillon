@@ -13,6 +13,7 @@ import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,6 +60,7 @@ import ovh.battistella.sillon.ui.components.formatDuration
 @Composable
 fun PlayerScreen(
     onClose: () -> Unit,
+    onTogether: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -80,18 +83,13 @@ fun PlayerScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
-            }
-            if (startingRadio) {
-                CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-            } else {
-                IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
-                    Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
-                }
-            }
-        }
+        PlayerHeader(
+            onClose = onClose,
+            onTogether = onTogether,
+            startingRadio = startingRadio,
+            radioEnabled = state.hasMedia,
+            onRadio = viewModel::radioFromCurrent,
+        )
         Artwork(
             state.artworkUri,
             Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
@@ -191,4 +189,30 @@ private fun coverColor(uri: String?): Color? {
         color = Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
     }
     return color
+}
+
+@Composable
+fun PlayerHeader(
+    onClose: () -> Unit,
+    onTogether: () -> Unit,
+    startingRadio: Boolean,
+    radioEnabled: Boolean,
+    onRadio: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onTogether) {
+            Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
+        }
+        if (startingRadio) {
+            CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+        } else {
+            IconButton(onClick = onRadio, enabled = radioEnabled) {
+                Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
+            }
+        }
+    }
 }
