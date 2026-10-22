@@ -6,9 +6,13 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.toFailed
@@ -22,8 +26,12 @@ class ArtistViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
+    sleeveWear: SleeveWearRepository,
 ) : ViewModel() {
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+
+    val wear: StateFlow<Map<String, Int>> =
+        sleeveWear.levels.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _state = MutableStateFlow<Load<ArtistUi>>(Load.Loading)
     val state = _state.asStateFlow()

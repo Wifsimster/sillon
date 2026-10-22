@@ -75,6 +75,61 @@ class JellyfinApiTest {
     }
 
     @Test
+    fun `fetches a small library's played tracks in one page for sleeve wear`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"Items": [{"Id": "t1", "Name": "Jellyfin", "Type": "Audio", "AlbumId": "a1",
+                  "UserData": {"PlayCount": 7}}], "TotalRecordCount": 1}""",
+            ),
+        )
+
+        val track = api.playedTracks(endpoint, "device-1", "music").single()
+
+        assertEquals("a1", track.parentRatingKey)
+        assertEquals(7, track.viewCount)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/jf/Items", url.encodedPath)
+        assertEquals("music", url.queryParameter("parentId"))
+        assertEquals("Audio", url.queryParameter("includeItemTypes"))
+        assertEquals("IsPlayed", url.queryParameter("filters"))
+        assertEquals("true", url.queryParameter("recursive"))
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `pages through a large library's played tracks`() = runTest {
+        fun page(from: Int, count: Int) = MockResponse().setBody(
+            (from until from + count).joinToString(",", """{"Items": [""", """], "TotalRecordCount": 2003}""") {
+                """{"Id": "t$it", "Name": "T", "Type": "Audio", "AlbumId": "a${it % 7}", "UserData": {"PlayCount": 1}}"""
+            },
+        )
+        server.enqueue(page(0, 2000))
+        server.enqueue(page(2000, 3))
+
+        val tracks = api.playedTracks(endpoint, "device-1", "music")
+
+        assertEquals(2003, tracks.size)
+        val first = server.takeRequest().requestUrl!!
+        val second = server.takeRequest().requestUrl!!
+        assertEquals("0", first.queryParameter("startIndex"))
+        assertEquals("2000", first.queryParameter("limit"))
+        assertEquals("2000", second.queryParameter("startIndex"))
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `stops paging when the server ignores the page`() = runTest {
+        val all = (0 until 2000).joinToString(",", """{"Items": [""", "]}") {
+            """{"Id": "t$it", "Name": "T", "Type": "Audio", "AlbumId": "a1", "UserData": {"PlayCount": 1}}"""
+        }
+        server.enqueue(MockResponse().setBody(all))
+        server.enqueue(MockResponse().setBody(all))
+
+        assertEquals(2000, api.playedTracks(endpoint, "device-1", "music").size)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
     fun `groups search results like Plex hubs`() = runTest {
         server.enqueue(
             MockResponse().setBody(
@@ -147,5 +202,29 @@ class JellyfinApiTest {
         assertEquals("/jf/Playlists/pl-1/Items", add.requestUrl!!.encodedPath)
         assertEquals("t3,t4", add.requestUrl!!.queryParameter("ids"))
         assertEquals("user-1", add.requestUrl!!.queryParameter("userId"))
+    }
+
+    @Test
+    fun `asks for random unplayed tracks and keeps the play count`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"Items": [{"Id": "t1", "Name": "Song", "Type": "Audio", "UserData": {"PlayCount": 0}}], "TotalRecordCount": 1}""",
+            ),
+        )
+
+        val (items, total) = api.itemsPage(
+            endpoint, "device-1",
+            ovh.battistella.sillon.data.repository.NeverPlayedQueries.jellyfinTracks("lib-1"),
+        )
+
+        assertEquals(listOf("t1"), items.map { it.ratingKey })
+        assertEquals(0, items.single().viewCount)
+        assertEquals(1, total)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/jf/Items", url.encodedPath)
+        assertEquals("user-1", url.queryParameter("userId"))
+        assertEquals("false", url.queryParameter("isPlayed"))
+        assertEquals("Random", url.queryParameter("sortBy"))
+        assertEquals("Audio", url.queryParameter("includeItemTypes"))
     }
 }

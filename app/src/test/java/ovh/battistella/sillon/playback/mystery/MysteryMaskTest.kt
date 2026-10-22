@@ -22,6 +22,9 @@ import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import ovh.battistella.sillon.playback.MediaItems
 import ovh.battistella.sillon.playback.PlayableTrack
+import ovh.battistella.sillon.playback.TogetherPlayer
+import ovh.battistella.sillon.together.GroupControls
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @RunWith(AndroidJUnit4::class)
 class MysteryMaskTest {
@@ -104,7 +107,10 @@ class MysteryMaskTest {
     fun `the media session shows the mystery sleeve until the reveal`() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val player = ExoPlayer.Builder(context).build()
-        val session = MediaSession.Builder(context, player).setId("mystery-test").build()
+        val solo = object : GroupControls {
+            override fun intercept(intent: ovh.battistella.sillon.together.UserIntent) = false
+        }
+        val session = MediaSession.Builder(context, TogetherPlayer(player, solo)).setId("mystery-test").build()
         val mystery = MysterySession()
         val tracks = (1..4).map { MysteryTrack(track("$it"), side = 1, number = it) }
         mystery.start(Mystery("album", tracks))
@@ -155,6 +161,33 @@ class MysteryMaskTest {
             player.setMediaItems(listOf(MediaItems.from(track("9"))))
             shadowOf(Looper.getMainLooper()).idle()
             assertNull(mystery.state.value)
+        } finally {
+            watcher.release()
+            scope.cancel()
+            player.release()
+        }
+    }
+
+    @Test
+    fun `listening together reveals the album, since the group sees the queue`() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val player = ExoPlayer.Builder(context).build()
+        val mystery = MysterySession()
+        val tracks = (1..4).map { MysteryTrack(track("$it"), side = 1, number = it) }
+        mystery.start(Mystery("album", tracks))
+        val inGroup = MutableStateFlow(false)
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val watcher = MysteryWatcher(player, mystery, scope, inGroup).also { it.start() }
+        try {
+            player.setMediaItems(tracks.map { MysteryMask.mask(it, labels) })
+            shadowOf(Looper.getMainLooper()).idle()
+            assertFalse(mystery.state.value!!.revealed)
+
+            inGroup.value = true
+            shadowOf(Looper.getMainLooper()).idle()
+
+            assertTrue(mystery.state.value!!.revealed)
+            assertTrue((0 until player.mediaItemCount).none { MysteryMask.isMasked(player.getMediaItemAt(it)) })
         } finally {
             watcher.release()
             scope.cancel()

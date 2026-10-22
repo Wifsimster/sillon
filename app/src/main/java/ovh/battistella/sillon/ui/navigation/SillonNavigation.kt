@@ -25,6 +25,7 @@ import ovh.battistella.sillon.ui.screens.downloads.DownloadsScreen
 import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
 import ovh.battistella.sillon.ui.screens.library.FiveStarsScreen
 import ovh.battistella.sillon.ui.screens.library.LocalOpenSettings
+import ovh.battistella.sillon.ui.screens.library.LocalOpenTogether
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
@@ -58,6 +59,7 @@ import ovh.battistella.sillon.ui.screens.player.PlayerScreen
 import ovh.battistella.sillon.ui.screens.player.PlayerViewModel
 import ovh.battistella.sillon.ui.screens.servers.ServersScreen
 import ovh.battistella.sillon.ui.screens.signin.SignInScreen
+import ovh.battistella.sillon.ui.screens.together.TogetherScreen
 
 @Composable
 fun SillonRoot(viewModel: RootViewModel = hiltViewModel()) {
@@ -140,7 +142,11 @@ private fun LibraryNavHost() {
         val openAlbum: (String) -> Unit = { navController.navigate(Routes.album(it)) }
         val back: () -> Unit = { navController.popBackStack() }
         Box(Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalOpenSettings provides { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } }) {
+            val openTogether: () -> Unit = { navController.navigate(Routes.TOGETHER) { launchSingleTop = true } }
+            CompositionLocalProvider(
+                LocalOpenSettings provides { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+                LocalOpenTogether provides openTogether,
+            ) {
                 NavHost(navController = navController, startDestination = Routes.ARTISTS) {
                     composable(Routes.ARTISTS) { ArtistsScreen(onArtist = openArtist, contentPadding = bottom) }
                     composable(Routes.ALBUMS) { AlbumsScreen(onAlbum = openAlbum, contentPadding = bottom) }
@@ -175,8 +181,11 @@ private fun LibraryNavHost() {
                     composable(Routes.SETTINGS) {
                         SettingsScreen(onBack = back, contentPadding = bottom)
                     }
+                    composable(Routes.TOGETHER) {
+                        TogetherScreen(onBack = back, contentPadding = bottom)
+                    }
                     composable(Routes.PLAYER) {
-                        PlayerScreen(onClose = back)
+                        PlayerScreen(onClose = back, onTogether = openTogether)
                     }
                 }
             }

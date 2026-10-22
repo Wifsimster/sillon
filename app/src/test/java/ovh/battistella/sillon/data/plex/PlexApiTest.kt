@@ -317,4 +317,28 @@ class PlexApiTest {
             add.requestUrl!!.queryParameter("uri"),
         )
     }
+
+    @Test
+    fun `asks the section for never-played tracks and reads the total size`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"MediaContainer": {"size": 1, "totalSize": 30500, "Metadata": [{"ratingKey": "7", "type": "track"}]}}""",
+            ),
+        )
+        val endpoint = ServerEndpoint(server.url("/").toString(), "srv-token")
+
+        val container = api.sectionItems(
+            "client-1", endpoint, "3",
+            ovh.battistella.sillon.data.repository.NeverPlayedQueries.plexTrackCount(neverPlayedOnly = true),
+        )
+
+        assertEquals(30500, container.totalSize)
+        assertEquals(null, container.metadata.single().viewCount)
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("/library/sections/3/all", url.encodedPath)
+        assertEquals("10", url.queryParameter("type"))
+        assertEquals("0", url.queryParameter("viewCount"))
+        assertEquals("viewCount:desc", url.queryParameter("sort"))
+        assertEquals("1", url.queryParameter("X-Plex-Container-Size"))
+    }
 }

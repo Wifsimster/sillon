@@ -15,6 +15,7 @@ import coil.request.ImageRequest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,6 +67,7 @@ import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
 @Composable
 fun PlayerScreen(
     onClose: () -> Unit,
+    onTogether: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -73,6 +76,7 @@ fun PlayerScreen(
     val mysteryStarting by viewModel.mysteryStarting.collectAsStateWithLifecycle()
     val keeping by viewModel.keeping.collectAsStateWithLifecycle()
     val keep by viewModel.keep.collectAsStateWithLifecycle()
+    val wear by viewModel.wear.collectAsStateWithLifecycle()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
     val surprise = mystery?.takeIf { state.currentKey == MysteryMask.HIDDEN_KEY || it.contains(state.currentKey.orEmpty()) }
     val hidden = surprise != null && !surprise.revealed
@@ -96,18 +100,14 @@ fun PlayerScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
-            }
-            when {
-                hidden -> Unit
-                startingRadio -> CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
-                else -> IconButton(onClick = viewModel::radioFromCurrent, enabled = state.hasMedia) {
-                    Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
-                }
-            }
-        }
+        PlayerHeader(
+            onClose = onClose,
+            onTogether = onTogether,
+            startingRadio = startingRadio,
+            radioEnabled = state.hasMedia,
+            onRadio = viewModel::radioFromCurrent,
+            showRadio = !hidden,
+        )
         val coverModifier = Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f)
         when {
             hidden -> MysteryCover(coverModifier)
@@ -119,7 +119,7 @@ fun PlayerScreen(
                 },
                 modifier = coverModifier,
             )
-            else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp)
+            else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -227,4 +227,31 @@ private fun coverColor(uri: String?): Color? {
         color = Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
     }
     return color
+}
+
+@Composable
+fun PlayerHeader(
+    onClose: () -> Unit,
+    onTogether: () -> Unit,
+    startingRadio: Boolean,
+    radioEnabled: Boolean,
+    onRadio: () -> Unit,
+    showRadio: Boolean = true,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.action_back))
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onTogether) {
+            Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
+        }
+        when {
+            !showRadio -> Unit
+            startingRadio -> CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+            else -> IconButton(onClick = onRadio, enabled = radioEnabled) {
+                Icon(Icons.Rounded.Radio, stringResource(R.string.track_radio))
+            }
+        }
+    }
 }

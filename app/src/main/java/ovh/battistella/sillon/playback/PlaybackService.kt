@@ -27,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.BuildConfig
@@ -36,6 +37,7 @@ import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
 import ovh.battistella.sillon.playback.mystery.MysterySession
 import ovh.battistella.sillon.playback.mystery.MysteryWatcher
+import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -44,11 +46,14 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var repository: PlexRepository
     @Inject lateinit var playbackState: PlaybackStateStore
     @Inject lateinit var mystery: MysterySession
+    @Inject lateinit var together: ListenTogether
+    @Inject lateinit var neverPlayed: NeverPlayedRadio
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
     private var timelineReporter: TimelineReporter? = null
     private var mysteryWatcher: MysteryWatcher? = null
+    private var groupPlayer: ExoGroupPlayer? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -75,6 +80,7 @@ class PlaybackService : MediaLibraryService() {
                 if (isPlaying) startQueueSaver(player) else saveQueue(player)
             }
         })
+        player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
         timelineReporter = TimelineReporter(player, scope) send@{ report ->
             val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
             repository.reportPlayback(
@@ -86,8 +92,9 @@ class PlaybackService : MediaLibraryService() {
                 continuing = report.continuing,
             )
         }.also { it.start() }
-        mysteryWatcher = MysteryWatcher(player, mystery, scope).also { it.start() }
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+        groupPlayer = ExoGroupPlayer(player).also(together::attach)
+        mysteryWatcher = MysteryWatcher(player, mystery, scope, together.state.map { it.isActive }).also { it.start() }
+        mediaSession = MediaLibrarySession.Builder(this, TogetherPlayer(player, together), LibraryCallback())
             .setSessionActivity(openAppIntent())
             .build()
     }
@@ -176,6 +183,8 @@ class PlaybackService : MediaLibraryService() {
         timelineReporter = null
         mysteryWatcher?.release()
         mysteryWatcher = null
+        groupPlayer?.let(together::detach)
+        groupPlayer = null
         scope.cancel()
         mediaSession?.run {
             player.release()

@@ -141,6 +141,13 @@ class PlexApi(
             "type" to TYPE_TRACK, "userRating" to "10", "sort" to "titleSort",
         ).metadata.filter { (it.userRating ?: 0f) >= FIVE_STARS }
 
+    suspend fun sectionItems(
+        clientId: String,
+        server: ServerEndpoint,
+        sectionKey: String,
+        query: List<Pair<String, String>>,
+    ): MediaContainer = get(clientId, server, "library/sections/$sectionKey/all", *query.toTypedArray())
+
     suspend fun stations(clientId: String, server: ServerEndpoint, sectionKey: String): List<PlexMetadata> =
         get(clientId, server, "hubs/sections/$sectionKey", "includeStations" to "1", "count" to "20")
             .hubs.filter { it.hubIdentifier.startsWith("music.stations") }

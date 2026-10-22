@@ -60,6 +60,12 @@ class SettingsStore @Inject constructor(
         context.settingsDataStore.edit { it[WALLPAPER_COLORS] = value }
     }
 
+    val sleeveWear: Flow<Boolean> = context.settingsDataStore.data.map { it[SLEEVE_WEAR] ?: true }
+
+    suspend fun setSleeveWear(value: Boolean) {
+        context.settingsDataStore.edit { it[SLEEVE_WEAR] = value }
+    }
+
     private fun String?.toQuality(default: StreamQuality) =
         StreamQuality.entries.firstOrNull { it.name == this } ?: default
 
@@ -73,5 +79,6 @@ class SettingsStore @Inject constructor(
         val MOBILE_QUALITY = stringPreferencesKey("stream_quality_mobile")
         val LOUDNESS = stringPreferencesKey("loudness")
         val WALLPAPER_COLORS = booleanPreferencesKey("wallpaper_colors")
+        val SLEEVE_WEAR = booleanPreferencesKey("sleeve_wear")
     }
 }

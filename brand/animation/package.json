@@ -4,7 +4,8 @@
   "description": "Sillon's animated logo, rendered with Remotion.",
   "scripts": {
     "studio": "remotion studio",
-    "render": "remotion render LogoWordmark out/logo-wordmark.mp4 && remotion render LogoSquare out/logo-square.mp4 && remotion render LogoWordmark out/logo-wordmark.gif --codec=gif --every-nth-frame=2 --scale=0.5"
+    "render": "remotion render LogoWordmark out/logo-wordmark.mp4 && remotion render LogoSquare out/logo-square.mp4 && remotion render LogoWordmark out/logo-wordmark.gif --codec=gif --every-nth-frame=2 --scale=0.5",
+    "typecheck": "tsrs --noEmit"
   },
   "dependencies": {
     "@remotion/cli": "4.0.300",
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@types/react": "19.1.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "typescript": "5.8.3"
   }
 }

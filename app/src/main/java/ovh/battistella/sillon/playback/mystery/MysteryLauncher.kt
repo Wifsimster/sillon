@@ -29,11 +29,12 @@ import ovh.battistella.sillon.data.repository.isPlayableOffline
 import ovh.battistella.sillon.data.repository.toPlayable
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.playback.PlaybackConnection
+import ovh.battistella.sillon.together.ListenTogether
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class MysteryProblem { NO_MUSIC, NOTHING_TO_DRAW, NOTHING_DOWNLOADED, FAILED }
+enum class MysteryProblem { NO_MUSIC, NOTHING_TO_DRAW, NOTHING_DOWNLOADED, LISTENING_TOGETHER, FAILED }
 
 enum class KeepResult { KEPT, ALREADY_KEPT, OFFLINE, DENIED, FAILED }
 
@@ -54,6 +55,7 @@ class MysteryLauncher @Inject constructor(
     private val playback: PlaybackConnection,
     private val session: MysterySession,
     private val art: SleeveArt,
+    private val together: ListenTogether,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -78,6 +80,10 @@ class MysteryLauncher @Inject constructor(
 
     fun start() {
         if (_starting.value) return
+        if (together.state.value.isActive) {
+            _problem.value = MysteryProblem.LISTENING_TOGETHER
+            return
+        }
         _starting.value = true
         _problem.value = null
         val previous = session.state.value?.albumKey

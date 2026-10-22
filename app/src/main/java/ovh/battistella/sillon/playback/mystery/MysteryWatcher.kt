@@ -4,24 +4,33 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 class MysteryWatcher(
     private val player: Player,
     private val session: MysterySession,
     private val scope: CoroutineScope,
+    private val shared: Flow<Boolean> = emptyFlow(),
 ) : Player.Listener {
     private var job: Job? = null
+    private var sharedJob: Job? = null
 
     fun start() {
         player.addListener(this)
         job = scope.launch {
             session.state.collect { if (it?.revealed == true) unmaskAll(it) }
         }
+        // A listening-together group shares the queue by track id, so the album can't stay hidden from it.
+        sharedJob = scope.launch {
+            shared.collect { if (it) session.reveal() }
+        }
     }
 
     fun release() {
         job?.cancel()
+        sharedJob?.cancel()
         player.removeListener(this)
     }
 

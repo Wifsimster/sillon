@@ -87,6 +87,7 @@ fun MysteryProblem.message(): Int = when (this) {
     MysteryProblem.NO_MUSIC -> R.string.library_no_music
     MysteryProblem.NOTHING_TO_DRAW -> R.string.mystery_none
     MysteryProblem.NOTHING_DOWNLOADED -> R.string.mystery_none_offline
+    MysteryProblem.LISTENING_TOGETHER -> R.string.mystery_together
     MysteryProblem.FAILED -> R.string.mystery_failed
 }
 
