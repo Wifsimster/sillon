@@ -49,6 +49,11 @@ import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.cache.StreamSource
+import ovh.battistella.sillon.sonos.Didl
+import ovh.battistella.sillon.sonos.SonosFormats
+import ovh.battistella.sillon.sonos.SonosStream
+import ovh.battistella.sillon.sonos.SonosTrack
+import ovh.battistella.sillon.sonos.audioFormat
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -92,6 +97,8 @@ data class Station(val key: String, val title: String?)
 const val LIBRARY_SHUFFLE_STATION = "jellyfin:library-shuffle"
 
 const val PLAYER_ART_PX = 900
+
+private const val SONOS_ART_PX = 600
 
 /** The transcode qualities the listening cache may hold, best first. */
 private val TRANSCODE_KBPS = StreamQuality.entries.mapNotNull { it.kbps }.sortedDescending()
@@ -546,6 +553,79 @@ class PlexRepository @Inject constructor(
                 cacheKey = cacheKey.takeIf { source.original },
                 userRating = track.userRating,
             )
+        }
+    }
+
+    /**
+     * Opens a Sonos session's way to the server; the account's or Sillon's own token never goes
+     * to a speaker. On Plex, a fresh transient token. On Jellyfin, a token of the speaker's own,
+     * revoked when the access is closed. When the server gives none, the session doesn't start.
+     */
+    suspend fun openSonosAccess(): SonosAccess {
+        val server = currentServer()
+        val endpoint = server.endpoint
+        return when (endpoint.kind) {
+            ServerKind.PLEX -> {
+                val token = try {
+                    api.transientToken(sessionStore.clientId(), endpoint)
+                } catch (e: Exception) {
+                    throw SonosAccessException(SonosAccessException.Reason.PLEX_TOKEN, e)
+                } ?: throw SonosAccessException(SonosAccessException.Reason.PLEX_TOKEN)
+                SonosAccess(endpoint.copy(token = token))
+            }
+            ServerKind.JELLYFIN -> {
+                val clientId = sessionStore.clientId()
+                // Always the same speaker device: signing it in again replaces a token left behind.
+                val speaker = "$clientId-sonos"
+                val token = try {
+                    jellyfin.speakerToken(endpoint, clientId, speaker)
+                } catch (e: Exception) {
+                    throw SonosAccessException(SonosAccessException.Reason.JELLYFIN_TOKEN, e)
+                }
+                SonosAccess(endpoint.copy(token = token), deviceId = speaker) { jellyfin.signOut(endpoint, speaker, token) }
+            }
+        }
+    }
+
+    /**
+     * The tracks as a Sonos speaker fetches them, by key: the original file when the speaker
+     * plays it, else an MP3 transcode; never a download or the listening cache (the speaker
+     * reaches the server itself). The URLs carry [access]'s token only.
+     */
+    suspend fun sonosTracks(keys: List<String>, access: SonosAccess): Map<String, SonosTrack> {
+        if (keys.isEmpty()) return emptyMap()
+        val clientId = sessionStore.clientId()
+        val tracks = onServer(
+            plex = { id, endpoint -> api.metadataBatch(id, endpoint, keys) },
+            jellyfin = { id, endpoint -> jellyfin.itemsWithFormat(endpoint, id, keys) },
+        )
+        val endpoint = access.endpoint
+        return tracks.mapNotNull { track ->
+            val part = track.partKey ?: return@mapNotNull null
+            val stream = SonosFormats.plan(track.audioFormat())
+            val (uri, mime) = when (stream) {
+                is SonosStream.Direct -> streamUrl(endpoint, part) to stream.mimeType
+                SonosStream.Transcode -> sonosTranscodeUrl(endpoint, access.deviceId ?: clientId, track.ratingKey) to SonosStream.Transcode.MIME_TYPE
+            }
+            val didl = Didl.track(
+                key = track.ratingKey,
+                uri = uri,
+                mimeType = mime,
+                title = track.title,
+                artist = track.trackArtist,
+                album = track.parentTitle,
+                artUri = artworkUrl(endpoint, track.artwork, SONOS_ART_PX),
+            )
+            track.ratingKey to SonosTrack(track.ratingKey, uri, didl)
+        }.toMap()
+    }
+
+    private fun sonosTranscodeUrl(endpoint: ServerEndpoint, clientId: String, key: String): String {
+        val session = UUID.randomUUID().toString()
+        val kbps = SonosStream.Transcode.KBPS
+        return when (endpoint.kind) {
+            ServerKind.PLEX -> api.sonosTranscodeUrl(endpoint, clientId, key, kbps, session)
+            ServerKind.JELLYFIN -> jellyfin.sonosTranscodeUrl(endpoint, clientId, key, kbps, session)
         }
     }
 
