@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ovh.battistella.sillon.data.rating.withoutOneStarDownloads
 import ovh.battistella.sillon.data.local.DownloadDao
 import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.repository.NeverPlayedMode
@@ -135,7 +136,7 @@ class NeverPlayedRadio @Inject constructor(
             draws@ for (attempt in 0 until DRAWS) {
                 for (album in repository.neverPlayedAlbums()) {
                     if (session.isAlbumQueued(album.ratingKey)) continue
-                    val albumTracks = repository.tracksOf(album.ratingKey)
+                    val albumTracks = repository.withoutOneStar(repository.tracksOf(album.ratingKey))
                         .filter { it.type.isEmpty() || it.type == "track" }
                         .sortedWith(compareBy({ it.parentIndex ?: 0 }, { it.index ?: 0 }))
                     val fresh = session.takeAlbum(album.ratingKey, albumTracks) ?: continue
@@ -151,7 +152,8 @@ class NeverPlayedRadio @Inject constructor(
     private suspend fun offlineBatch(server: String, mode: NeverPlayedMode): List<PlayableTrack>? {
         val history = cache.history(server) ?: return null
         val loudness = settings.loudness.first()
-        val downloaded = downloads.observe(server).first().filter { it.isPlayableOffline() }
+        val ratings = repository.ratingBook()
+        val downloaded = ratings.withoutOneStarDownloads(downloads.observe(server).first().filter { it.isPlayableOffline() })
         return pickOffline(downloaded, history.neverPlayed, session, mode).map { it.toPlayable(loudness) }
     }
 

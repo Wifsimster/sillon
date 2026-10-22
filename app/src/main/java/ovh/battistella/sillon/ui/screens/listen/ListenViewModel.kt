@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ovh.battistella.sillon.data.rating.withoutOneStarDownloads
 import ovh.battistella.sillon.data.local.DownloadEntity
 import ovh.battistella.sillon.data.network.NetworkMonitor
 import ovh.battistella.sillon.data.repository.LibraryShuffle
@@ -108,7 +109,10 @@ class ListenViewModel @Inject constructor(
     /** Plays the downloaded tracks that pass [keep], in a new order; false when there are none. */
     private suspend fun playDownloads(keep: (DownloadEntity) -> Boolean): Boolean {
         val mode = settings.loudness.first()
-        val local = withContext(Dispatchers.IO) { LibraryShuffle.offline(rows.value.filter(keep)) }.map { it.toPlayable(mode) }
+        val ratings = repository.ratingBook()
+        val local = withContext(Dispatchers.IO) {
+            LibraryShuffle.offline(ratings.withoutOneStarDownloads(rows.value.filter(keep)))
+        }.map { it.toPlayable(mode) }
         if (local.isEmpty()) return false
         playback.play(local)
         return true

@@ -21,6 +21,8 @@ data class PlayableTrack(
     val albumKey: String? = null,
     /** Set when the original file is streamed: the listening cache keeps it under this key. */
     val cacheKey: String? = null,
+    /** The server's rating (0–10), so the player knows the 1-star tracks of the queue. */
+    val userRating: Float? = null,
 )
 
 object MediaItems {
@@ -48,15 +50,21 @@ object MediaItems {
     }
 
     private fun extras(track: PlayableTrack): Bundle? {
-        if (track.gainDb == null && track.albumKey == null) return null
+        if (track.gainDb == null && track.albumKey == null && track.userRating == null) return null
         return Bundle().apply {
             track.gainDb?.let { putFloat(EXTRA_GAIN_DB, it) }
             track.albumKey?.let { putString(EXTRA_ALBUM_KEY, it) }
+            track.userRating?.let { putFloat(EXTRA_RATING, it) }
         }
     }
 
+    /** The server's rating carried by [item], or null when it had none. */
+    fun ratingOf(item: MediaItem?): Float? =
+        item?.mediaMetadata?.extras?.takeIf { it.containsKey(EXTRA_RATING) }?.getFloat(EXTRA_RATING)
+
     const val EXTRA_GAIN_DB = "ovh.battistella.sillon.GAIN_DB"
     const val EXTRA_ALBUM_KEY = "ovh.battistella.sillon.ALBUM_KEY"
+    const val EXTRA_RATING = "ovh.battistella.sillon.RATING"
 
     fun volumeFor(gainDb: Float?): Float =
         if (gainDb == null) 1f else Math.pow(10.0, gainDb / 20.0).toFloat().coerceIn(MIN_VOLUME, 1f)

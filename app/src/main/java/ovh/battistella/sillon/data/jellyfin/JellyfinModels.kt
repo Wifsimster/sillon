@@ -7,6 +7,7 @@ import ovh.battistella.sillon.data.plex.PlexMedia
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
 import ovh.battistella.sillon.data.plex.PlexStream
+import ovh.battistella.sillon.data.rating.JellyfinStars
 
 @Serializable
 data class JellyfinPublicInfo(
@@ -86,6 +87,7 @@ data class JellyfinMediaStream(
 data class JellyfinUserData(
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
     @SerialName("PlayCount") val playCount: Int = 0,
+    @SerialName("Likes") val likes: Boolean? = null,
     @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )
 
@@ -122,7 +124,7 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         leafCount = childCount,
         thumb = ownImage,
         parentThumb = albumImage,
-        userRating = if (userData?.isFavorite == true) 10f else null,
+        userRating = userData?.let { JellyfinStars.rating(it.isFavorite, it.likes) },
         viewCount = userData?.playCount,
         lastViewedAt = parseServerDate(userData?.lastPlayedDate)?.div(1_000),
         normalizationGain = normalizationGain,

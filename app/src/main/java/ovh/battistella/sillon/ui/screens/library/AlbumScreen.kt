@@ -46,6 +46,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.draw.alpha
+import ovh.battistella.sillon.data.rating.RatingBook
+import ovh.battistella.sillon.data.rating.Stars
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,9 +111,13 @@ fun TrackCollectionRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val download by viewModel.downloadStatus.collectAsStateWithLifecycle()
+    val ratings by viewModel.ratings.collectAsStateWithLifecycle()
+    val skipOneStar by viewModel.skipOneStar.collectAsStateWithLifecycle()
     TrackCollectionScreen(
         state = state,
         nowPlayingKey = nowPlaying.currentKey,
+        ratings = ratings.book,
+        skipOneStar = skipOneStar,
         onBack = onBack,
         onRetry = viewModel::load,
         onPlay = viewModel::play,
@@ -166,6 +174,8 @@ fun TrackCollectionScreen(
     listenBySide: Boolean = false,
     onListenBySideChange: ((Boolean) -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    ratings: RatingBook = RatingBook(),
+    skipOneStar: Boolean = false,
 ) {
     Scaffold(
         topBar = {
@@ -201,7 +211,15 @@ fun TrackCollectionScreen(
                         item(key = "side-${side.label}") { SideHeader(side) }
                     }
                     item(key = track.key) {
-                        TrackRow(track, playing = nowPlayingKey == track.key, onClick = { onPlay(track.key) })
+                        val rating = ratings.ratingOf(track.key, track.stars?.times(2f))
+                        val oneStar = Stars.isOneStar(rating)
+                        TrackRow(
+                            track.copy(stars = rating?.div(2f)),
+                            playing = nowPlayingKey == track.key,
+                            onClick = { onPlay(track.key) },
+                            muted = oneStar,
+                            skipped = oneStar && skipOneStar,
+                        )
                     }
                 }
             }
@@ -210,7 +228,8 @@ fun TrackCollectionScreen(
 }
 
 @Composable
-fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
+fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit, muted: Boolean = false, skipped: Boolean = false) {
+    val skippedLabel = stringResource(R.string.track_skipped)
     val accent = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     val artist = track.artist
     val stars = track.stars
@@ -245,9 +264,15 @@ fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
                 track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
             }
         },
-        modifier = Modifier.clickable(onClick = onClick),
+        // A 1-star track stays in the list, greyed, and still plays when touched.
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .then(if (muted && !playing) Modifier.alpha(MUTED_ALPHA) else Modifier)
+            .then(if (skipped) Modifier.semantics { stateDescription = skippedLabel } else Modifier),
     )
 }
+
+private const val MUTED_ALPHA = 0.45f
 
 @Composable
 private fun ListenBySideChip(selected: Boolean, onChange: (Boolean) -> Unit) {

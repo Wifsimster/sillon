@@ -87,6 +87,13 @@ class SettingsStore @Inject constructor(
         context.settingsDataStore.edit { it[LISTENING_CACHE_GB] = CacheLimit.sanitize(value) }
     }
 
+    /** Skip the tracks rated 1 star in albums and playlists played in order: on unless turned off. */
+    val skipOneStar: Flow<Boolean> = context.settingsDataStore.data.map { it[SKIP_ONE_STAR] ?: true }
+
+    suspend fun setSkipOneStar(value: Boolean) {
+        context.settingsDataStore.edit { it[SKIP_ONE_STAR] = value }
+    }
+
     private fun String?.toQuality(default: StreamQuality) =
         StreamQuality.entries.firstOrNull { it.name == this } ?: default
 
@@ -104,5 +111,6 @@ class SettingsStore @Inject constructor(
         val LISTEN_BY_SIDE = booleanPreferencesKey("listen_by_side")
         val LISTENING_CACHE = booleanPreferencesKey("listening_cache")
         val LISTENING_CACHE_GB = intPreferencesKey("listening_cache_gb")
+        val SKIP_ONE_STAR = booleanPreferencesKey("skip_one_star")
     }
 }
