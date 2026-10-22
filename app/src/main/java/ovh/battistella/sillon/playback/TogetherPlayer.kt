@@ -173,7 +173,10 @@ class TogetherPlayer(
 }
 
 @OptIn(UnstableApi::class)
-class ExoGroupPlayer(private val player: ExoPlayer) : GroupPlayer {
+class ExoGroupPlayer(
+    private val player: ExoPlayer,
+    private val afterExit: () -> Unit = {},
+) : GroupPlayer {
     private var listener: GroupPlayer.Listener? = null
 
     private val events = object : Player.Listener {
@@ -210,6 +213,8 @@ class ExoGroupPlayer(private val player: ExoPlayer) : GroupPlayer {
 
     private var saved: Pair<Boolean, Int>? = null
 
+    val inGroupMode: Boolean get() = saved != null
+
     override fun enterGroupMode() {
         if (saved == null) saved = player.shuffleModeEnabled to player.repeatMode
         player.shuffleModeEnabled = false
@@ -225,6 +230,7 @@ class ExoGroupPlayer(private val player: ExoPlayer) : GroupPlayer {
             player.repeatMode = repeat
         }
         saved = null
+        afterExit()
     }
 
     override fun load(tracks: List<PlayableTrack>, index: Int, positionMs: Long) {

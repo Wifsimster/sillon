@@ -13,6 +13,7 @@ import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.PlaybackConnection
+import ovh.battistella.sillon.playback.Side
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.toFailed
 
@@ -55,6 +56,8 @@ abstract class TrackCollectionViewModel(
 
     protected abstract suspend fun fetch(): TrackCollection
 
+    protected open suspend fun sidesForPlayback(): List<Side> = emptyList()
+
     protected fun start() {
         load()
         viewModelScope.launch {
@@ -81,7 +84,7 @@ abstract class TrackCollectionViewModel(
         val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
         viewModelScope.launch {
             val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable)
-            playback.play(fresh.ifEmpty { playable }, start)
+            playback.play(fresh.ifEmpty { playable }, start, albumSides = sidesForPlayback())
         }
     }
 

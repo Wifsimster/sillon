@@ -55,6 +55,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setSleeveWear(value) }
     }
 
+    val listenBySide = settings.listenBySide.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setListenBySide(value: Boolean) {
+        viewModelScope.launch { settings.setListenBySide(value) }
+    }
+
     fun setWallpaperColors(value: Boolean) {
         viewModelScope.launch { settings.setWallpaperColors(value) }
     }
@@ -89,6 +95,7 @@ fun SettingsScreen(
     val loudness by viewModel.loudness.collectAsStateWithLifecycle()
     val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
     val sleeveWear by viewModel.sleeveWear.collectAsStateWithLifecycle()
+    val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -135,6 +142,19 @@ fun SettingsScreen(
                         )
                     },
                     onSelect = viewModel::setLoudness,
+                )
+            }
+            item { HorizontalDivider() }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_sides)) },
+                    supportingContent = { Text(stringResource(R.string.settings_sides_hint)) },
+                    trailingContent = { Switch(checked = listenBySide, onCheckedChange = null) },
+                    modifier = Modifier.toggleable(
+                        value = listenBySide,
+                        role = Role.Switch,
+                        onValueChange = viewModel::setListenBySide,
+                    ),
                 )
             }
             item { HorizontalDivider() }

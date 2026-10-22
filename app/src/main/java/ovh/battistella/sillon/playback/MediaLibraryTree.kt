@@ -25,6 +25,7 @@ import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.data.repository.neverPlayedModeOf
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
+import ovh.battistella.sillon.data.settings.SettingsStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,6 +35,8 @@ class MediaLibraryTree @Inject constructor(
     private val repository: PlexRepository,
     private val playbackState: PlaybackStateStore,
     private val neverPlayed: NeverPlayedRadio,
+    private val settings: SettingsStore,
+    private val sides: SideSession,
 ) {
     private val cache = mutableMapOf<String, Pair<Long, List<MediaItem>>>()
     private val cacheLock = Mutex()
@@ -87,7 +90,14 @@ class MediaLibraryTree @Inject constructor(
             return MediaItemsWithStartPosition(tracks, 0, C.TIME_UNSET)
         }
         if (node is BrowseNode.Track) {
-            val tracks = playable(tracksOf(node.parent))
+            val metadata = tracksOf(node.parent)
+            val tracks = playable(metadata)
+            val albumSides = if (node.parent is BrowseNode.Album && settings.listenBySide.first()) {
+                AlbumSides.of(metadata)
+            } else {
+                emptyList()
+            }
+            sides.setPlan(SidePlan.of(albumSides, tracks.map { it.mediaId }))
             val index = tracks.indexOfFirst { it.mediaId == node.key }.coerceAtLeast(0)
             return MediaItemsWithStartPosition(tracks, index, C.TIME_UNSET)
         }
