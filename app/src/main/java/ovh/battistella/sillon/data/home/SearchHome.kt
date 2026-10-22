@@ -19,7 +19,8 @@ data class HomeAlbum(
 /**
  * What the empty search page shows, on disk per server and account. [local] holds the albums Sillon
  * played itself, which the server may not know yet (offline plays). [sealed] holds the mystery albums
- * played without being revealed: they stay out of Recently played until they are played in the open.
+ * played without being revealed: they stay out of both rows until they are played in the open. They are
+ * also kept apart on disk, so that signing out does not forget them (see SearchHomeCache).
  */
 @Serializable
 data class CachedHome(
@@ -113,6 +114,16 @@ object SearchHome {
             .filter { it.key !in sealed }
             .sortedByDescending { it.playedAt ?: Long.MIN_VALUE }
             .take(limit)
+    }
+
+    /**
+     * What the two rows show. [hidden] holds the sealed and live mystery albums: a mystery played
+     * unrevealed counts on the server, so it could reach either row.
+     */
+    fun rows(cached: CachedHome?, hidden: Set<String>): Pair<List<HomeAlbum>, List<HomeAlbum>> {
+        val recent = mergeRecent(cached?.recent.orEmpty(), cached?.local.orEmpty(), hidden)
+        val classics = cached?.classics.orEmpty().filter { it.key !in hidden }
+        return recent to classics
     }
 
     /** The most played albums, by total plays, as in sleeve wear. */

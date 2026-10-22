@@ -89,6 +89,18 @@ class SearchHomeTest {
     }
 
     @Test
+    fun `an unrevealed mystery album never shows in Your classics either`() {
+        val cached = CachedHome(
+            owner = "o",
+            recent = listOf(HomeAlbum("a", "A", playedAt = 1)),
+            classics = listOf(HomeAlbum("mystery", "Secret"), HomeAlbum("b", "B")),
+        )
+        val (recent, classics) = SearchHome.rows(cached, hidden = setOf("mystery"))
+        assertEquals(listOf("a"), recent.map { it.key })
+        assertEquals(listOf("b"), classics.map { it.key })
+    }
+
+    @Test
     fun `merged rows stop at the row size`() {
         val server = (1..30).map { HomeAlbum("a$it", "A$it", playedAt = 100L - it) }
         assertEquals(SearchHome.ROW_SIZE, SearchHome.mergeRecent(server, emptyList(), emptySet()).size)

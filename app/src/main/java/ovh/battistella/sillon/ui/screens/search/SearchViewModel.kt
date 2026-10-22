@@ -198,8 +198,7 @@ class SearchViewModel @Inject constructor(
     ): SearchHomeUi {
         val server = runCatching { repository.endpoint() }.getOrNull()
         val hidden = searchHome.hidden(cached?.sealed.orEmpty())
-        val recent = SearchHome.mergeRecent(cached?.recent.orEmpty(), cached?.local.orEmpty(), hidden)
-        val classics = cached?.classics.orEmpty()
+        val (recent, classics) = SearchHome.rows(cached, hidden)
         fun tiles(albums: List<HomeAlbum>) =
             (if (isOnline) albums else SearchHome.offline(albums, phone.keys)).map { tile(it, server, phone) }
         val recentTiles = tiles(recent)

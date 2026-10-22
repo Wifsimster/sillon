@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.data.home
 
 import dagger.Lazy
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,15 +35,25 @@ import javax.inject.Singleton
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
-class SearchHomeRepository @Inject constructor(
+class SearchHomeRepository internal constructor(
     private val repository: PlexRepository,
     private val store: SearchHomeCache,
     private val wear: SleeveWearCache,
     private val mystery: MysterySession,
     private val saved: PlaybackStateStore,
     private val playback: Lazy<PlaybackConnection>,
+    private val scope: CoroutineScope,
+    private val main: CoroutineDispatcher,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject constructor(
+        repository: PlexRepository,
+        store: SearchHomeCache,
+        wear: SleeveWearCache,
+        mystery: MysterySession,
+        saved: PlaybackStateStore,
+        playback: Lazy<PlaybackConnection>,
+    ) : this(repository, store, wear, mystery, saved, playback, CoroutineScope(SupervisorJob() + Dispatchers.IO), Dispatchers.Main)
+
     private val home = MutableStateFlow<CachedHome?>(null)
     private val lock = Mutex()
     private var started = false
@@ -68,7 +79,8 @@ class SearchHomeRepository @Inject constructor(
         scope.launch {
             repository.session.collect { if (it is Session.SignedOut) clear() }
         }
-        scope.launch(Dispatchers.Main) { record() }
+        // The player connection is built on the main thread.
+        scope.launch(main) { record() }
     }
 
     /** Albums that must not show yet: sealed ones, and the mystery playing or waiting to be resumed. */
@@ -111,8 +123,9 @@ class SearchHomeRepository @Inject constructor(
             .distinctUntilChanged()
             .flatMapLatest { owned ->
                 if (owned == null) return@flatMapLatest emptyFlow<Triple<Pair<String, ServerKind>, HomeAlbum?, Pair<String, Boolean>?>>()
-                val player = playback.get().state
-                    .map { s -> s.albumKey?.takeIf { s.isPlaying }?.let { HomeAlbum(it, s.album, s.artist.ifBlank { null }) } }
+                // Not PlaybackConnection.state: collecting it would keep the position ticker running all along.
+                val player = playback.get().playingAlbum
+                    .map { p -> p?.let { HomeAlbum(it.albumKey, it.album, it.artist.ifBlank { null }) } }
                     .distinctUntilChanged { a, b -> a?.key == b?.key }
                 val sleeve = mystery.state.map { m -> m?.let { it.albumKey to it.revealed } }.distinctUntilChanged()
                 combine(player, sleeve) { open, m -> Triple(owned, open, m) }
@@ -149,6 +162,7 @@ class SearchHomeRepository @Inject constructor(
         return disk
     }
 
+    /** Sign-out forgets the rows; the store keeps the sealed albums. */
     private suspend fun clear() = lock.withLock {
         home.value = null
         store.clear()
