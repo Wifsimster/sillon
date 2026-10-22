@@ -59,7 +59,9 @@ fun PlaylistsScreen(
                 onShuffle = viewModel::shuffleFiveStars,
             )
             NeverPlayedCard()
-            StationsRow(stations, startingStation, onPlay = viewModel::playStation)
+            if (stations.isNotEmpty()) {
+                StationsRow(stations, startingStation, onPlay = viewModel::playStation)
+            }
         }
     }
     Scaffold(
