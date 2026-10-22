@@ -494,8 +494,9 @@ class PlexRepository @Inject constructor(
     }
 
     /**
-     * Opens a Sonos session's way to the server. On Plex, a fresh transient token: the account's
-     * own token never goes to a speaker, so when the server refuses one the session doesn't start.
+     * Opens a Sonos session's way to the server; the account's or Sillon's own token never goes
+     * to a speaker. On Plex, a fresh transient token. On Jellyfin, a token of the speaker's own,
+     * revoked when the access is closed. When the server gives none, the session doesn't start.
      */
     suspend fun openSonosAccess(): SonosAccess {
         val server = currentServer()
@@ -509,7 +510,17 @@ class PlexRepository @Inject constructor(
                 } ?: throw SonosAccessException(SonosAccessException.Reason.PLEX_TOKEN)
                 SonosAccess(endpoint.copy(token = token))
             }
-            ServerKind.JELLYFIN -> SonosAccess(endpoint)
+            ServerKind.JELLYFIN -> {
+                val clientId = sessionStore.clientId()
+                // Always the same speaker device: signing it in again replaces a token left behind.
+                val speaker = "$clientId-sonos"
+                val token = try {
+                    jellyfin.speakerToken(endpoint, clientId, speaker)
+                } catch (e: Exception) {
+                    throw SonosAccessException(SonosAccessException.Reason.JELLYFIN_TOKEN, e)
+                }
+                SonosAccess(endpoint.copy(token = token), deviceId = speaker) { jellyfin.signOut(endpoint, speaker, token) }
+            }
         }
     }
 
@@ -531,7 +542,7 @@ class PlexRepository @Inject constructor(
             val stream = SonosFormats.plan(track.audioFormat())
             val (uri, mime) = when (stream) {
                 is SonosStream.Direct -> streamUrl(endpoint, part) to stream.mimeType
-                SonosStream.Transcode -> sonosTranscodeUrl(endpoint, clientId, track.ratingKey) to SonosStream.Transcode.MIME_TYPE
+                SonosStream.Transcode -> sonosTranscodeUrl(endpoint, access.deviceId ?: clientId, track.ratingKey) to SonosStream.Transcode.MIME_TYPE
             }
             val didl = Didl.track(
                 key = track.ratingKey,

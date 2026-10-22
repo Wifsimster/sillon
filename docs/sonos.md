@@ -93,10 +93,24 @@ speaker, on the LAN, over HTTP (or HTTPS if the server address is HTTPS).
   Plex: 48 h is the figure commonly reported, not confirmed. **The account token never goes to
   a speaker**: if the server refuses a transient token (an old server, a shared server that
   doesn't delegate, a timeout), the session doesn't start and Sillon says why.
-- **Jellyfin:** there is no short-lived token for a stream. The URL carries Sillon's session
-  token (the one in Jellyfin's *Dashboard → Devices*). Revoking Sillon's device there revokes it.
+- **Jellyfin:** Jellyfin has no short-lived stream token, so each Sonos session signs the
+  speaker in as **a device of its own**: Quick Connect is started as device `<Sillon's id>-sonos`
+  (shown as *Sonos (Sillon)* in *Dashboard → Devices*), approved at once with the phone's token
+  (`POST /QuickConnect/Initiate`, `POST /QuickConnect/Authorize?code=…`,
+  `POST /Users/AuthenticateWithQuickConnect`). Only that token goes in the speaker's URLs, and
+  it is revoked (`POST /Sessions/Logout` with it) when the Sonos session ends: back to the phone,
+  another room, the speaker lost or taken over, or the playback service stopping. Revoking it by
+  hand leaves the phone signed in. Limits:
+  - it has the same rights as the user (an administrator's token if the user is one), for as
+    long as the session lasts;
+  - if the app is killed outright, it stays valid until the next Sonos session signs the same
+    device in again (Jellyfin signs a device's earlier sessions out when it authenticates again;
+    from Jellyfin's source, not checked on a live server) or until it is revoked by hand;
+  - **Quick Connect must be on** (*Dashboard → General*). When it is off, Sonos is refused on
+    Jellyfin with a message: Sillon's own token is never handed to a speaker.
 - The speaker may keep the last URLs in its queue until something else is played. Anyone who
-  can read the Sonos queue on the LAN (the Sonos app, a UPnP tool) can read them.
+  can read the Sonos queue on the LAN (the Sonos app, a UPnP tool) can read them: a transient
+  Plex token for up to ~48 h, a Jellyfin speaker token until it is revoked.
 
 ## Risks
 

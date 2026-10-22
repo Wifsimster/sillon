@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.data.repository
 
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
@@ -12,6 +13,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import ovh.battistella.sillon.data.jellyfin.JellyfinApi
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.plex.PlexDevice
 import ovh.battistella.sillon.data.plex.PlexMedia
@@ -19,6 +21,7 @@ import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
 import ovh.battistella.sillon.data.plex.PlexStream
 import ovh.battistella.sillon.data.plex.ServerEndpoint
+import ovh.battistella.sillon.data.plex.ServerKind
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
@@ -87,6 +90,41 @@ class SonosAccessTest {
         assertRefused()
         coEvery { api.transientToken(any(), any()) } throws java.io.IOException("401")
         assertRefused()
+    }
+
+    @Test
+    fun `on Jellyfin the speaker gets a token of its own, revoked at the end`() = runTest(timeout = 5.minutes) {
+        val jfServer = SelectedServer("j1", "Jelly", ServerEndpoint("http://192.168.1.6:8096", "phone-token", ServerKind.JELLYFIN, "user-1"))
+        val store = mockk<SessionStore>(relaxed = true) {
+            every { session } returns flowOf(Session.Ready("phone-token", jfServer))
+            coEvery { clientId() } returns "client"
+        }
+        val realJf = JellyfinApi(mockk(relaxed = true), PlexDevice("Sillon", "1.0", "16", "Phone"))
+        val jf = mockk<JellyfinApi>(relaxed = true) {
+            coEvery { speakerToken(jfServer.endpoint, "client", "client-sonos") } returns "speaker-token"
+            coEvery { itemsWithFormat(any(), any(), any()) } returns listOf(track("t1", "flac", 44_100).copy(media = listOf(PlexMedia(container = "flac", parts = listOf(PlexPart("/Audio/t1/stream.flac?static=true", streams = listOf(PlexStream(2, codec = "flac", samplingRate = 44_100, bitDepth = 16))))))))
+            every { streamUrl(any(), any()) } answers { realJf.streamUrl(firstArg(), secondArg()) }
+        }
+        val repo = PlexRepository(
+            api, store, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            jf, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+        )
+
+        val access = repo.openSonosAccess()
+        val uri = repo.sonosTracks(listOf("t1"), access).getValue("t1").uri
+
+        assertTrue(uri, uri.contains("api_key=speaker-token"))
+        assertFalse(uri, uri.contains("phone-token"))
+        access.close()
+        coVerify { jf.signOut(jfServer.endpoint, "client-sonos", "speaker-token") }
+
+        coEvery { jf.speakerToken(any(), any(), any()) } throws java.io.IOException("401")
+        try {
+            repo.openSonosAccess()
+            fail("Sillon's own token must not reach the speaker")
+        } catch (e: SonosAccessException) {
+            assertEquals(SonosAccessException.Reason.JELLYFIN_TOKEN, e.reason)
+        }
     }
 
     private suspend fun assertRefused() {

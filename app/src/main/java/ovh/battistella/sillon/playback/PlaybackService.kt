@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
@@ -202,7 +203,13 @@ class PlaybackService : MediaLibraryService() {
             Log.w(TAG, "no way to the server for the speaker: ${e.message}")
             if (current != null) restoreOnPhone(items, index, positionMs, play = false)
             sonosOutput.set(Output.Phone)
-            sonosOutput.tell(if (e is SonosAccessException) OutputNotice.PLEX_TOKEN_REFUSED else OutputNotice.FAILED)
+            sonosOutput.tell(
+                when ((e as? SonosAccessException)?.reason) {
+                    SonosAccessException.Reason.PLEX_TOKEN -> OutputNotice.PLEX_TOKEN_REFUSED
+                    SonosAccessException.Reason.JELLYFIN_TOKEN -> OutputNotice.JELLYFIN_TOKEN_REFUSED
+                    null -> OutputNotice.FAILED
+                },
+            )
             return
         }
         val player = SonosPlayer(
@@ -408,6 +415,9 @@ class PlaybackService : MediaLibraryService() {
         sonosReporter = null
         sonos?.release()
         sonos = null
+        // The speaker's own token ends with the session (bounded wait: the service is going away).
+        sonosAccess?.let { access -> runBlocking { withTimeoutOrNull(ACCESS_CLOSE_MS) { access.close() } } }
+        sonosAccess = null
         sonosOutput.set(Output.Phone)
         scope.cancel()
         mediaSession?.release()
@@ -559,5 +569,6 @@ class PlaybackService : MediaLibraryService() {
         const val SESSION_ACTIVITY_REQUEST_CODE = 3_001
         const val QUEUE_SAVE_INTERVAL_MS = 15_000L
         const val MAX_SAVED_TRACKS = 500
+        const val ACCESS_CLOSE_MS = 2_000L
     }
 }

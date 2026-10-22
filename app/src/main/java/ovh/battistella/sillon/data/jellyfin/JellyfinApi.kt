@@ -268,20 +268,48 @@ class JellyfinApi(
         return PlexJson.decodeFromString(JellyfinItems.serializer(), get(url, deviceId, server.token))
     }
 
+    /**
+     * A token of its own for a Sonos speaker: Quick Connect run as a second device
+     * ([speakerDeviceId], shown as "Sonos (Sillon)" in the server's devices) and approved at once
+     * with the user's token. It goes in the speaker's URLs instead of Sillon's own token, and
+     * [signOut] revokes it alone, leaving the phone signed in. Throws when Quick Connect is off.
+     */
+    suspend fun speakerToken(server: ServerEndpoint, deviceId: String, speakerDeviceId: String): String {
+        val pending = PlexJson.decodeFromString(
+            JellyfinQuickConnect.serializer(),
+            post(serverUrl(server, "QuickConnect/Initiate"), speakerDeviceId, token = null, "{}", SPEAKER_NAME),
+        )
+        val approve = serverUrl(server, "QuickConnect/Authorize").newBuilder()
+            .addQueryParameter("code", pending.code)
+            .apply { server.userId?.let { addQueryParameter("userId", it) } }
+            .build()
+        post(approve, deviceId, server.token, "")
+        val body = buildJsonObject { put("Secret", pending.secret) }
+        return PlexJson.decodeFromString(
+            JellyfinAuthResult.serializer(),
+            post(serverUrl(server, "Users/AuthenticateWithQuickConnect"), speakerDeviceId, token = null, body.toString(), SPEAKER_NAME),
+        ).accessToken
+    }
+
+    /** Revokes [token] (`Sessions/Logout` with it). */
+    suspend fun signOut(server: ServerEndpoint, deviceId: String, token: String) {
+        post(serverUrl(server, "Sessions/Logout"), deviceId, token, "", SPEAKER_NAME)
+    }
+
     private suspend fun get(url: HttpUrl, deviceId: String, token: String? = null): String =
         client.fetch(Request.Builder().url(url).headers(deviceId, token).build())
 
-    private suspend fun post(url: HttpUrl, deviceId: String, token: String?, json: String): String =
+    private suspend fun post(url: HttpUrl, deviceId: String, token: String?, json: String, name: String = device.deviceName): String =
         client.fetch(
-            Request.Builder().url(url).headers(deviceId, token)
+            Request.Builder().url(url).headers(deviceId, token, name)
                 .post(json.toRequestBody("application/json".toMediaType()))
                 .build(),
         )
 
-    private fun Request.Builder.headers(deviceId: String, token: String?): Request.Builder = apply {
+    private fun Request.Builder.headers(deviceId: String, token: String?, name: String = device.deviceName): Request.Builder = apply {
         val auth = buildString {
             append("MediaBrowser Client=\"").append(device.product).append('"')
-            append(", Device=\"").append(device.deviceName.replace("\"", "")).append('"')
+            append(", Device=\"").append(name.replace("\"", "")).append('"')
             append(", DeviceId=\"").append(deviceId).append('"')
             append(", Version=\"").append(device.version).append('"')
             if (token != null) append(", Token=\"").append(token).append('"')
@@ -303,6 +331,7 @@ class JellyfinApi(
             .build()
 
     private companion object {
+        const val SPEAKER_NAME = "Sonos (Sillon)"
         const val SEARCH_LIMIT = 60
         const val RADIO_TRACKS = 100
         const val BATCH_SIZE = 100

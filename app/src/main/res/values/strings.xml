@@ -282,4 +282,5 @@
     <string name="output_notice_ok">OK</string>
     <string name="together_not_on_sonos">Listen together, not while playing on Sonos</string>
     <string name="output_notice_plex_token">Your Plex server gave no temporary token for the speaker, and Sillon won\'t hand it your account\'s. The music stays on this phone.</string>
+    <string name="output_notice_jellyfin_token">Your Jellyfin server gave no token for the speaker: Sonos needs Quick Connect, turned on in the server\'s dashboard. The music stays on this phone.</string>
 </resources>

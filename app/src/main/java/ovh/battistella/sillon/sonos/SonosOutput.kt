@@ -32,6 +32,7 @@ enum class OutputNotice {
     TAKEN_OVER,
     FAILED,
     PLEX_TOKEN_REFUSED,
+    JELLYFIN_TOKEN_REFUSED,
     MYSTERY_ON_PHONE,
     TOGETHER_ON_PHONE,
 }
