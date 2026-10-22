@@ -25,6 +25,7 @@ class PlayerViewModel @Inject constructor(
     sleeveWear: SleeveWearRepository,
 ) : ViewModel() {
     val state = playback.state
+    val sides = playback.sideState
 
     val wear: StateFlow<Wear?> = combine(sleeveWear.levels, state.map { it.albumKey }.distinctUntilChanged()) { levels, album ->
         Wear.of(levels, album, intensity = PLAYER_WEAR_INTENSITY)
@@ -44,6 +45,7 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun flipSide() = playback.flipSide()
     fun playPause() = playback.playPause()
     fun next() = playback.next()
     fun previous() = playback.previous()
