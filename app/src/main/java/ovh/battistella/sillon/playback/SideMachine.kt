@@ -31,6 +31,12 @@ class SideMachine {
             if (value) ended = null
         }
 
+    /**
+     * The tracks the player will skip (rated 1 star): a side ends after its last track that
+     * will really play, so skipping never runs past the end of a side.
+     */
+    var skipped: (Int) -> Boolean = { false }
+
     private val activePlan: SidePlan? get() = plan?.takeIf { !grouped && !shuffle && it.matches(queue) }
 
     val state: SideState
@@ -42,7 +48,7 @@ class SideMachine {
     val pauseAtEnd: Boolean
         get() {
             val active = activePlan ?: return false
-            if (ended != null || !active.isLastOfSide(index)) return false
+            if (ended != null || !endsSide(active, index)) return false
             val side = active.sideAt(index) ?: return false
             return !active.isLastSide(side)
         }
@@ -62,14 +68,27 @@ class SideMachine {
         this.index = index
         this.shuffle = shuffle
         val end = ended ?: return
-        if (activePlan != null && index != end.nextIndex && index != end.nextIndex - 1) ended = null
+        val plan = activePlan ?: return
+        val stillThere = index == end.nextIndex ||
+            (index in 0 until end.nextIndex && plan.sideAt(index) == plan.sideAt(end.nextIndex - 1) && endsSide(plan, index))
+        if (!stillThere) ended = null
+    }
+
+    private fun endsSide(plan: SidePlan, index: Int): Boolean {
+        val side = plan.sideAt(index) ?: return false
+        var i = index + 1
+        while (plan.sideAt(i) == side) {
+            if (!skipped(i)) return false
+            i++
+        }
+        return true
     }
 
     fun onPausedAtEndOfItem(): SideEnd? {
         val active = activePlan ?: return null
         val side = active.sideAt(index) ?: return null
         val end = when {
-            active.isLastOfSide(index) && !active.isLastSide(side) -> side
+            endsSide(active, index) && !active.isLastSide(side) -> side
             side > 0 && active.firstIndexOf(side) == index -> side - 1
             else -> return null
         }

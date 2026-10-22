@@ -221,6 +221,15 @@ class PlexApi(
         send(clientId, server, "PUT", "playlists/$playlistKey/items", "uri" to libraryUri(machineId, itemKey))
     }
 
+    /** Rates a track on the 0–10 scale (stars × 2); 0 clears the rating, which Plex takes as -1. */
+    suspend fun rate(clientId: String, server: ServerEndpoint, ratingKey: String, rating: Int) {
+        send(
+            clientId, server, "PUT", ":/rate",
+            "key" to ratingKey, "identifier" to LIBRARY_IDENTIFIER,
+            "rating" to if (rating > 0) rating.coerceAtMost(10).toString() else "-1",
+        )
+    }
+
     private fun libraryUri(machineId: String, itemKey: String) =
         "server://$machineId/com.plexapp.plugins.library/library/metadata/$itemKey"
 
@@ -398,6 +407,7 @@ class PlexApi(
 
     companion object {
         const val PLEX_TV = "https://plex.tv/"
+        private const val LIBRARY_IDENTIFIER = "com.plexapp.plugins.library"
         private const val TYPE_ARTIST = "8"
         private const val TYPE_ALBUM = "9"
         private const val TYPE_TRACK = "10"

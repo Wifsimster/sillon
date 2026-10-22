@@ -45,6 +45,17 @@ class FiveStarsCache @Inject constructor(
         }
     }
 
+    /** A track just rated here: in or out of the list, which keeps its age. Nothing to do when there's no list. */
+    suspend fun mark(serverId: String, key: String, fiveStars: Boolean) {
+        context.fiveStarsDataStore.edit { prefs ->
+            val cached = prefs[key(serverId)]
+                ?.let { runCatching { PlexJson.decodeFromString(CachedFiveStars.serializer(), it) }.getOrNull() }
+                ?: return@edit
+            val keys = marked(cached.keys, key, fiveStars)
+            if (keys != cached.keys) prefs[key(serverId)] = PlexJson.encodeToString(CachedFiveStars.serializer(), cached.copy(keys = keys))
+        }
+    }
+
     suspend fun clear() {
         context.fiveStarsDataStore.edit { it.clear() }
     }
@@ -57,5 +68,11 @@ class FiveStarsCache @Inject constructor(
 
         /** Whether the list should be fetched again: never fetched, or older than [TTL_MS]. */
         fun isStale(cached: CachedFiveStars?, now: Long): Boolean = cached == null || now - cached.fetchedAt >= TTL_MS
+
+        fun marked(keys: Set<String>, key: String, fiveStars: Boolean): Set<String> = when {
+            fiveStars && key !in keys && keys.size < MAX_KEYS -> keys + key
+            !fiveStars && key in keys -> keys - key
+            else -> keys
+        }
     }
 }

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.data.rating.RatingSend
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +39,11 @@ class PlayerViewModel @Inject constructor(
     val wear: StateFlow<Wear?> = combine(sleeveWear.levels, state.map { it.albumKey }.distinctUntilChanged()) { levels, album ->
         Wear.of(levels, album, intensity = PLAYER_WEAR_INTENSITY)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val rating: StateFlow<RatingUi?> = combine(state, playback.ratings, repository.isJellyfin) { now, ratings, jellyfin ->
+        val key = now.currentKey?.takeIf { it != MysteryMask.HIDDEN_KEY } ?: return@combine null
+        RatingUi(key, ratings.book.starsOf(key, now.serverRating), ratings.book.sendState(key)?.takeIf { it != RatingSend.SENDING }, jellyfin)
+    }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val mystery = mysterySession.state
     val mysteryStarting = mysteryLauncher.starting
@@ -70,6 +76,16 @@ class PlayerViewModel @Inject constructor(
     override fun seekTo(positionMs: Long) = playback.seekTo(positionMs)
     override fun toggleShuffle() = playback.toggleShuffle()
     override fun cycleRepeat() = playback.cycleRepeat()
+
+    override fun rate(stars: Int?) {
+        val key = rating.value?.key ?: return
+        playback.rate(key, stars)
+    }
+
+    override fun retryRating() {
+        val current = rating.value ?: return
+        playback.rate(current.key, current.stars)
+    }
 
     private companion object {
         const val PLAYER_WEAR_INTENSITY = 0.6f

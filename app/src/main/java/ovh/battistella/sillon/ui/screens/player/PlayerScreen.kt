@@ -90,6 +90,8 @@ interface PlayerControls {
     fun seekTo(positionMs: Long)
     fun toggleShuffle()
     fun cycleRepeat()
+    fun rate(stars: Int?) = Unit
+    fun retryRating() = Unit
 }
 
 @Composable
@@ -107,6 +109,7 @@ fun PlayerScreen(
     val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val sides by viewModel.sides.collectAsStateWithLifecycle()
+    val rating by viewModel.rating.collectAsStateWithLifecycle()
     val together by viewModel.together.collectAsStateWithLifecycle()
     val output by outputViewModel.output.collectAsStateWithLifecycle()
     val notice by outputViewModel.notice.collectAsStateWithLifecycle()
@@ -120,6 +123,7 @@ fun PlayerScreen(
         keep = keep,
         wear = wear,
         sides = sides,
+        rating = rating,
         controls = viewModel,
         onClose = onClose,
         onTogether = onTogether.takeIf { together },
@@ -144,6 +148,7 @@ fun PlayerContent(
     onClose: () -> Unit,
     onTogether: (() -> Unit)?,
     sides: SideState = SideState(),
+    rating: RatingUi? = null,
     output: Output = Output.Phone,
     outputNotice: OutputNotice? = null,
     onOutput: (() -> Unit)? = null,
@@ -223,6 +228,7 @@ fun PlayerContent(
                         else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
                     }
                     NowPlayingTitle(state, sides.current)
+                    if (rating != null && !hidden) RatingBar(rating, onRate = controls::rate, onRetry = controls::retryRating)
                 }
             }
         }
