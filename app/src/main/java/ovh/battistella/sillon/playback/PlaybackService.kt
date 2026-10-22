@@ -19,6 +19,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
@@ -238,6 +239,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
+        @OptIn(UnstableApi::class)
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -250,6 +252,7 @@ class PlaybackService : MediaLibraryService() {
                 .build()
         }
 
+        @OptIn(UnstableApi::class)
         override fun onCustomCommand(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -257,7 +260,7 @@ class PlaybackService : MediaLibraryService() {
             args: Bundle,
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction != SideSession.ACTION_FLIP) {
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
             }
             sidePlayer?.flip()
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
