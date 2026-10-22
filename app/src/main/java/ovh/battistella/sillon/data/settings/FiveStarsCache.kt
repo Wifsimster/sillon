@@ -25,7 +25,8 @@ data class CachedFiveStars(
 
 /**
  * Downloads carry no rating: this list, kept on the phone, lets "5 stars" play the downloaded
- * 5-star tracks without a connection.
+ * 5-star tracks without a connection. It holds track keys only, for one server at a time, at most
+ * [MAX_KEYS] of them, and is cleared on sign-out.
  */
 @Singleton
 class FiveStarsCache @Inject constructor(
@@ -35,10 +36,26 @@ class FiveStarsCache @Inject constructor(
         prefs[key(serverId)]?.let { runCatching { PlexJson.decodeFromString(CachedFiveStars.serializer(), it) }.getOrNull() }
     }
 
-    suspend fun save(serverId: String, keys: Collection<String>) {
-        val value = CachedFiveStars(keys.toSet(), System.currentTimeMillis())
-        context.fiveStarsDataStore.edit { it[key(serverId)] = PlexJson.encodeToString(CachedFiveStars.serializer(), value) }
+    /** Replaces the list, and drops the one of any other server. */
+    suspend fun save(serverId: String, keys: Collection<String>, now: Long = System.currentTimeMillis()) {
+        val value = CachedFiveStars(keys.asSequence().take(MAX_KEYS).toSet(), now)
+        context.fiveStarsDataStore.edit {
+            it.clear()
+            it[key(serverId)] = PlexJson.encodeToString(CachedFiveStars.serializer(), value)
+        }
+    }
+
+    suspend fun clear() {
+        context.fiveStarsDataStore.edit { it.clear() }
     }
 
     private fun key(serverId: String) = stringPreferencesKey("keys|$serverId")
+
+    companion object {
+        const val MAX_KEYS = 10_000
+        const val TTL_MS = 6 * 60 * 60_000L
+
+        /** Whether the list should be fetched again: never fetched, or older than [TTL_MS]. */
+        fun isStale(cached: CachedFiveStars?, now: Long): Boolean = cached == null || now - cached.fetchedAt >= TTL_MS
+    }
 }

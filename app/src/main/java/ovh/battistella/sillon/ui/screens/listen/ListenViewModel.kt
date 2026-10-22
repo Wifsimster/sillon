@@ -61,8 +61,7 @@ class ListenViewModel @Inject constructor(
             launch { downloads.observe(serverId).collect { rows.value = it } }
             launch { fiveStarsCache.observe(serverId).collect { fiveStarKeys.value = it?.keys.orEmpty() } }
             val cached = fiveStarsCache.observe(serverId).first()
-            val stale = cached == null || System.currentTimeMillis() - cached.fetchedAt > FIVE_STARS_TTL_MS
-            if (online.value && stale) {
+            if (online.value && FiveStarsCache.isStale(cached, System.currentTimeMillis())) {
                 runCatching { repository.fiveStarTracks() }.getOrNull()?.let { tracks ->
                     fiveStarsCache.save(serverId, tracks.map { it.ratingKey })
                 }
@@ -137,9 +136,5 @@ class ListenViewModel @Inject constructor(
             }
             _starting.value = null
         }
-    }
-
-    private companion object {
-        const val FIVE_STARS_TTL_MS = 6 * 60 * 60_000L
     }
 }
