@@ -44,4 +44,23 @@ class ListeningCacheKeysTest {
         assertFalse(ListeningCacheKeys.isTrack(null))
         assertFalse(ListeningCacheKeys.isTrack("https://server/library/parts/1/file.flac"))
     }
+
+    @Test
+    fun `a transcode has its own key per bitrate, apart from the original`() {
+        val aac = ListeningCacheKeys.transcode("m1", "1", 320)
+        assertEquals("sillon-track/v1/m1/1/aac-320", aac)
+        assertNotEquals(aac, ListeningCacheKeys.transcode("m1", "1", 128))
+        assertNotEquals(ListeningCacheKeys.track("m1", "1"), aac)
+        assertEquals("sillon-track/v1/m1/1/aac-320/session/base/00001.ts", ListeningCacheKeys.part(aac, "session/base/00001.ts"))
+        assertTrue(ListeningCacheKeys.isTrack(aac))
+    }
+
+    @Test
+    fun `an original key knows the transcodes of its track`() {
+        val original = ListeningCacheKeys.track("m1", "1")
+        assertTrue(ListeningCacheKeys.isOriginal(original))
+        assertFalse(ListeningCacheKeys.isOriginal(ListeningCacheKeys.transcode("m1", "1", 320)))
+        assertTrue(ListeningCacheKeys.transcode("m1", "1", 128).startsWith(ListeningCacheKeys.transcodesOf(original)))
+        assertFalse(ListeningCacheKeys.transcode("m1", "10", 128).startsWith(ListeningCacheKeys.transcodesOf(original)))
+    }
 }

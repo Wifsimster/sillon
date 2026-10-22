@@ -16,4 +16,10 @@ class NetworkMonitor @Inject constructor(
         val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
         return !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
+
+    fun isOnline(): Boolean {
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 }

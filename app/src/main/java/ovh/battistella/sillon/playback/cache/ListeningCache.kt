@@ -39,6 +39,7 @@ class ListeningCache @Inject constructor(
     private val dir = File(context.noBackupFilesDir, DIR)
     private val evictor = ListeningCacheEvictor { used -> CacheLimit.effective(chosenGb, used, freeBytes()) }
     private val cache: SimpleCache by lazy { SimpleCache(dir, evictor, StandaloneDatabaseProvider(context)) }
+    private val transcodes = TranscodeCache { cache }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
 
@@ -67,13 +68,29 @@ class ListeningCache @Inject constructor(
                 .setUpstreamDataSourceFactory(upstream)
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         }
-        return ListeningDataSource.Factory(upstream) { if (enabled) cached else null }
+        return ListeningDataSource.Factory(
+            upstream,
+            keyFor = { url -> runCatching { transcodes.keyFor(url) }.getOrNull() },
+            onClosed = { key -> runCatching { transcodes.onClosed(key) } },
+        ) { if (enabled) cached else null }
     }
 
-    /** The track's original is in the cache from its first byte to its last. */
-    suspend fun isWhole(key: String): Boolean = enabled && withContext(Dispatchers.IO) {
+    /** The copies of a track that are whole in the cache: the original, or the best of [kbpsChoices]. */
+    suspend fun versions(serverId: String, trackKey: String, kbpsChoices: List<Int>): CachedVersions {
+        if (!enabled) return CachedVersions.NONE
         // SimpleCache locks while it loads its index or clears: never on the main thread.
-        runCatching { isWhole(cache, key) }.getOrDefault(false)
+        return withContext(Dispatchers.IO) {
+            runCatching { transcodes.versions(serverId, trackKey, kbpsChoices) }.getOrDefault(CachedVersions.NONE)
+        }
+    }
+
+    /** [session] streams a transcode from the server: keep it as it plays. */
+    fun streamTranscode(session: String, serverId: String, trackKey: String, kbps: Int) =
+        transcodes.register(session, ListeningCacheKeys.transcode(serverId, trackKey, kbps))
+
+    /** [session] plays the whole transcode already in the cache. */
+    suspend fun replayTranscode(session: String, serverId: String, trackKey: String, kbps: Int) = withContext(Dispatchers.IO) {
+        runCatching { transcodes.reuse(session, ListeningCacheKeys.transcode(serverId, trackKey, kbps)) }
     }
 
     fun usedBytes(): Long = runCatching { cache.cacheSpace }.getOrDefault(0)

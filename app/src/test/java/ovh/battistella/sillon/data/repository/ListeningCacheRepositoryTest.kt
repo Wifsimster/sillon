@@ -4,6 +4,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -29,6 +30,7 @@ import ovh.battistella.sillon.data.session.SessionStore
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.settings.StreamQuality
+import ovh.battistella.sillon.playback.cache.CachedVersions
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import org.robolectric.RobolectricTestRunner
@@ -49,12 +51,16 @@ class ListeningCacheRepositoryTest {
         every { wifiQuality } returns flowOf(StreamQuality.ORIGINAL)
         every { mobileQuality } returns flowOf(StreamQuality.KBPS_128)
     }
-    private val network = mockk<NetworkMonitor>(relaxed = true)
+    private val network = mockk<NetworkMonitor>(relaxed = true) {
+        every { isOnline() } returns true
+    }
     private val api = mockk<PlexApi>(relaxed = true) {
         every { streamUrl(any(), any()) } answers { "https://server${secondArg<String>()}?X-Plex-Token=secret-token" }
         every { transcodeUrl(any(), any(), any(), any(), any()) } returns "https://server/music/:/transcode/universal/start.m3u8"
     }
-    private val cache = mockk<ListeningCache>(relaxed = true)
+    private val cache = mockk<ListeningCache>(relaxed = true) {
+        coEvery { versions(any(), any(), any()) } returns CachedVersions.NONE
+    }
 
     private val repository = PlexRepository(api, sessionStore, downloads, settings, network, mockk(relaxed = true), mockk(relaxed = true), cache)
 
@@ -74,7 +80,7 @@ class ListeningCacheRepositoryTest {
             ),
         )
         every { network.isMetered() } returns true
-        coEvery { cache.isWhole(key("2")) } returns true
+        coEvery { cache.versions("m1", "2", any()) } returns CachedVersions(original = true, transcodeKbps = null)
 
         val (downloaded, cached, streamed) = repository.playable(listOf(track("1"), track("2"), track("3")))
 
@@ -83,9 +89,38 @@ class ListeningCacheRepositoryTest {
         // On mobile data the cached original beats the 128 kbps transcode.
         assertEquals(key("2"), cached.cacheKey)
         assertTrue(cached.streamUrl.contains("/library/parts/2/"))
-        // Not cached: the transcode plays and is not kept.
+        // Not cached: the transcode plays, and is kept as it plays.
         assertTrue(streamed.streamUrl.contains("transcode"))
         assertNull(streamed.cacheKey)
+        verify { cache.streamTranscode(any(), "m1", "3", 128) }
+    }
+
+    @Test
+    fun `on mobile data a cached transcode as good as asked plays from the cache`() = runTest(timeout = SLOW_FIRST_MOCKS) {
+        every { network.isMetered() } returns true
+        coEvery { cache.versions("m1", "4", any()) } returns CachedVersions(original = false, transcodeKbps = 320)
+        val played = repository.playable(listOf(track("4"))).single()
+        assertTrue(played.streamUrl.contains("transcode"))
+        coVerify { cache.replayTranscode(any(), "m1", "4", 320) }
+        verify { api.transcodeUrl(any(), any(), "4", 320, any()) }
+    }
+
+    @Test
+    fun `on Wi-Fi a cached transcode gives way to the original`() = runTest(timeout = SLOW_FIRST_MOCKS) {
+        every { network.isMetered() } returns false
+        coEvery { cache.versions("m1", "5", any()) } returns CachedVersions(original = false, transcodeKbps = 320)
+        val played = repository.playable(listOf(track("5"))).single()
+        assertTrue(played.streamUrl.contains("/library/parts/5/"))
+        assertEquals(key("5"), played.cacheKey)
+    }
+
+    @Test
+    fun `offline a cached transcode plays whatever the setting`() = runTest(timeout = SLOW_FIRST_MOCKS) {
+        every { network.isMetered() } returns false
+        every { network.isOnline() } returns false
+        coEvery { cache.versions("m1", "6", any()) } returns CachedVersions(original = false, transcodeKbps = 128)
+        repository.playable(listOf(track("6"))).single()
+        coVerify { cache.replayTranscode(any(), "m1", "6", 128) }
     }
 
     @Test

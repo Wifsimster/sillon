@@ -59,4 +59,24 @@ class ListeningDataSourceTest {
         assertNull(cache.opened)
         assertEquals(trackKey, network.opened?.key)
     }
+
+    @Test
+    fun `a transcode the cache knows goes through it under its stable key`() {
+        val closed = mutableListOf<String>()
+        val key = ListeningCacheKeys.part(ListeningCacheKeys.transcode("m1", "1", 128), "session/base/00001.ts")
+        val source = ListeningDataSource(network, keyFor = { key.takeIf { _ -> "s1" in it } }, onClosed = { closed += it }) { cache }
+        source.open(spec("https://server/music/:/transcode/universal/session/s1/base/00001.ts?X-Plex-Token=t"))
+        assertEquals(key, cache.opened?.key)
+        assertNull(network.opened)
+        source.close()
+        assertEquals(listOf(key), closed)
+    }
+
+    @Test
+    fun `a transcode from another play goes to the network`() {
+        val source = ListeningDataSource(network, keyFor = { null }) { cache }
+        source.open(spec("https://server/music/:/transcode/universal/session/s2/base/00001.ts"))
+        assertNull(cache.opened)
+        assertEquals(null, network.opened?.key)
+    }
 }

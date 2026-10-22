@@ -33,6 +33,7 @@ import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.settings.StreamQuality
 import ovh.battistella.sillon.data.wear.AlbumPlays
 import ovh.battistella.sillon.data.wear.SleeveWearCache
 import ovh.battistella.sillon.data.wear.jellyfinAlbumPlays
@@ -84,6 +85,9 @@ data class Station(val key: String, val title: String?)
 const val LIBRARY_SHUFFLE_STATION = "jellyfin:library-shuffle"
 
 const val PLAYER_ART_PX = 900
+
+/** The transcode qualities the listening cache may hold, best first. */
+private val TRANSCODE_KBPS = StreamQuality.entries.mapNotNull { it.kbps }.sortedDescending()
 
 class NoServerException : IllegalStateException("No server selected")
 
@@ -430,14 +434,22 @@ class PlexRepository @Inject constructor(
             local[track.ratingKey]?.let { return@mapNotNull it.toPlayable(mode) }
             if (track.partKey == null) return@mapNotNull null
             val cacheKey = ListeningCacheKeys.track(server.machineId, track.ratingKey)
+            val cached = listeningCache.versions(server.machineId, track.ratingKey, TRANSCODE_KBPS)
             val source = StreamSource.choose(
                 downloaded = false,
-                originalCached = listeningCache.isWhole(cacheKey),
-                transcodeKbps = quality.kbps,
+                originalCached = cached.original,
+                cachedTranscodeKbps = cached.transcodeKbps,
+                wantedKbps = quality.kbps,
+                online = network.isOnline(),
             )
-            val url = if (source == StreamSource.TRANSCODE) {
-                val kbps = checkNotNull(quality.kbps)
+            val url = if (source.transcode) {
+                val kbps = checkNotNull(if (source == StreamSource.CACHED_TRANSCODE) cached.transcodeKbps else quality.kbps)
                 val session = UUID.randomUUID().toString()
+                if (source == StreamSource.CACHED_TRANSCODE) {
+                    listeningCache.replayTranscode(session, server.machineId, track.ratingKey, kbps)
+                } else {
+                    listeningCache.streamTranscode(session, server.machineId, track.ratingKey, kbps)
+                }
                 when (server.endpoint.kind) {
                     ServerKind.PLEX -> api.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, session)
                     ServerKind.JELLYFIN -> jellyfin.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, session)
@@ -456,7 +468,7 @@ class PlexRepository @Inject constructor(
                 artworkUrl = artworkUrl(server.endpoint, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
                 gainDb = loudness[track.ratingKey]?.forMode(mode),
                 albumKey = track.parentRatingKey,
-                cacheKey = cacheKey.takeIf { source.cached },
+                cacheKey = cacheKey.takeIf { source.original },
             )
         }
     }

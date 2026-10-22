@@ -8,27 +8,42 @@ enum class StreamSource {
     /** The original file, already whole in the listening cache: no network at all. */
     CACHE,
 
+    /** A transcode already whole in the listening cache: no network at all. */
+    CACHED_TRANSCODE,
+
     /** The original file from the server, kept in the listening cache as it plays. */
     ORIGINAL,
 
-    /** A server transcode (HLS, AAC): played but never cached. */
+    /** A server transcode (HLS, AAC), kept in the listening cache as it plays. */
     TRANSCODE,
     ;
 
-    /** The original file is played, so it carries a cache key. */
-    val cached: Boolean get() = this == CACHE || this == ORIGINAL
+    /** Played from the original file, so it carries the original's cache key. */
+    val original: Boolean get() = this == CACHE || this == ORIGINAL
+
+    /** Played from a transcode. */
+    val transcode: Boolean get() = this == CACHED_TRANSCODE || this == TRANSCODE
 
     companion object {
         /**
-         * Download first, then the cache, then the network. A transcode is never cached: its
-         * segments belong to one server session, and a 128 kbps copy must not stand in for the
-         * original. A whole original in the cache wins over a transcode, even on mobile data,
-         * since it costs no data and sounds better.
+         * The best copy at hand: the download, then the original in the cache, then a cached
+         * transcode at least as good as what the network asks for ([wantedKbps], null for the
+         * original), then the server. Offline, any cached copy beats nothing.
+         *
+         * A cached original wins over a transcode even on mobile data: no data, better sound.
+         * On Wi-Fi with only a transcode cached, the original streams, and replaces it.
          */
-        fun choose(downloaded: Boolean, originalCached: Boolean, transcodeKbps: Int?): StreamSource = when {
+        fun choose(
+            downloaded: Boolean,
+            originalCached: Boolean,
+            cachedTranscodeKbps: Int?,
+            wantedKbps: Int?,
+            online: Boolean = true,
+        ): StreamSource = when {
             downloaded -> DOWNLOAD
             originalCached -> CACHE
-            transcodeKbps == null -> ORIGINAL
+            cachedTranscodeKbps != null && (!online || (wantedKbps != null && cachedTranscodeKbps >= wantedKbps)) -> CACHED_TRANSCODE
+            wantedKbps == null -> ORIGINAL
             else -> TRANSCODE
         }
     }
