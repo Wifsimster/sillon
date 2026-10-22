@@ -16,6 +16,7 @@ import org.robolectric.RobolectricTestRunner
 import ovh.battistella.sillon.data.jellyfin.JellyfinApi
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.plex.PlexDevice
+import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.plex.PlexMedia
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
@@ -98,6 +99,7 @@ class SonosAccessTest {
         val store = mockk<SessionStore>(relaxed = true) {
             every { session } returns flowOf(Session.Ready("phone-token", jfServer))
             coEvery { clientId() } returns "client"
+            coEvery { speakerTokenLeft() } returns null
         }
         val realJf = JellyfinApi(mockk(relaxed = true), PlexDevice("Sillon", "1.0", "16", "Phone"))
         val jf = mockk<JellyfinApi>(relaxed = true) {
@@ -115,8 +117,11 @@ class SonosAccessTest {
 
         assertTrue(uri, uri.contains("api_key=speaker-token"))
         assertFalse(uri, uri.contains("phone-token"))
+        coVerify { store.rememberSpeakerToken("http://192.168.1.6:8096", "speaker-token") }
+        coVerify(exactly = 0) { store.forgetSpeakerToken() }
         access.close()
         coVerify { jf.signOut(jfServer.endpoint, "client-sonos", "speaker-token") }
+        coVerify { store.forgetSpeakerToken() }
 
         coEvery { jf.speakerToken(any(), any(), any()) } throws java.io.IOException("401")
         try {
@@ -125,6 +130,36 @@ class SonosAccessTest {
         } catch (e: SonosAccessException) {
             assertEquals(SonosAccessException.Reason.JELLYFIN_TOKEN, e.reason)
         }
+    }
+
+    @Test
+    fun `a speaker token left by a killed app is revoked on the next start`() = runTest(timeout = 5.minutes) {
+        val left = "http://192.168.1.6:8096" to "old-speaker-token"
+        val store = mockk<SessionStore>(relaxed = true) {
+            coEvery { clientId() } returns "client"
+            coEvery { speakerTokenLeft() } returns left
+        }
+        val jf = mockk<JellyfinApi>(relaxed = true)
+        val repo = PlexRepository(
+            api, store, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            jf, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+        )
+        val revoked = ServerEndpoint(left.first, left.second, ServerKind.JELLYFIN)
+
+        // Server down: kept for the next start.
+        coEvery { jf.signOut(any(), any(), any()) } throws java.io.IOException("unreachable")
+        runCatching { repo.revokeLeftoverSpeakerToken() }
+        coVerify(exactly = 0) { store.forgetSpeakerToken() }
+
+        // The server no longer knows it: nothing left to revoke.
+        coEvery { jf.signOut(any(), any(), any()) } throws PlexHttpException(401, "Unauthorized")
+        repo.revokeLeftoverSpeakerToken()
+        coVerify(exactly = 1) { store.forgetSpeakerToken() }
+
+        coEvery { jf.signOut(any(), any(), any()) } returns Unit
+        repo.revokeLeftoverSpeakerToken()
+        coVerify(exactly = 3) { jf.signOut(revoked, "client-sonos", "old-speaker-token") }
+        coVerify(exactly = 2) { store.forgetSpeakerToken() }
     }
 
     private suspend fun assertRefused() {
