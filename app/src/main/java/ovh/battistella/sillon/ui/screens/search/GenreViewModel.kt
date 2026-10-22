@@ -96,7 +96,7 @@ class GenreViewModel @Inject constructor(
                 val view = genres.view.first()
                 val genre = view.genres.firstOrNull { it.key == key }
                 val tracks = genre?.let { runCatching { genres.shuffle(it, view.online) }.getOrDefault(emptyList()) }.orEmpty()
-                if (tracks.isEmpty()) _nothingToPlay.value = true else playback.play(tracks, 0)
+                if (tracks.isEmpty()) _nothingToPlay.value = true else playback.play(tracks, 0, pickStart = true)
             } finally {
                 _shuffling.value = false
             }

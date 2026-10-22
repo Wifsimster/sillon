@@ -25,6 +25,8 @@ import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.network.NetworkMonitor
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.ServerEndpoint
+import ovh.battistella.sillon.data.rating.RatingBook
+import ovh.battistella.sillon.data.rating.withoutOneStar
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
@@ -63,7 +65,9 @@ class GenreRepositoryTest {
     private val settings = mockk<SettingsStore> { every { loudness } returns flowOf(LoudnessMode.OFF) }
     private val store = GenreCache(ApplicationProvider.getApplicationContext())
 
-    private fun repo(filter: GenreShuffleFilter = GenreShuffleFilter.KeepAll) =
+    private val keepAll = object : GenreShuffleFilter {}
+
+    private fun repo(filter: GenreShuffleFilter = keepAll) =
         GenreRepository(plex, store, searchHome, downloads, network, settings, filter)
 
     private fun view(r: GenreRepository) = runBlocking { r.view.first() }
@@ -163,5 +167,30 @@ class GenreRepositoryTest {
         online.value = false
         val rock = view(r).genres.single()
         assertEquals(listOf("t1"), r.shuffle(rock, online = false).map { it.ratingKey })
+    }
+
+    @Test
+    fun `the 1-star rule keeps a track rated 1 star out of the genre shuffle, online and offline`() = runBlocking {
+        val book = RatingBook().rate("1-b", 1).rate("t1b", 1)
+        coEvery { plex.withoutOneStar(any()) } answers { book.withoutOneStar(firstArg()) }
+        coEvery { plex.ratingBook() } returns book
+        coEvery { plex.tracksOf(any()) } answers {
+            val album = firstArg<String>()
+            listOf(PlexMetadata("$album-a", type = "track"), PlexMetadata("$album-b", type = "track"))
+        }
+        val kept = slot<List<PlexMetadata>>()
+        coEvery { plex.playable(capture(kept), any()) } answers {
+            kept.captured.map { PlayableTrack(it.ratingKey, "u", it.ratingKey, null, null, null, null, null) }
+        }
+        rows.value = listOf(downloaded("1", "t1"), downloaded("1", "t1b"))
+        val r = repo(GenreShuffleFilter.WithoutOneStar(plex))
+        r.refresh(now = 1_000)
+        val rock = view(r).genres.first { it.key == "rock" }
+        val played = r.shuffle(rock, online = true, random = Random(1)).map { it.ratingKey }.toSet()
+        assertEquals(setOf("1-a", "2-a", "2-b", "secret-a", "secret-b"), played)
+
+        online.value = false
+        val offlineRock = view(r).genres.single()
+        assertEquals(listOf("t1"), r.shuffle(offlineRock, online = false).map { it.ratingKey })
     }
 }
