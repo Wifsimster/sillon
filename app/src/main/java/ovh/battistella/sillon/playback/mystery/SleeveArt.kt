@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.net.Uri
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.createBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ovh.battistella.sillon.R
 import java.io.ByteArrayOutputStream
@@ -40,7 +41,7 @@ class SleeveArt @Inject constructor(
 
     private fun render(): ByteArray {
         val size = SIZE_PX.toFloat()
-        val bitmap = Bitmap.createBitmap(SIZE_PX, SIZE_PX, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(SIZE_PX, SIZE_PX)
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         canvas.drawColor(SleeveColors.KRAFT)

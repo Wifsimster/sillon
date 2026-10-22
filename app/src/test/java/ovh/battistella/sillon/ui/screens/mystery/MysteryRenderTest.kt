@@ -115,8 +115,8 @@ class MysteryRenderTest {
             hasNext = true,
             hasPrevious = true,
         )
-        save(capture { player(hidden, MYSTERY) }, "player-hidden-$lang.png")
-        save(capture { player(hidden, MYSTERY.copy(offline = true)) }, "player-hidden-offline-$lang.png")
+        save(capture { MysteryPlayer(hidden, MYSTERY) }, "player-hidden-$lang.png")
+        save(capture { MysteryPlayer(hidden, MYSTERY.copy(offline = true)) }, "player-hidden-offline-$lang.png")
 
         val shown = hidden.copy(
             currentKey = "3",
@@ -128,14 +128,14 @@ class MysteryRenderTest {
         )
         val revealed = MYSTERY.copy(revealed = true, left = setOf("1", "2", "3"))
         compose.mainClock.autoAdvance = false
-        save(capture(frameMs = 700) { player(shown, revealed) }, "reveal-sliding-$lang.png")
+        save(capture(frameMs = 700) { MysteryPlayer(shown, revealed) }, "reveal-sliding-$lang.png")
         compose.mainClock.autoAdvance = true
-        save(capture { player(shown, revealed.copy(revealSeen = true)) }, "reveal-done-$lang.png")
-        save(capture { player(shown, revealed.copy(revealSeen = true), keep = KeepResult.KEPT) }, "reveal-kept-$lang.png")
+        save(capture { MysteryPlayer(shown, revealed.copy(revealSeen = true)) }, "reveal-done-$lang.png")
+        save(capture { MysteryPlayer(shown, revealed.copy(revealSeen = true), keep = KeepResult.KEPT) }, "reveal-kept-$lang.png")
     }
 
     @Composable
-    private fun player(state: PlayerUiState, mystery: Mystery, keep: KeepResult? = null) = PlayerContent(
+    private fun MysteryPlayer(state: PlayerUiState, mystery: Mystery, keep: KeepResult? = null) = PlayerContent(
         state = state,
         startingRadio = false,
         mystery = mystery,
