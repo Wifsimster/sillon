@@ -102,6 +102,7 @@ fun PlayerScreen(
     val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val sides by viewModel.sides.collectAsStateWithLifecycle()
+    val together by viewModel.together.collectAsStateWithLifecycle()
     PlayerContent(
         state = state,
         startingRadio = startingRadio,
@@ -113,7 +114,7 @@ fun PlayerScreen(
         sides = sides,
         controls = viewModel,
         onClose = onClose,
-        onTogether = onTogether,
+        onTogether = onTogether.takeIf { together },
     )
 }
 
@@ -128,7 +129,7 @@ fun PlayerContent(
     wear: Wear?,
     controls: PlayerControls,
     onClose: () -> Unit,
-    onTogether: () -> Unit,
+    onTogether: (() -> Unit)?,
     sides: SideState = SideState(),
 ) {
     val reducedMotion = rememberReducedMotion()
@@ -328,7 +329,7 @@ private fun coverColor(uri: String?): Color? {
 @Composable
 fun PlayerHeader(
     onClose: () -> Unit,
-    onTogether: () -> Unit,
+    onTogether: (() -> Unit)?,
     startingRadio: Boolean,
     radioEnabled: Boolean,
     onRadio: () -> Unit,
@@ -345,8 +346,10 @@ fun PlayerHeader(
                 Icon(Icons.Rounded.Share, stringResource(R.string.share_card))
             }
         }
-        IconButton(onClick = onTogether) {
-            Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
+        if (onTogether != null) {
+            IconButton(onClick = onTogether) {
+                Icon(Icons.Rounded.Groups, stringResource(R.string.together_open))
+            }
         }
         when {
             !showRadio -> Unit

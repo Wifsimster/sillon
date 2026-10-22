@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -59,6 +60,10 @@ fun TogetherScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val available by viewModel.available.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
+    // No entry point leads here on Plex; a restored back stack or a server change still can.
+    LaunchedEffect(available) {
+        if (available == false) onBack()
+    }
     TogetherContent(
         state = state,
         available = available,
