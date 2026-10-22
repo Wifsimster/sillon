@@ -16,6 +16,7 @@ class PlayerViewModel @Inject constructor(
     private val repository: PlexRepository,
 ) : ViewModel() {
     val state = playback.state
+    val sides = playback.sideState
 
     private val _startingRadio = MutableStateFlow(false)
     val startingRadio = _startingRadio.asStateFlow()
@@ -31,6 +32,7 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun flipSide() = playback.flipSide()
     fun playPause() = playback.playPause()
     fun next() = playback.next()
     fun previous() = playback.previous()

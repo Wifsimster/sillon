@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.ui.screens.player
 
 import android.graphics.drawable.BitmapDrawable
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import ovh.battistella.sillon.playback.PlayerUiState
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.formatDuration
@@ -62,6 +64,8 @@ fun PlayerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
+    val sides by viewModel.sides.collectAsStateWithLifecycle()
+    val reducedMotion = rememberReducedMotion()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
 
     val tint by animateColorAsState(
@@ -91,27 +95,23 @@ fun PlayerScreen(
                 }
             }
         }
-        Artwork(
-            state.artworkUri,
-            Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
-            cornerRadius = 16.dp,
-        )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                state.title,
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Crossfade(sides.ended, label = "side end") { end ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (end != null) {
+                    SideEndRecord(reducedMotion, Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f))
+                    SideEndPanel(end, onFlip = viewModel::flipSide)
+                } else {
+                    Artwork(
+                        state.artworkUri,
+                        Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
+                        cornerRadius = 16.dp,
+                    )
+                    NowPlayingTitle(state, sides.current)
+                }
+            }
         }
 
         val duration = state.durationMs.coerceAtLeast(1L).toFloat()
@@ -164,6 +164,34 @@ fun PlayerScreen(
                 Icon(icon, contentDescription = null, tint = tint)
             }
         }
+    }
+}
+
+@Composable
+private fun NowPlayingTitle(state: PlayerUiState, side: String?) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (side != null) {
+            Text(
+                stringResource(R.string.side_label, side),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Text(
+            state.title,
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
