@@ -39,9 +39,13 @@ go, with no ads, no tracking and no subscription.
   big covers, a mini-player always within reach.
 - 📻 **Radios.** Your server's library radios (Library, Deep Cuts, Time
   Travel…), Plex's *Mixes for you*, a radio for every artist, and from the
-  player, a radio of tracks that sound like the one playing. **Never played**
-  plays only the tracks you have never listened to, or draws an album you have
-  never played: the card tells you how much of your library is still waiting.
+  player, a radio of tracks that sound like the one playing.
+- 🧭 **Never played.** A radio of the tracks you have never heard, or an album you
+  have never played, drawn at random. A card shows how much is still waiting.
+- 💿 **Sleeve wear.** Covers age as you play them, like a real record: yellowed
+  edges, worn corners, a ring. One switch in Settings turns it off.
+- 👥 **Listen together.** Several phones play the same track at the same moment,
+  through your own server. Jellyfin only: Plex offers no way to do it.
 - ⭐ **Your taste, front and centre.** Your star ratings on every track,
   popularity bars to spot an album's hits, and **My 5 stars**: one tap shuffles
   every track you love.
@@ -55,7 +59,8 @@ go, with no ads, no tracking and no subscription.
   70s record to a loud modern master.
 - 📶 **Easy on your data plan.** Original quality on Wi-Fi, AAC at 320, 192 or
   128 kbps on mobile data, chosen separately and transcoded by your server.
-- 🖥️ **Plex or Jellyfin.** Sign in to either; everything below works with both.
+- 🖥️ **Plex or Jellyfin.** Sign in to either; everything works with both,
+  except listening together.
 - 📊 **Your server stays in sync.** What you play shows under *Now playing* on
   your server, lands in the history and counts as played, like the official apps.
 - 🔒 **Private.** No account but your server's, no analytics, no ads. Your
@@ -97,12 +102,14 @@ is rebuilt on every push.
 | **Playback** | Background play, notification and lock-screen controls, Bluetooth and headset buttons, gapless albums, shuffle, repeat, loudness levelling (per track or album) |
 | **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
 | **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), *Never played* (tracks or whole albums, Plex and Jellyfin), also in the car |
+| **Covers** | Sleeve wear: covers age with your plays (yellowed edges, worn corners, ring wear, a crease) on the album grids, the album page and the player; on by default, off in Settings → Appearance |
+| **Together** | Listen together on Jellyfin (SyncPlay): shared play, pause, skip and seek; the notification, headset buttons and Android Auto control the group. Not available on Plex |
 | **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |
 | **Resume** | The queue and position are remembered: *play* on a headset, Bluetooth or in the car resumes where the music stopped, even after the app was closed |
 | **Offline** | Album and playlist downloads with covers, a Downloads tab that works with no network |
 | **Data** | Streaming quality per network (Original / 320 / 192 / 128 kbps AAC), Wi-Fi-only downloads |
 | **Plex** | PIN sign-in, owned and shared servers, automatic reconnection, play reports to the server |
-| **Jellyfin** | Password or Quick Connect sign-in, HTTP or HTTPS servers, transcoding, play reports to the server |
+| **Jellyfin** | Password or Quick Connect sign-in, HTTP or HTTPS servers, transcoding, play reports to the server, listen together (SyncPlay) |
 
 ## Identity
 
@@ -147,11 +154,14 @@ app/src/main/java/ovh/battistella/sillon/
 ├─ data/plex/        Plex wire models, HTTP client, connection selection
 ├─ data/jellyfin/    Jellyfin client, mapped onto the same models
 ├─ data/session/     Account token + chosen server (DataStore)
-├─ data/settings/    Streaming quality, download preferences (DataStore)
+├─ data/settings/    Settings, saved queue, never-played counts (DataStore)
 ├─ data/local/       Downloaded tracks (Room)
+├─ data/network/     Wi-Fi / mobile data / offline monitor
+├─ data/wear/        Sleeve wear: play counts per album, levels, cache
 ├─ data/repository/  PlexRepository: what the UI asks for, from Plex or Jellyfin
 ├─ download/         Download queue and WorkManager worker
-├─ playback/         Media3 service, Android Auto tree, play reports to Plex
+├─ playback/         Media3 service, Android Auto tree, radios, play reports
+├─ together/         Listen together: clock sync, session, drift correction
 ├─ ui/               Compose screens, navigation, theme, components
 └─ di/               Hilt module
 ```
@@ -188,6 +198,9 @@ in GitHub Actions; pushes to `main` are released with semantic-release
   again until the app restarts; nothing about skips is saved. Offline, the radio
   draws from your downloads, using the play counts saved the last time Sillon
   reached the server.
+- *Listen together* uses Jellyfin's SyncPlay: your Jellyfin account must be
+  allowed to use it, and gapless playback is off during a session. How it works
+  and its limits: [docs/listen-together.md](docs/listen-together.md).
 - Loudness levelling only turns tracks down (the player can't amplify), as
   ReplayGain targets a quieter reference than most modern masters: with it on,
   turn the phone volume up a little. Plex needs *loudness analysis* enabled on
