@@ -190,6 +190,7 @@ class MysteryRenderTest {
         override fun revealSeen() = Unit
         override fun keepSurprise() = Unit
         override fun anotherSurprise() = Unit
+        override fun flipSide() = Unit
         override fun playPause() = Unit
         override fun next() = Unit
         override fun previous() = Unit

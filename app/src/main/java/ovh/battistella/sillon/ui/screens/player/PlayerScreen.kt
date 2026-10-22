@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.ui.screens.player
 
 import android.graphics.drawable.BitmapDrawable
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -59,6 +60,7 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.formatDuration
 import ovh.battistella.sillon.playback.PlayerUiState
+import ovh.battistella.sillon.playback.SideState
 import ovh.battistella.sillon.playback.mystery.KeepResult
 import ovh.battistella.sillon.playback.mystery.Mystery
 import ovh.battistella.sillon.playback.mystery.MysteryMask
@@ -74,6 +76,7 @@ interface PlayerControls {
     fun revealSeen()
     fun keepSurprise()
     fun anotherSurprise()
+    fun flipSide()
     fun playPause()
     fun next()
     fun previous()
@@ -95,6 +98,7 @@ fun PlayerScreen(
     val keeping by viewModel.keeping.collectAsStateWithLifecycle()
     val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
+    val sides by viewModel.sides.collectAsStateWithLifecycle()
     PlayerContent(
         state = state,
         startingRadio = startingRadio,
@@ -103,6 +107,7 @@ fun PlayerScreen(
         keeping = keeping,
         keep = keep,
         wear = wear,
+        sides = sides,
         controls = viewModel,
         onClose = onClose,
         onTogether = onTogether,
@@ -121,7 +126,9 @@ fun PlayerContent(
     controls: PlayerControls,
     onClose: () -> Unit,
     onTogether: () -> Unit,
+    sides: SideState = SideState(),
 ) {
+    val reducedMotion = rememberReducedMotion()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
     val surprise = mystery?.takeIf { state.currentKey == MysteryMask.HIDDEN_KEY || it.contains(state.currentKey.orEmpty()) }
     val hidden = surprise != null && !surprise.revealed
@@ -153,35 +160,31 @@ fun PlayerContent(
             onRadio = controls::radioFromCurrent,
             showRadio = !hidden,
         )
-        val coverModifier = Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f)
-        when {
-            hidden -> MysteryCover(coverModifier)
-            revealing -> MysteryReveal(
-                coverUri = state.artworkUri,
-                onDone = {
-                    controls.revealSeen()
-                    view.announceForAccessibility(announcement)
-                },
-                modifier = coverModifier,
-            )
-            else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                state.title,
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Crossfade(sides.ended, label = "side end") { end ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                val coverModifier = Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f)
+                if (end != null) {
+                    SideEndRecord(reducedMotion, coverModifier)
+                    SideEndPanel(end, onFlip = controls::flipSide)
+                } else {
+                    when {
+                        hidden -> MysteryCover(coverModifier)
+                        revealing -> MysteryReveal(
+                            coverUri = state.artworkUri,
+                            onDone = {
+                                controls.revealSeen()
+                                view.announceForAccessibility(announcement)
+                            },
+                            modifier = coverModifier,
+                        )
+                        else -> Artwork(state.artworkUri, coverModifier, cornerRadius = 16.dp, wear = wear)
+                    }
+                    NowPlayingTitle(state, sides.current)
+                }
+            }
         }
         surprise?.let {
             if (hidden) {
@@ -247,6 +250,34 @@ fun PlayerContent(
                 Icon(icon, contentDescription = null, tint = tint)
             }
         }
+    }
+}
+
+@Composable
+private fun NowPlayingTitle(state: PlayerUiState, side: String?) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (side != null) {
+            Text(
+                stringResource(R.string.side_label, side),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Text(
+            state.title,
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

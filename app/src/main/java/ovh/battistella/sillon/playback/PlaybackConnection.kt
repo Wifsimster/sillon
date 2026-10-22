@@ -2,10 +2,12 @@ package ovh.battistella.sillon.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -46,6 +48,7 @@ data class PlayerUiState(
 @Singleton
 class PlaybackConnection @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val sides: SideSession,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val _state = MutableStateFlow(PlayerUiState())
@@ -117,9 +120,17 @@ class PlaybackConnection @Inject constructor(
         }
     }
 
-    fun play(tracks: List<PlayableTrack>, startIndex: Int = 0, shuffle: Boolean = false) {
+    val sideState = sides.state
+
+    fun play(
+        tracks: List<PlayableTrack>,
+        startIndex: Int = 0,
+        shuffle: Boolean = false,
+        albumSides: List<Side> = emptyList(),
+    ) {
         if (tracks.isEmpty()) return
         val items = tracks.map(MediaItems::from)
+        sides.setPlan(if (shuffle) null else SidePlan.of(albumSides, tracks.map { it.ratingKey }))
         withController {
             shuffleModeEnabled = shuffle
             val start = if (shuffle) items.indices.random() else startIndex.coerceIn(0, items.lastIndex)
@@ -131,6 +142,7 @@ class PlaybackConnection @Inject constructor(
 
     fun playItems(items: List<MediaItem>) {
         if (items.isEmpty()) return
+        sides.setPlan(null)
         withController {
             shuffleModeEnabled = false
             setMediaItems(items, 0, 0L)
@@ -148,6 +160,10 @@ class PlaybackConnection @Inject constructor(
             shuffleModeEnabled = false
             addMediaItems(items)
         }
+    }
+
+    fun flipSide() = withController {
+        sendCustomCommand(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY), Bundle.EMPTY)
     }
 
     fun playPause() = withController {

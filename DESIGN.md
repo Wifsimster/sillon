@@ -72,6 +72,9 @@ their licences in [`docs/fonts/`](docs/fonts).
 - Corners: 6 / 10 / 16 / 24 / 32 dp (extra small → extra large). Covers use 8–16 dp, circles for artists.
 - The player's tint animates over 600 ms when the track changes.
 - Splash screen: the spiral on vinyl black, then the app.
+- End of a side (*Listen by side*): the spiral as a record, the tonearm swings
+  up and away in 900 ms. With *Remove animations* on, the screen fades in with
+  the arm already lifted.
 
 ## Voice
 

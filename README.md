@@ -103,6 +103,7 @@ is rebuilt on every push.
 |---|---|
 | **Library** | Artists, albums, playlists; search as you type; choice of music library when the server has several |
 | **Playback** | Background play, notification and lock-screen controls, Bluetooth and headset buttons, gapless albums, shuffle, repeat, loudness levelling (per track or album) |
+| **Sides** | *Listen by side*: an album played in order stops at the end of side A, like a record, until you flip it (in the app, the notification and Android Auto) |
 | **Ratings** | Star ratings on tracks, popularity bars (Last.fm listeners via Plex), *My 5 stars* one-tap mix (*My favourites* on Jellyfin) |
 | **Radios** | Plex library radios and artist radios (Jellyfin: library shuffle and Instant Mix), *Never played* (tracks or whole albums, Plex and Jellyfin), also in the car |
 | **Surprise** | Mystery sleeve: a whole album drawn at random (rarely played first, or any album), hidden in the app, the notification, the lock screen and the car until the third track or *Reveal*; *Keep* adds it to a *Surprises* playlist; offline, drawn from your downloads |
@@ -212,6 +213,12 @@ in GitHub Actions; pushes to `main` are released with semantic-release
   ReplayGain targets a quieter reference than most modern masters: with it on,
   turn the phone volume up a little. Plex needs *loudness analysis* enabled on
   the music library; Jellyfin computes the gains from 10.9 on.
+- *Listen by side* uses the disc numbers from the server (sides A–B for disc 1,
+  C–D for disc 2…) or side markers in the track titles (`A1`, `Side B`); without
+  them, the album is cut at the track boundary closest to half its length.
+  Albums under 12 minutes or with fewer than 4 tracks play straight through.
+  Shuffle, radios and playlists are never cut, and sides are off while
+  listening together (the group decides when to pause).
 - Sillon is an independent client, not affiliated with Plex Inc. or the
   Jellyfin project. Plex and Jellyfin are trademarks of their owners; the logos
   come from [simple-icons](https://simpleicons.org/) (CC0). Screenshots show
