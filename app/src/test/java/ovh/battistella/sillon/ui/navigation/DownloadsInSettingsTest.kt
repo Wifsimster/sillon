@@ -56,9 +56,9 @@ class DownloadsInSettingsTest {
 
     @Test
     fun `the bottom bar has no downloads tab`() {
-        compose.setContent { SillonTheme { SillonNavigationBar(Routes.ARTISTS) {} } }
+        compose.setContent { SillonTheme { SillonNavigationBar(Routes.LISTEN) {} } }
 
-        listOf(R.string.library_artists, R.string.library_albums, R.string.library_playlists, R.string.library_search)
+        listOf(R.string.listen_tab, R.string.library_playlists, R.string.library_search)
             .forEach { compose.onNodeWithText(context.getString(it)).assertIsDisplayed() }
         compose.onNodeWithText(context.getString(R.string.library_downloads)).assertDoesNotExist()
     }
@@ -70,6 +70,8 @@ class DownloadsInSettingsTest {
             every { observe("s") } returns flowOf(listOf(row("1", "album-1"), row("2", "album-1")))
         }
         val settings = SettingsStore(context)
+        val settingsModel = SettingsViewModel(settings, downloads, repository)
+        val downloadsModel = DownloadsViewModel(repository, downloads, settings)
         lateinit var nav: NavHostController
         compose.setContent {
             nav = rememberNavController()
@@ -80,7 +82,7 @@ class DownloadsInSettingsTest {
                             onBack = {},
                             onDownloads = { nav.navigate(Routes.DOWNLOADS) },
                             contentPadding = PaddingValues(),
-                            viewModel = SettingsViewModel(settings, downloads, repository),
+                            viewModel = settingsModel,
                         )
                     }
                     composable(Routes.DOWNLOADS) {
@@ -88,7 +90,7 @@ class DownloadsInSettingsTest {
                             onAlbum = { nav.navigate(Routes.downloadedAlbum(it)) },
                             onBack = { nav.popBackStack() },
                             contentPadding = PaddingValues(),
-                            viewModel = DownloadsViewModel(repository, downloads, settings),
+                            viewModel = downloadsModel,
                         )
                     }
                     composable(
