@@ -46,9 +46,19 @@ import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
+import ovh.battistella.sillon.playback.mystery.MysteryMask
 import ovh.battistella.sillon.playback.mystery.MysterySession
 import ovh.battistella.sillon.playback.mystery.MysteryWatcher
 import ovh.battistella.sillon.playback.mystery.toSaved
+import ovh.battistella.sillon.sonos.Output
+import ovh.battistella.sillon.sonos.OutputNotice
+import ovh.battistella.sillon.sonos.OutputRequest
+import ovh.battistella.sillon.sonos.SonosGroup
+import ovh.battistella.sillon.sonos.SonosLoss
+import ovh.battistella.sillon.sonos.SonosOutput
+import ovh.battistella.sillon.sonos.SonosPlayer
+import ovh.battistella.sillon.sonos.SonosQueue
+import ovh.battistella.sillon.sonos.SonosTrack
 import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
 
@@ -62,6 +72,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var neverPlayed: NeverPlayedRadio
     @Inject lateinit var sides: SideSession
     @Inject lateinit var listeningCache: ListeningCache
+    @Inject lateinit var sonosOutput: SonosOutput
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -69,6 +80,9 @@ class PlaybackService : MediaLibraryService() {
     private var mysteryWatcher: MysteryWatcher? = null
     private var groupPlayer: ExoGroupPlayer? = null
     private var sidePlayer: SidePlayer? = null
+    private var exo: ExoPlayer? = null
+    private var sonos: SonosPlayer? = null
+    private var sonosReporter: TimelineReporter? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -84,6 +98,7 @@ class PlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+        exo = player
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
         player.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
@@ -98,17 +113,7 @@ class PlaybackService : MediaLibraryService() {
             }
         })
         player.addListener(NeverPlayedRefill(player, scope, neverPlayed))
-        timelineReporter = TimelineReporter(player, scope) send@{ report ->
-            val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return@send
-            repository.reportPlayback(
-                server = server,
-                ratingKey = report.ratingKey,
-                state = report.state,
-                timeMs = report.timeMs,
-                durationMs = report.durationMs,
-                continuing = report.continuing,
-            )
-        }.also { it.start() }
+        timelineReporter = TimelineReporter(player, scope, ::report).also { it.start() }
         // Sides take pauseAtEndOfMediaItems back only after the group has let go of it.
         groupPlayer = ExoGroupPlayer(player, afterExit = { sidePlayer?.sync() }).also(together::attach)
         mysteryWatcher = MysteryWatcher(player, mystery, scope, together.state.map { it.isActive }).also { it.start() }
@@ -134,12 +139,145 @@ class PlaybackService : MediaLibraryService() {
             together.state.map { it.isActive }.distinctUntilChanged().collect { sidePlayer.sync() }
         }
         scope.launch {
+            sonosOutput.requests.collect { request ->
+                when (request) {
+                    is OutputRequest.PlayOn -> playOnSonos(request.group)
+                    OutputRequest.BackToPhone -> backToPhone(resume = true)
+                }
+            }
+        }
+        // Listen together plays on each phone: joining a group brings the music back here.
+        scope.launch {
+            together.state.map { it.isActive }.distinctUntilChanged().collect { active ->
+                if (active && sonos != null) {
+                    backToPhone(resume = false)
+                    sonosOutput.tell(OutputNotice.TOGETHER_ON_PHONE)
+                }
+            }
+        }
+        scope.launch {
             runCatching { sides.restore() }
             sides.planChanges.collect {
                 sidePlayer.sync()
                 runCatching { sides.save() }
             }
         }
+    }
+
+    private suspend fun report(report: TimelineReport) {
+        val server = report.server ?: runCatching { repository.endpoint() }.getOrNull() ?: return
+        repository.reportPlayback(
+            server = server,
+            ratingKey = report.ratingKey,
+            state = report.state,
+            timeMs = report.timeMs,
+            durationMs = report.durationMs,
+            continuing = report.continuing,
+        )
+    }
+
+    /**
+     * Hands the queue to a Sonos group: the speaker fetches the tracks from the server itself, and
+     * the media session (notification, lock screen, player screen, volume keys) drives it.
+     */
+    @OptIn(UnstableApi::class)
+    private suspend fun playOnSonos(group: SonosGroup) {
+        val exo = exo ?: return
+        val current = sonos
+        if (current?.group?.id == group.id) return
+        if (together.state.value.isActive) return sonosOutput.tell(OutputNotice.TOGETHER_ON_PHONE)
+        val (items, index, positionMs) = current?.handBack()
+            ?: Triple((0 until exo.mediaItemCount).map(exo::getMediaItemAt), exo.currentMediaItemIndex, exo.currentPosition)
+        if (items.isEmpty()) return
+        if (refusedOnSonos(items)) return sonosOutput.tell(OutputNotice.MYSTERY_ON_PHONE)
+        val play = current?.wasPlaying ?: exo.playWhenReady
+        sonosOutput.set(Output.Connecting(group))
+        if (current != null) leaveSonos(current, pause = true)
+        val player = SonosPlayer(
+            group = group,
+            client = sonosOutput.client,
+            scope = scope,
+            resolve = ::resolveForSonos,
+            refuse = ::refusedOnSonos,
+            onRefused = { refused, at, position ->
+                backToPhone(resume = false)
+                exo.setMediaItems(refused, at, position)
+                exo.prepare()
+                exo.play()
+                sonosOutput.tell(OutputNotice.MYSTERY_ON_PHONE)
+            },
+            onLost = { reason ->
+                // Someone else plays on the speaker now: leave it alone.
+                backToPhone(resume = false, pause = reason != SonosLoss.TAKEN_OVER)
+                sonosOutput.tell(
+                    when (reason) {
+                        SonosLoss.UNREACHABLE -> OutputNotice.UNREACHABLE
+                        SonosLoss.COULD_NOT_PLAY -> OutputNotice.COULD_NOT_PLAY
+                        SonosLoss.TAKEN_OVER -> OutputNotice.TAKEN_OVER
+                    },
+                )
+            },
+        )
+        val started = runCatching { player.start(items, index, positionMs, play, exo.shuffleModeEnabled, exo.repeatMode) }
+        if (started.isFailure) {
+            Log.w(TAG, "Sonos did not take the queue: ${started.exceptionOrNull()?.message}")
+            player.release()
+            if (current != null) restoreOnPhone(items, index, positionMs, play = false)
+            sonosOutput.set(Output.Phone)
+            sonosOutput.tell(OutputNotice.FAILED)
+            return
+        }
+        exo.pause()
+        // Sides pause the phone's player between faces; the speaker plays the record through.
+        sides.setPlan(null)
+        sonos = player
+        mediaSession?.player = player
+        sonosReporter = TimelineReporter(player, scope, ::report).also { it.start() }
+        sonosOutput.set(Output.OnSonos(group))
+    }
+
+    /** Brings the music back to the phone where the speaker stands; plays on when [resume] and it was playing. */
+    private suspend fun backToPhone(resume: Boolean, pause: Boolean = true) {
+        val player = sonos ?: return sonosOutput.set(Output.Phone)
+        val (items, index, positionMs) = player.handBack()
+        val wasPlaying = player.wasPlaying
+        leaveSonos(player, pause)
+        restoreOnPhone(items, index, positionMs, resume && wasPlaying)
+        sonosOutput.set(Output.Phone)
+    }
+
+    @OptIn(UnstableApi::class)
+    private suspend fun leaveSonos(player: SonosPlayer, pause: Boolean) {
+        sonos = null
+        sonosReporter?.release()
+        sonosReporter = null
+        sidePlayer?.let { mediaSession?.player = it }
+        if (pause) player.pauseSpeaker()
+        player.release()
+    }
+
+    private fun restoreOnPhone(items: List<MediaItem>, index: Int, positionMs: Long, play: Boolean) {
+        val exo = exo ?: return
+        if (items.isEmpty()) return
+        val phone = (0 until exo.mediaItemCount).map { exo.getMediaItemAt(it).mediaId }
+        val at = SonosQueue.phoneIndex(phone, items.map { it.mediaId }, index)
+        if (at != null) exo.seekTo(at, positionMs) else exo.setMediaItems(items, index, positionMs)
+        exo.prepare()
+        if (play) exo.play()
+    }
+
+    private suspend fun resolveForSonos(items: List<MediaItem>): List<SonosTrack?> {
+        val tracks = runCatching { repository.sonosTracks(items.map { it.mediaId }) }
+            .onFailure { Log.w(TAG, "Sonos tracks failed: ${it.message}") }
+            .getOrDefault(emptyMap())
+        return items.map { tracks[it.mediaId] }
+    }
+
+    /** A hidden mystery sleeve stays on the phone: the Sonos app would show the album. */
+    private fun refusedOnSonos(items: List<MediaItem>): Boolean {
+        if (items.any(MysteryMask::isMasked)) return true
+        val hidden = mystery.state.value?.takeIf { !it.revealed } ?: return false
+        return items.any { hidden.contains(it.mediaId) }
     }
 
     @OptIn(UnstableApi::class)
@@ -237,6 +375,7 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         mediaSession?.player?.let { player ->
             snapshot(player)?.let { queue -> runBlocking { runCatching { playbackState.save(queue) } } }
@@ -248,11 +387,16 @@ class PlaybackService : MediaLibraryService() {
         groupPlayer?.let(together::detach)
         groupPlayer = null
         sidePlayer = null
+        // The speaker plays on by itself; Sillon only stops following it.
+        sonosReporter?.release()
+        sonosReporter = null
+        sonos?.release()
+        sonos = null
+        sonosOutput.set(Output.Phone)
         scope.cancel()
-        mediaSession?.run {
-            player.release()
-            release()
-        }
+        mediaSession?.release()
+        exo?.release()
+        exo = null
         mediaSession = null
         super.onDestroy()
     }

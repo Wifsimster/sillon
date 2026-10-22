@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.data.repository
 
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -43,6 +44,11 @@ import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.cache.StreamSource
+import ovh.battistella.sillon.sonos.Didl
+import ovh.battistella.sillon.sonos.SonosFormats
+import ovh.battistella.sillon.sonos.SonosStream
+import ovh.battistella.sillon.sonos.SonosTrack
+import ovh.battistella.sillon.sonos.audioFormat
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -86,6 +92,10 @@ data class Station(val key: String, val title: String?)
 const val LIBRARY_SHUFFLE_STATION = "jellyfin:library-shuffle"
 
 const val PLAYER_ART_PX = 900
+
+private const val SONOS_ART_PX = 600
+
+private const val TAG = "SillonRepository"
 
 /** The transcode qualities the listening cache may hold, best first. */
 private val TRANSCODE_KBPS = StreamQuality.entries.mapNotNull { it.kbps }.sortedDescending()
@@ -484,6 +494,62 @@ class PlexRepository @Inject constructor(
                 cacheKey = cacheKey.takeIf { source.original },
             )
         }
+    }
+
+    /**
+     * The tracks as a Sonos speaker fetches them, by key: the original file when the speaker
+     * plays it, else an MP3 transcode; never a download or the listening cache (the speaker
+     * reaches the server itself). On Plex the URLs carry a transient token, not the account's.
+     */
+    suspend fun sonosTracks(keys: List<String>): Map<String, SonosTrack> {
+        if (keys.isEmpty()) return emptyMap()
+        val server = currentServer()
+        val clientId = sessionStore.clientId()
+        val tracks = onServer(
+            plex = { id, endpoint -> api.metadataBatch(id, endpoint, keys) },
+            jellyfin = { id, endpoint -> jellyfin.itemsWithFormat(endpoint, id, keys) },
+        )
+        val endpoint = sonosEndpoint(clientId, server)
+        return tracks.mapNotNull { track ->
+            val part = track.partKey ?: return@mapNotNull null
+            val stream = SonosFormats.plan(track.audioFormat())
+            val (uri, mime) = when (stream) {
+                is SonosStream.Direct -> streamUrl(endpoint, part) to stream.mimeType
+                SonosStream.Transcode -> sonosTranscodeUrl(endpoint, clientId, track.ratingKey) to SonosStream.Transcode.MIME_TYPE
+            }
+            val didl = Didl.track(
+                key = track.ratingKey,
+                uri = uri,
+                mimeType = mime,
+                title = track.title,
+                artist = track.trackArtist,
+                album = track.parentTitle,
+                artUri = artworkUrl(endpoint, track.artwork, SONOS_ART_PX),
+            )
+            track.ratingKey to SonosTrack(track.ratingKey, uri, didl)
+        }.toMap()
+    }
+
+    private fun sonosTranscodeUrl(endpoint: ServerEndpoint, clientId: String, key: String): String {
+        val session = UUID.randomUUID().toString()
+        val kbps = SonosStream.Transcode.KBPS
+        return when (endpoint.kind) {
+            ServerKind.PLEX -> api.sonosTranscodeUrl(endpoint, clientId, key, kbps, session)
+            ServerKind.JELLYFIN -> jellyfin.sonosTranscodeUrl(endpoint, clientId, key, kbps, session)
+        }
+    }
+
+    /**
+     * The server as the speaker sees it. On Plex, a fresh transient token each time (one request),
+     * so none outlives its session; the account token only when the server won't give one.
+     */
+    private suspend fun sonosEndpoint(clientId: String, server: SelectedServer): ServerEndpoint {
+        val endpoint = server.endpoint
+        if (endpoint.kind != ServerKind.PLEX) return endpoint
+        val token = runCatching { api.transientToken(clientId, endpoint) }
+            .onFailure { Log.w(TAG, "no transient token, the speaker gets the account token: ${it.message}") }
+            .getOrNull()
+        return if (token != null) endpoint.copy(token = token) else endpoint
     }
 
     suspend fun loudness(tracks: List<PlexMetadata>): Map<String, Loudness> {

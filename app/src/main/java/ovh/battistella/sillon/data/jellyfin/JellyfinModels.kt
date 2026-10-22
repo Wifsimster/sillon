@@ -6,6 +6,7 @@ import ovh.battistella.sillon.data.plex.PlexDirectory
 import ovh.battistella.sillon.data.plex.PlexMedia
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.plex.PlexPart
+import ovh.battistella.sillon.data.plex.PlexStream
 
 @Serializable
 data class JellyfinPublicInfo(
@@ -61,6 +62,24 @@ data class JellyfinItem(
     @SerialName("AlbumPrimaryImageTag") val albumPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: JellyfinUserData? = null,
     @SerialName("NormalizationGain") val normalizationGain: Float? = null,
+    /** Only when asked for (`fields=MediaSources`). */
+    @SerialName("MediaSources") val mediaSources: List<JellyfinMediaSource> = emptyList(),
+)
+
+@Serializable
+data class JellyfinMediaSource(
+    @SerialName("Container") val container: String? = null,
+    @SerialName("Bitrate") val bitrate: Int? = null,
+    @SerialName("MediaStreams") val streams: List<JellyfinMediaStream> = emptyList(),
+)
+
+@Serializable
+data class JellyfinMediaStream(
+    @SerialName("Type") val type: String = "",
+    @SerialName("Codec") val codec: String? = null,
+    @SerialName("SampleRate") val sampleRate: Int? = null,
+    @SerialName("BitDepth") val bitDepth: Int? = null,
+    @SerialName("BitRate") val bitRate: Int? = null,
 )
 
 @Serializable
@@ -106,7 +125,18 @@ fun JellyfinItem.toMetadata(): PlexMetadata {
         viewCount = userData?.playCount,
         normalizationGain = normalizationGain,
         media = if (type == "Audio") {
-            listOf(PlexMedia(container = container, parts = listOf(PlexPart(key = streamPath(id, container)))))
+            val audio = mediaSources.firstOrNull()?.streams?.firstOrNull { it.type == "Audio" }
+            val streams = audio?.let {
+                // Plex units: bitrate in kbps; stream type 2 is audio.
+                listOf(PlexStream(streamType = 2, codec = it.codec, samplingRate = it.sampleRate, bitDepth = it.bitDepth, bitrate = it.bitRate?.div(1000)))
+            }.orEmpty()
+            listOf(
+                PlexMedia(
+                    audioCodec = audio?.codec,
+                    container = container,
+                    parts = listOf(PlexPart(key = streamPath(id, container), streams = streams)),
+                ),
+            )
         } else {
             emptyList()
         },

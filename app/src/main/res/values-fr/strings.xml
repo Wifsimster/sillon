@@ -252,4 +252,33 @@
     <string name="listen_no_five_stars">Pas encore de titres 5 étoiles. Donne 5 étoiles à un titre et il arrive ici.</string>
     <string name="listen_no_favourites">Pas encore de favoris. Ajoute un titre à tes favoris et il arrive ici.</string>
     <string name="listen_failed">La lecture n\'a pas démarré. Réessaie.</string>
+    <string name="output_open">Lire sur…</string>
+    <string name="output_open_active">Lecture sur %1$s. Changer de sortie</string>
+    <string name="output_title">Lire sur</string>
+    <string name="output_phone">Ce téléphone</string>
+    <string name="output_selected">Sélectionné</string>
+    <string name="output_not_selected">Non sélectionné</string>
+    <plurals name="output_rooms">
+        <item quantity="one">Sonos · %1$d pièce</item>
+        <item quantity="many">Sonos · %1$d pièces</item>
+        <item quantity="other">Sonos · %1$d pièces</item>
+    </plurals>
+    <string name="output_playing_on">Lecture sur %1$s</string>
+    <string name="output_connecting">Envoi de la file vers %1$s…</string>
+    <string name="output_connecting_short">Connexion…</string>
+    <string name="output_searching">Recherche des enceintes Sonos sur ce Wi-Fi…</string>
+    <string name="output_none">Aucune enceinte Sonos sur ce Wi-Fi.</string>
+    <string name="output_rescan">Chercher à nouveau</string>
+    <string name="output_block_nothing">Lance d\'abord une écoute, puis envoie-la vers une enceinte.</string>
+    <string name="output_block_together">L\'écoute à plusieurs se joue sur chaque téléphone. Quitte la session pour écouter sur Sonos.</string>
+    <string name="output_block_mystery">Une pochette surprise reste sur ce téléphone : l\'app Sonos montrerait l\'album.</string>
+    <string name="output_sonos_note">L\'enceinte va chercher la musique sur ton serveur elle-même, par ton Wi-Fi. Sur Sonos, les faces, l\'écoute à plusieurs, le cache d\'écoute et la normalisation du volume sont coupés ; c\'est le volume de l\'enceinte qui compte.</string>
+    <string name="output_notice_unreachable">L\'enceinte Sonos ne répond plus. La musique est revenue sur ce téléphone, en pause.</string>
+    <string name="output_notice_could_not_play">L\'enceinte Sonos n\'a pas pu lire : elle n\'atteint peut-être pas ton serveur. La musique est revenue sur ce téléphone, en pause.</string>
+    <string name="output_notice_taken_over">Autre chose joue sur l\'enceinte Sonos. Sillon la laisse faire.</string>
+    <string name="output_notice_failed">L\'enceinte Sonos n\'a pas pris la file. La musique reste sur ce téléphone.</string>
+    <string name="output_notice_mystery">Les pochettes surprises se jouent sur ce téléphone : l\'app Sonos montrerait l\'album.</string>
+    <string name="output_notice_together">L\'écoute à plusieurs se joue sur chaque téléphone : la musique est revenue ici.</string>
+    <string name="output_notice_ok">OK</string>
+    <string name="together_not_on_sonos">Écouter à plusieurs, pas pendant une lecture sur Sonos</string>
 </resources>

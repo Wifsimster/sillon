@@ -94,6 +94,12 @@ class JellyfinApi(
             items(server, deviceId, "Items", "ids" to chunk.joinToString(",")).map { it.toMetadata() }
         }
 
+    /** Tracks with their codec, sample rate and bit depth, to tell what a Sonos speaker can play. */
+    suspend fun itemsWithFormat(server: ServerEndpoint, deviceId: String, ids: List<String>): List<PlexMetadata> =
+        ids.chunked(BATCH_SIZE).flatMap { chunk ->
+            items(server, deviceId, "Items", "ids" to chunk.joinToString(","), "fields" to "MediaSources").map { it.toMetadata() }
+        }
+
     suspend fun playlists(server: ServerEndpoint, deviceId: String): List<PlexMetadata> =
         items(
             server, deviceId, "Items",
@@ -204,6 +210,20 @@ class JellyfinApi(
                 .addQueryParameter("maxStreamingBitrate", (kbps * 1000).toString())
                 .addQueryParameter("segmentContainer", "ts")
                 .addQueryParameter("mediaSourceId", id)
+                .addQueryParameter("deviceId", deviceId)
+                .addQueryParameter("playSessionId", session)
+                .build(),
+            server.token,
+        ).toString()
+
+    /** A plain-HTTP MP3 transcode (no HLS) for a Sonos speaker, which fetches it itself. */
+    fun sonosTranscodeUrl(server: ServerEndpoint, deviceId: String, id: String, kbps: Int, session: String): String =
+        withKey(
+            serverUrl(server, "Audio/$id/stream.mp3").newBuilder()
+                .addQueryParameter("static", "false")
+                .addQueryParameter("audioCodec", "mp3")
+                .addQueryParameter("audioBitRate", (kbps * 1000).toString())
+                .addQueryParameter("maxAudioChannels", "2")
                 .addQueryParameter("deviceId", deviceId)
                 .addQueryParameter("playSessionId", session)
                 .build(),
