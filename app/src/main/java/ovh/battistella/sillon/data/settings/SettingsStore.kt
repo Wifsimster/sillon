@@ -60,6 +60,12 @@ class SettingsStore @Inject constructor(
         context.settingsDataStore.edit { it[WALLPAPER_COLORS] = value }
     }
 
+    val listenBySide: Flow<Boolean> = context.settingsDataStore.data.map { it[LISTEN_BY_SIDE] ?: false }
+
+    suspend fun setListenBySide(value: Boolean) {
+        context.settingsDataStore.edit { it[LISTEN_BY_SIDE] = value }
+    }
+
     private fun String?.toQuality(default: StreamQuality) =
         StreamQuality.entries.firstOrNull { it.name == this } ?: default
 
@@ -73,5 +79,6 @@ class SettingsStore @Inject constructor(
         val MOBILE_QUALITY = stringPreferencesKey("stream_quality_mobile")
         val LOUDNESS = stringPreferencesKey("loudness")
         val WALLPAPER_COLORS = booleanPreferencesKey("wallpaper_colors")
+        val LISTEN_BY_SIDE = booleanPreferencesKey("listen_by_side")
     }
 }

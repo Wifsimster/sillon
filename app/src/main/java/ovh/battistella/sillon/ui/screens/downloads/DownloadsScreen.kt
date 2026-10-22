@@ -143,6 +143,7 @@ fun DownloadedAlbumScreen(
 ) {
     val album by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
+    val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
     TrackCollectionScreen(
         state = album?.let { Load.Ready(it) } ?: Load.Loading,
         nowPlayingKey = nowPlaying.currentKey,
@@ -151,6 +152,8 @@ fun DownloadedAlbumScreen(
         onPlay = { key -> if (key == null || viewModel.isReady(key)) viewModel.play(key) },
         onShuffle = viewModel::shuffle,
         contentPadding = contentPadding,
+        listenBySide = listenBySide,
+        onListenBySideChange = viewModel::setListenBySide,
         actions = {
             IconButton(onClick = {
                 viewModel.remove()

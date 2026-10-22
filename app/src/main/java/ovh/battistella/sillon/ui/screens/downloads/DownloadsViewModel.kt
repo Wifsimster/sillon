@@ -19,6 +19,8 @@ import ovh.battistella.sillon.data.repository.isPlayableOffline
 import ovh.battistella.sillon.data.repository.toPlayable
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.download.DownloadManager
+import ovh.battistella.sillon.playback.AlbumSides
+import ovh.battistella.sillon.playback.SideTrack
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.navigation.Routes
 import ovh.battistella.sillon.ui.screens.library.AlbumUi
@@ -93,6 +95,12 @@ class DownloadedAlbumViewModel @Inject constructor(
 ) : ViewModel() {
     private val albumKey: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
+    val listenBySide: StateFlow<Boolean> = settings.listenBySide.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setListenBySide(value: Boolean) {
+        viewModelScope.launch { settings.setListenBySide(value) }
+    }
+
     private val _state = MutableStateFlow<AlbumUi?>(null)
     val state = _state.asStateFlow()
 
@@ -116,6 +124,7 @@ class DownloadedAlbumViewModel @Inject constructor(
                     tracks = rows.map {
                         TrackUi(it.ratingKey, it.trackNumber, it.title, it.artist.takeIf { a -> a != it.albumArtist }, it.durationMs)
                     },
+                    sides = AlbumSides.split(rows.map { SideTrack(it.ratingKey, it.durationMs, it.discNumber, it.title) }),
                 )
             }
         }
@@ -129,7 +138,8 @@ class DownloadedAlbumViewModel @Inject constructor(
     fun play(trackKey: String?) {
         viewModelScope.launch {
             val tracks = playable()
-            playback.play(tracks, tracks.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0))
+            val sides = if (settings.listenBySide.first()) _state.value?.sides.orEmpty() else emptyList()
+            playback.play(tracks, tracks.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0), albumSides = sides)
         }
     }
 

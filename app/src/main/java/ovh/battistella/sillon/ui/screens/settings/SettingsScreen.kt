@@ -49,6 +49,11 @@ class SettingsViewModel @Inject constructor(
     val downloadWifiOnly = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val loudness = settings.loudness.stateIn(viewModelScope, SharingStarted.Eagerly, LoudnessMode.TRACK)
     val wallpaperColors = settings.wallpaperColors.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val listenBySide = settings.listenBySide.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setListenBySide(value: Boolean) {
+        viewModelScope.launch { settings.setListenBySide(value) }
+    }
 
     fun setWallpaperColors(value: Boolean) {
         viewModelScope.launch { settings.setWallpaperColors(value) }
@@ -83,6 +88,7 @@ fun SettingsScreen(
     val downloadWifiOnly by viewModel.downloadWifiOnly.collectAsStateWithLifecycle()
     val loudness by viewModel.loudness.collectAsStateWithLifecycle()
     val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
+    val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -129,6 +135,19 @@ fun SettingsScreen(
                         )
                     },
                     onSelect = viewModel::setLoudness,
+                )
+            }
+            item { HorizontalDivider() }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_sides)) },
+                    supportingContent = { Text(stringResource(R.string.settings_sides_hint)) },
+                    trailingContent = { Switch(checked = listenBySide, onCheckedChange = null) },
+                    modifier = Modifier.toggleable(
+                        value = listenBySide,
+                        role = Role.Switch,
+                        onValueChange = viewModel::setListenBySide,
+                    ),
                 )
             }
             item { HorizontalDivider() }
