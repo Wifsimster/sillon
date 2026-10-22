@@ -27,6 +27,7 @@ import ovh.battistella.sillon.ui.screens.library.LocalOpenTogether
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
 import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
+import ovh.battistella.sillon.ui.screens.settings.ListeningCacheSection
 import ovh.battistella.sillon.ui.screens.settings.SettingsScreen
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -210,7 +211,12 @@ private fun LibraryNavHost() {
                         PlaylistScreen(onBack = back, contentPadding = bottom)
                     }
                     composable(Routes.SETTINGS) {
-                        SettingsScreen(onBack = back, onDownloads = openDownloads, contentPadding = bottom)
+                        SettingsScreen(
+                            onBack = back,
+                            onDownloads = openDownloads,
+                            contentPadding = bottom,
+                            listeningCache = { ListeningCacheSection() },
+                        )
                     }
                     composable(Routes.TOGETHER) {
                         TogetherScreen(onBack = back, contentPadding = bottom)

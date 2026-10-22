@@ -2,9 +2,11 @@ package ovh.battistella.sillon.playback
 
 import android.net.Uri
 import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.UnstableApi
 
 data class PlayableTrack(
     val ratingKey: String,
@@ -17,9 +19,12 @@ data class PlayableTrack(
     val artworkUrl: String?,
     val gainDb: Float? = null,
     val albumKey: String? = null,
+    /** Set when the original file is streamed: the listening cache keeps it under this key. */
+    val cacheKey: String? = null,
 )
 
 object MediaItems {
+    @OptIn(UnstableApi::class)
     fun from(track: PlayableTrack): MediaItem {
         val uri = Uri.parse(track.streamUrl)
         val metadata = MediaMetadata.Builder()
@@ -37,6 +42,7 @@ object MediaItems {
             .setMediaId(track.ratingKey)
             .setUri(uri)
             .setMimeType(if (isTranscode(track.streamUrl)) MimeTypes.APPLICATION_M3U8 else null)
+            .setCustomCacheKey(track.cacheKey)
             .setMediaMetadata(metadata)
             .build()
     }

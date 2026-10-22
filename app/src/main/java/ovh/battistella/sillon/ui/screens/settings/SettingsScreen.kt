@@ -107,6 +107,8 @@ fun SettingsScreen(
     onDownloads: () -> Unit,
     contentPadding: PaddingValues,
     viewModel: SettingsViewModel = hiltViewModel(),
+    /** The listening cache settings, shown with the downloads; the app passes [ListeningCacheSection]. */
+    listeningCache: @Composable () -> Unit = {},
 ) {
     val wifiQuality by viewModel.wifiQuality.collectAsStateWithLifecycle()
     val mobileQuality by viewModel.mobileQuality.collectAsStateWithLifecycle()
@@ -147,6 +149,7 @@ fun SettingsScreen(
                     ),
                 )
             }
+            item { listeningCache() }
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.settings_quality_wifi)) }
             item { QualityChoices(wifiQuality, viewModel::setWifiQuality) }

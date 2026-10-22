@@ -11,7 +11,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
@@ -42,6 +44,8 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SavedQueue
+import ovh.battistella.sillon.playback.cache.ListeningCache
+import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.mystery.MysterySession
 import ovh.battistella.sillon.playback.mystery.MysteryWatcher
 import ovh.battistella.sillon.playback.mystery.toSaved
@@ -57,6 +61,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var together: ListenTogether
     @Inject lateinit var neverPlayed: NeverPlayedRadio
     @Inject lateinit var sides: SideSession
+    @Inject lateinit var listeningCache: ListeningCache
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -72,7 +77,9 @@ class PlaybackService : MediaLibraryService() {
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
+        val dataSources = listeningCache.dataSourceFactory(DefaultDataSource.Factory(this))
         val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSources))
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
@@ -197,6 +204,7 @@ class PlaybackService : MediaLibraryService() {
 
     private val fellBack = mutableSetOf<String>()
 
+    @OptIn(UnstableApi::class)
     private fun fallBackToOriginal(player: Player, error: PlaybackException) {
         val item = player.currentMediaItem ?: return
         val uri = item.localConfiguration?.uri?.toString() ?: return
@@ -207,8 +215,12 @@ class PlaybackService : MediaLibraryService() {
             val original = runCatching {
                 repository.metadata(item.mediaId)?.let { repository.streamUrl(repository.endpoint(), it) }
             }.getOrNull() ?: return@launch
+            val cacheKey = runCatching { ListeningCacheKeys.track(repository.currentServerId(), item.mediaId) }.getOrNull()
             if (player.currentMediaItem?.mediaId != item.mediaId) return@launch
-            player.replaceMediaItem(index, item.buildUpon().setUri(original).setMimeType(null).build())
+            player.replaceMediaItem(
+                index,
+                item.buildUpon().setUri(original).setMimeType(null).setCustomCacheKey(cacheKey).build(),
+            )
             player.prepare()
             player.play()
         }
