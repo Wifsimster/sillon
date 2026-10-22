@@ -13,15 +13,20 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/** Sends one SOAP action to a speaker and returns its output arguments. */
+fun interface SoapCaller {
+    suspend fun call(baseUrl: String, call: SoapCall): Map<String, String>
+}
+
 /** SOAP over plain HTTP to a speaker on the LAN (port 1400). Nothing leaves the local network. */
-class SonosClient(http: OkHttpClient) {
+class SonosClient(http: OkHttpClient) : SoapCaller {
     private val http = http.newBuilder()
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(8, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
         .build()
 
-    suspend fun call(baseUrl: String, call: SoapCall): Map<String, String> {
+    override suspend fun call(baseUrl: String, call: SoapCall): Map<String, String> {
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + call.service.path)
             .header("SOAPACTION", call.soapAction)

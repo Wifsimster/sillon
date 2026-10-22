@@ -41,7 +41,7 @@ enum class SonosLoss {
 @OptIn(UnstableApi::class)
 class SonosPlayer(
     val group: SonosGroup,
-    private val client: SonosClient,
+    private val client: SoapCaller,
     private val scope: CoroutineScope,
     /** The speaker's copy of each item (same order), or null for one it can't play. */
     private val resolve: suspend (List<MediaItem>) -> List<SonosTrack?>,
