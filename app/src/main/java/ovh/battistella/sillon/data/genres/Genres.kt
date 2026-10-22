@@ -48,6 +48,31 @@ object Genres {
 
     const val PAGE_SIZE = 1_000
 
+    /** Pages read at most: 100,000 albums. */
+    const val MAX_PAGES = 100
+
+    /**
+     * Every album of a listing, page by page. Stops on a short page, on a page that brings no new album
+     * (a server or proxy that ignores the start offset sends the first page again and again), or after
+     * [maxPages]. An album sent twice is kept once.
+     */
+    suspend fun allPages(
+        pageSize: Int = PAGE_SIZE,
+        maxPages: Int = MAX_PAGES,
+        fetch: suspend (start: Int) -> List<GenreAlbum>,
+    ): List<GenreAlbum> {
+        val albums = LinkedHashMap<String, GenreAlbum>()
+        var start = 0
+        repeat(maxPages) {
+            val page = fetch(start)
+            start += page.size
+            val before = albums.size
+            page.forEach { albums.putIfAbsent(it.key, it) }
+            if (page.size < pageSize || albums.size == before) return albums.values.toList()
+        }
+        return albums.values.toList()
+    }
+
     private const val PLEX_ALBUM = "9"
 
     /**

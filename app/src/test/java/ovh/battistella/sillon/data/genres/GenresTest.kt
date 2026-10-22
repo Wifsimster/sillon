@@ -3,10 +3,11 @@ package ovh.battistella.sillon.data.genres
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.random.Random
 
-/** Spellings merged, real genres kept apart, the order of the tiles, offline and the surprise. */
+/** Spellings merged, real genres kept apart, the order of the tiles, offline, the surprise and the paging. */
 class GenresTest {
     private fun album(key: String, vararg genres: String, artist: String = "Demo Artist", artistKey: String? = "a-$artist") =
         GenreAlbum(key, "Album $key", artist, artistKey, "/thumb/$key", "/artist/$artistKey", genres.toList())
@@ -152,5 +153,37 @@ class GenresTest {
         val drawn = Genres.shuffleAlbums(genre, Random(7))
         assertEquals(Genres.SHUFFLE_ALBUMS, drawn.size)
         assertEquals(drawn.size, drawn.map { it.key }.toSet().size)
+    }
+
+    @Test
+    fun `paging reads every page until a short one`() = runTest {
+        val library = (1..7).map { album("$it", "Rock") }
+        val starts = mutableListOf<Int>()
+        val albums = Genres.allPages(pageSize = 3) { start ->
+            starts += start
+            library.drop(start).take(3)
+        }
+        assertEquals(library, albums)
+        assertEquals(listOf(0, 3, 6), starts)
+    }
+
+    @Test
+    fun `paging stops when the server ignores the start and sends the same page again`() = runTest {
+        val firstPage = (1..3).map { album("$it", "Rock") }
+        var calls = 0
+        val albums = Genres.allPages(pageSize = 3) { calls++; firstPage }
+        assertEquals(firstPage, albums)
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun `paging gives up after the last page it may read`() = runTest {
+        var calls = 0
+        val albums = Genres.allPages(pageSize = 2, maxPages = 4) { start ->
+            calls++
+            listOf(album("${start + 1}", "Rock"), album("${start + 2}", "Rock"))
+        }
+        assertEquals(4, calls)
+        assertEquals(8, albums.size)
     }
 }

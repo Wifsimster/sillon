@@ -439,23 +439,16 @@ class PlexRepository @Inject constructor(
         val section = currentMusicSection() ?: return emptyList()
         return onServer(
             plex = { clientId, server ->
-                pages { start -> api.sectionItems(clientId, server, section.key, Genres.plexAlbumsQuery(start)).metadata }
-                    .map(Genres::fromPlex)
+                Genres.allPages { start ->
+                    api.sectionItems(clientId, server, section.key, Genres.plexAlbumsQuery(start)).metadata.map(Genres::fromPlex)
+                }
             },
             jellyfin = { deviceId, server ->
-                pages { start -> jellyfin.rawPage(server, deviceId, Genres.jellyfinAlbumsQuery(section.key, start)).items }
-                    .map(Genres::fromJellyfin)
+                Genres.allPages { start ->
+                    jellyfin.rawPage(server, deviceId, Genres.jellyfinAlbumsQuery(section.key, start)).items.map(Genres::fromJellyfin)
+                }
             },
         )
-    }
-
-    private suspend fun <T> pages(fetch: suspend (Int) -> List<T>): List<T> {
-        val all = mutableListOf<T>()
-        while (true) {
-            val page = fetch(all.size)
-            all += page
-            if (page.size < Genres.PAGE_SIZE) return all
-        }
     }
 
     suspend fun itemsByKeys(keys: List<String>): List<PlexMetadata> {
