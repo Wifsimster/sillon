@@ -49,6 +49,7 @@ import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.PopularityBars
 import ovh.battistella.sillon.ui.components.RatingStars
+import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.components.formatDuration
 
 @Composable
@@ -57,11 +58,17 @@ fun AlbumScreen(
     contentPadding: PaddingValues,
     viewModel: AlbumViewModel = hiltViewModel(),
 ) {
-    TrackCollectionRoute(viewModel, onBack, contentPadding)
+    val wear by viewModel.wear.collectAsStateWithLifecycle()
+    TrackCollectionRoute(viewModel, onBack, contentPadding, wear)
 }
 
 @Composable
-fun TrackCollectionRoute(viewModel: TrackCollectionViewModel, onBack: () -> Unit, contentPadding: PaddingValues) {
+fun TrackCollectionRoute(
+    viewModel: TrackCollectionViewModel,
+    onBack: () -> Unit,
+    contentPadding: PaddingValues,
+    wear: Wear? = null,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val download by viewModel.downloadStatus.collectAsStateWithLifecycle()
@@ -73,6 +80,7 @@ fun TrackCollectionRoute(viewModel: TrackCollectionViewModel, onBack: () -> Unit
         onPlay = viewModel::play,
         onShuffle = viewModel::shuffle,
         contentPadding = contentPadding,
+        wear = wear,
         actions = {
             if (state is Load.Ready) {
                 DownloadAction(download, onDownload = viewModel::download, onRemove = viewModel::removeDownload)
@@ -113,6 +121,7 @@ fun TrackCollectionScreen(
     onPlay: (String?) -> Unit,
     onShuffle: () -> Unit,
     contentPadding: PaddingValues,
+    wear: Wear? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Scaffold(
@@ -134,7 +143,7 @@ fun TrackCollectionScreen(
                 contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + 16.dp),
             ) {
                 item {
-                    AlbumHeader(album, onPlay = { onPlay(null) }, onShuffle = onShuffle)
+                    AlbumHeader(album, wear, onPlay = { onPlay(null) }, onShuffle = onShuffle)
                 }
                 items(album.tracks, key = { it.key }) { track ->
                     TrackRow(track, playing = nowPlayingKey == track.key, onClick = { onPlay(track.key) })
@@ -185,13 +194,13 @@ fun TrackRow(track: TrackUi, playing: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AlbumHeader(album: AlbumUi, onPlay: () -> Unit, onShuffle: () -> Unit) {
+private fun AlbumHeader(album: AlbumUi, wear: Wear?, onPlay: () -> Unit, onShuffle: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Artwork(album.artworkUrl, Modifier.size(240.dp), cornerRadius = 12.dp)
+        Artwork(album.artworkUrl, Modifier.size(240.dp), cornerRadius = 12.dp, wear = wear)
         Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         val subtitle = listOfNotNull(album.artist, album.year?.toString()).joinToString(" · ")
         if (subtitle.isNotEmpty()) {

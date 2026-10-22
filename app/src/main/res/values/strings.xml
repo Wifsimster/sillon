@@ -110,6 +110,13 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_wallpaper_colors">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_hint">Follow your wallpaper (Material You) instead of Sillon\'s colours</string>
+    <string name="settings_sleeve_wear">Sleeve wear</string>
+    <string name="settings_sleeve_wear_hint">Covers age as you play them, like a real record</string>
+    <string name="cover_wear_0">Cover, never played</string>
+    <string name="cover_wear_1">Cover, rarely played</string>
+    <string name="cover_wear_2">Cover, played now and then</string>
+    <string name="cover_wear_3">Cover, played often</string>
+    <string name="cover_wear_4">Cover, played a lot</string>
     <string name="never_played">Never played</string>
     <string name="never_played_albums">Never played: albums</string>
     <string name="never_played_hint">Tracks you have never listened to, at random</string>

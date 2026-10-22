@@ -62,6 +62,7 @@ fun PlayerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
+    val wear by viewModel.wear.collectAsStateWithLifecycle()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
 
     val tint by animateColorAsState(
@@ -95,6 +96,7 @@ fun PlayerScreen(
             state.artworkUri,
             Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f),
             cornerRadius = 16.dp,
+            wear = wear,
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(

@@ -5,11 +5,15 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.toFailed
 import javax.inject.Inject
@@ -64,12 +68,17 @@ class ArtistsViewModel @Inject constructor(
 @HiltViewModel
 class AlbumsViewModel @Inject constructor(
     private val repository: PlexRepository,
+    private val sleeveWear: SleeveWearRepository,
 ) : SectionGridViewModel(repository) {
+    val wear: StateFlow<Map<String, Int>> =
+        sleeveWear.levels.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     init {
         start()
     }
 
-    override suspend fun fetch(sectionKey: String) = repository.albums(sectionKey)
+    override suspend fun fetch(sectionKey: String) =
+        repository.albums(sectionKey).also { sleeveWear.refresh(sectionKey, it) }
 
     override fun subtitle(item: PlexMetadata): String? = item.parentTitle
 }

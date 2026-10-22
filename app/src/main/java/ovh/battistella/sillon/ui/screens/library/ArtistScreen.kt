@@ -24,6 +24,7 @@ import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.Message
+import ovh.battistella.sillon.ui.components.Wear
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +36,7 @@ fun ArtistScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
+    val wear by viewModel.wear.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -66,6 +68,7 @@ fun ArtistScreen(
                     onClick = onAlbum,
                     modifier = Modifier.padding(top = padding.calculateTopPadding()),
                     contentPadding = contentPadding,
+                    wear = { Wear.of(wear, it) },
                 )
             }
         }

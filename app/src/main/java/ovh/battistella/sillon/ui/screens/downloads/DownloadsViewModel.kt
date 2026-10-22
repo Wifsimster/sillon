@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.local.DownloadEntity
@@ -18,8 +19,10 @@ import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.repository.isPlayableOffline
 import ovh.battistella.sillon.data.repository.toPlayable
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
+import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.navigation.Routes
 import ovh.battistella.sillon.ui.screens.library.AlbumUi
 import ovh.battistella.sillon.ui.screens.library.DownloadStatus
@@ -90,8 +93,13 @@ class DownloadedAlbumViewModel @Inject constructor(
     private val downloads: DownloadManager,
     private val playback: PlaybackConnection,
     private val settings: SettingsStore,
+    sleeveWear: SleeveWearRepository,
 ) : ViewModel() {
     private val albumKey: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+
+    val wear: StateFlow<Wear?> = sleeveWear.levels
+        .map { Wear.of(it, albumKey) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _state = MutableStateFlow<AlbumUi?>(null)
     val state = _state.asStateFlow()

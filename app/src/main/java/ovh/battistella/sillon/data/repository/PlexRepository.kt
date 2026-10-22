@@ -33,6 +33,10 @@ import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.wear.AlbumPlays
+import ovh.battistella.sillon.data.wear.SleeveWearCache
+import ovh.battistella.sillon.data.wear.jellyfinAlbumPlays
+import ovh.battistella.sillon.data.wear.plexAlbumPlays
 import ovh.battistella.sillon.playback.PlayableTrack
 import java.io.File
 import java.io.IOException
@@ -59,6 +63,7 @@ fun DownloadEntity.toPlayable(loudness: LoudnessMode = LoudnessMode.OFF): Playab
         LoudnessMode.TRACK -> gainDb
         LoudnessMode.ALBUM -> albumGainDb ?: gainDb
     },
+    albumKey = albumKey,
 )
 
 data class Loudness(val track: Float?, val album: Float?) {
@@ -87,6 +92,7 @@ class PlexRepository @Inject constructor(
     private val settings: SettingsStore,
     private val network: NetworkMonitor,
     private val jellyfin: JellyfinApi,
+    private val sleeveWearCache: SleeveWearCache,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -108,10 +114,13 @@ class PlexRepository @Inject constructor(
         return true
     }
 
-    suspend fun signOut() = sessionStore.signOut()
+    suspend fun signOut() {
+        sessionStore.signOut()
+        sleeveWearCache.clear()
+    }
 
     suspend fun changeServer() {
-        if (jellyfinServer() != null) sessionStore.signOut() else sessionStore.clearServer()
+        if (jellyfinServer() != null) signOut() else sessionStore.clearServer()
     }
 
     suspend fun findJellyfinServer(input: String): Pair<String, JellyfinPublicInfo> {
@@ -189,6 +198,11 @@ class PlexRepository @Inject constructor(
     suspend fun albums(sectionKey: String): List<PlexMetadata> = onServer(
         plex = { clientId, server -> api.albums(clientId, server, sectionKey) },
         jellyfin = { deviceId, server -> jellyfin.albums(server, deviceId, sectionKey) },
+    )
+
+    suspend fun albumPlays(sectionKey: String, albums: List<PlexMetadata>): Map<String, AlbumPlays> = onServer(
+        plex = { _, _ -> plexAlbumPlays(albums) },
+        jellyfin = { deviceId, server -> jellyfinAlbumPlays(albums, jellyfin.playedTracks(server, deviceId, sectionKey)) },
     )
 
     suspend fun fiveStarTracks(): List<PlexMetadata> {
@@ -392,6 +406,7 @@ class PlexRepository @Inject constructor(
                 durationMs = track.duration,
                 artworkUrl = artworkUrl(server.endpoint, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
                 gainDb = loudness[track.ratingKey]?.forMode(mode),
+                albumKey = track.parentRatingKey,
             )
         }
     }

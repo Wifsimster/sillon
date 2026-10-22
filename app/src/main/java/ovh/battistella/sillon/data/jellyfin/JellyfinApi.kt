@@ -118,6 +118,24 @@ class JellyfinApi(
             "filters" to "IsFavorite", "sortBy" to "SortName",
         ).map { it.toMetadata() }
 
+    suspend fun playedTracks(server: ServerEndpoint, deviceId: String, sectionKey: String): List<PlexMetadata> {
+        val tracks = LinkedHashMap<String, PlexMetadata>()
+        var start = 0
+        while (true) {
+            val page = page(
+                server, deviceId, "Items",
+                "parentId" to sectionKey, "includeItemTypes" to "Audio", "recursive" to "true",
+                "filters" to "IsPlayed", "sortBy" to "SortName", "enableImages" to "false",
+                "enableUserData" to "true", "startIndex" to start.toString(), "limit" to PAGE_SIZE.toString(),
+            )
+            val before = tracks.size
+            page.items.forEach { tracks[it.id] = it.toMetadata() }
+            start += page.items.size
+            val done = page.items.size < PAGE_SIZE || (page.total > 0 && start >= page.total)
+            if (done || tracks.size == before) return tracks.values.toList()
+        }
+    }
+
     suspend fun instantMix(server: ServerEndpoint, deviceId: String, itemId: String): List<PlexMetadata> =
         items(server, deviceId, "Items/$itemId/InstantMix", "limit" to RADIO_TRACKS.toString()).map { it.toMetadata() }
 
@@ -240,6 +258,7 @@ class JellyfinApi(
         const val SEARCH_LIMIT = 60
         const val RADIO_TRACKS = 100
         const val BATCH_SIZE = 100
+        const val PAGE_SIZE = 2_000
     }
 }
 

@@ -16,6 +16,7 @@ data class PlayableTrack(
     val durationMs: Long?,
     val artworkUrl: String?,
     val gainDb: Float? = null,
+    val albumKey: String? = null,
 )
 
 object MediaItems {
@@ -30,7 +31,7 @@ object MediaItems {
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-            .setExtras(track.gainDb?.let { gain -> Bundle().apply { putFloat(EXTRA_GAIN_DB, gain) } })
+            .setExtras(extras(track))
             .build()
         return MediaItem.Builder()
             .setMediaId(track.ratingKey)
@@ -40,7 +41,16 @@ object MediaItems {
             .build()
     }
 
+    private fun extras(track: PlayableTrack): Bundle? {
+        if (track.gainDb == null && track.albumKey == null) return null
+        return Bundle().apply {
+            track.gainDb?.let { putFloat(EXTRA_GAIN_DB, it) }
+            track.albumKey?.let { putString(EXTRA_ALBUM_KEY, it) }
+        }
+    }
+
     const val EXTRA_GAIN_DB = "ovh.battistella.sillon.GAIN_DB"
+    const val EXTRA_ALBUM_KEY = "ovh.battistella.sillon.ALBUM_KEY"
 
     fun volumeFor(gainDb: Float?): Float =
         if (gainDb == null) 1f else Math.pow(10.0, gainDb / 20.0).toFloat().coerceIn(MIN_VOLUME, 1f)
