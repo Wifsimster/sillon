@@ -32,6 +32,7 @@ import ovh.battistella.sillon.data.settings.StreamQuality
 import ovh.battistella.sillon.playback.cache.ListeningCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import org.robolectric.RobolectricTestRunner
+import kotlin.time.Duration.Companion.minutes
 
 @RunWith(RobolectricTestRunner::class)
 class ListeningCacheRepositoryTest {
@@ -63,7 +64,7 @@ class ListeningCacheRepositoryTest {
     private fun key(track: String) = ListeningCacheKeys.track("m1", track)
 
     @Test
-    fun `download, then cache, then network`() = runTest {
+    fun `download, then cache, then network`() = runTest(timeout = SLOW_FIRST_MOCKS) {
         val file = folder.newFile("1.flac")
         coEvery { downloads.get("m1", any()) } returns listOf(
             DownloadEntity(
@@ -88,7 +89,7 @@ class ListeningCacheRepositoryTest {
     }
 
     @Test
-    fun `an original stream on Wi-Fi is kept under a key without the token`() = runTest {
+    fun `an original stream on Wi-Fi is kept under a key without the token`() = runTest(timeout = SLOW_FIRST_MOCKS) {
         every { network.isMetered() } returns false
         val played = repository.playable(listOf(track("3"))).single()
         assertEquals(key("3"), played.cacheKey)
@@ -96,15 +97,20 @@ class ListeningCacheRepositoryTest {
     }
 
     @Test
-    fun `signing out empties the cache`() = runTest {
+    fun `signing out empties the cache`() = runTest(timeout = SLOW_FIRST_MOCKS) {
         repository.signOut()
         coVerify { cache.clear() }
     }
 
     @Test
-    fun `leaving the server empties the cache`() = runTest {
+    fun `leaving the server empties the cache`() = runTest(timeout = SLOW_FIRST_MOCKS) {
         repository.changeServer()
         coVerify { sessionStore.clearServer() }
         coVerify { cache.clear() }
+    }
+
+    private companion object {
+        /** The first test of the class pays for MockK and Robolectric warming up; a busy CI runner can pass a minute. */
+        val SLOW_FIRST_MOCKS = 5.minutes
     }
 }
