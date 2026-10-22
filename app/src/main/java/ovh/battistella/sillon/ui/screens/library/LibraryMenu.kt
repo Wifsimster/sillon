@@ -22,7 +22,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.plex.PlexDirectory
@@ -37,6 +39,9 @@ class LibraryMenuViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow(LibraryMenuUi())
     val state = _state.asStateFlow()
+
+    /** Listen together runs on Jellyfin SyncPlay; Plex has no equivalent, so the entry is not offered there. */
+    val together = repository.isJellyfin.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     init {
         viewModelScope.launch {
@@ -67,6 +72,24 @@ val LocalOpenTogether = staticCompositionLocalOf<() -> Unit> { {} }
 @Composable
 fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val together by viewModel.together.collectAsStateWithLifecycle()
+    LibraryMenu(
+        state = state,
+        together = together,
+        onSelect = viewModel::select,
+        onChangeServer = viewModel::changeServer,
+        onSignOut = viewModel::signOut,
+    )
+}
+
+@Composable
+fun LibraryMenu(
+    state: LibraryMenuUi,
+    together: Boolean,
+    onSelect: (String) -> Unit,
+    onChangeServer: () -> Unit,
+    onSignOut: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
 
     IconButton(onClick = { open = true }) {
@@ -82,20 +105,22 @@ fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
                     },
                     onClick = {
                         open = false
-                        viewModel.select(section.key)
+                        onSelect(section.key)
                     },
                 )
             }
             HorizontalDivider()
         }
-        val openTogether = LocalOpenTogether.current
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.together_open)) },
-            onClick = {
-                open = false
-                openTogether()
-            },
-        )
+        if (together) {
+            val openTogether = LocalOpenTogether.current
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.together_open)) },
+                onClick = {
+                    open = false
+                    openTogether()
+                },
+            )
+        }
         val openSettings = LocalOpenSettings.current
         DropdownMenuItem(
             text = { Text(stringResource(R.string.settings)) },
@@ -108,14 +133,14 @@ fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
             text = { Text(stringResource(R.string.action_change_server)) },
             onClick = {
                 open = false
-                viewModel.changeServer()
+                onChangeServer()
             },
         )
         DropdownMenuItem(
             text = { Text(stringResource(R.string.action_sign_out)) },
             onClick = {
                 open = false
-                viewModel.signOut()
+                onSignOut()
             },
         )
     }

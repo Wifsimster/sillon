@@ -110,6 +110,7 @@ fun PlayerScreen(
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val sides by viewModel.sides.collectAsStateWithLifecycle()
     val rating by viewModel.rating.collectAsStateWithLifecycle()
+    val together by viewModel.together.collectAsStateWithLifecycle()
     val output by outputViewModel.output.collectAsStateWithLifecycle()
     val notice by outputViewModel.notice.collectAsStateWithLifecycle()
     var choosingOutput by remember { mutableStateOf(false) }
@@ -125,7 +126,7 @@ fun PlayerScreen(
         rating = rating,
         controls = viewModel,
         onClose = onClose,
-        onTogether = onTogether,
+        onTogether = onTogether.takeIf { together },
         output = output,
         outputNotice = notice,
         onOutput = { choosingOutput = true },
@@ -145,7 +146,7 @@ fun PlayerContent(
     wear: Wear?,
     controls: PlayerControls,
     onClose: () -> Unit,
-    onTogether: () -> Unit,
+    onTogether: (() -> Unit)?,
     sides: SideState = SideState(),
     rating: RatingUi? = null,
     output: Output = Output.Phone,
@@ -354,7 +355,7 @@ private fun coverColor(uri: String?): Color? {
 @Composable
 fun PlayerHeader(
     onClose: () -> Unit,
-    onTogether: () -> Unit,
+    onTogether: (() -> Unit)?,
     startingRadio: Boolean,
     radioEnabled: Boolean,
     onRadio: () -> Unit,
@@ -384,11 +385,13 @@ fun PlayerHeader(
             }
         }
         // Listen together plays on each phone, not on a speaker.
-        IconButton(onClick = onTogether, enabled = outputName == null) {
-            Icon(
-                Icons.Rounded.Groups,
-                stringResource(if (outputName == null) R.string.together_open else R.string.together_not_on_sonos),
-            )
+        if (onTogether != null) {
+            IconButton(onClick = onTogether, enabled = outputName == null) {
+                Icon(
+                    Icons.Rounded.Groups,
+                    stringResource(if (outputName == null) R.string.together_open else R.string.together_not_on_sonos),
+                )
+            }
         }
         when {
             !showRadio -> Unit

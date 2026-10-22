@@ -33,6 +33,9 @@ class PlayerViewModel @Inject constructor(
     val state = playback.state
     val sides = playback.sideState
 
+    /** Listen together runs on Jellyfin SyncPlay; Plex has no equivalent, so the button is not offered there. */
+    val together = repository.isJellyfin.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val wear: StateFlow<Wear?> = combine(sleeveWear.levels, state.map { it.albumKey }.distinctUntilChanged()) { levels, album ->
         Wear.of(levels, album, intensity = PLAYER_WEAR_INTENSITY)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
