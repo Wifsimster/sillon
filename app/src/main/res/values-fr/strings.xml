@@ -51,6 +51,22 @@
     <string name="search_home_album">%1$s, %2$s</string>
     <string name="search_home_open">Ouvrir l\'album</string>
     <string name="search_home_play">Lire l\'album</string>
+    <string name="search_genres">Genres</string>
+    <string name="search_genres_all">Tous les genres</string>
+    <string name="search_genre_open">Ouvrir le genre</string>
+    <plurals name="search_genre_albums">
+        <item quantity="one">%d album</item>
+        <item quantity="many">%d albums</item>
+        <item quantity="other">%d albums</item>
+    </plurals>
+    <string name="search_genre_tile">%1$s, %2$s</string>
+    <string name="genre_shuffle">Lecture aléatoire du genre</string>
+    <string name="genre_artists">Artistes</string>
+    <string name="genre_albums">Albums</string>
+    <string name="genre_open_artist">Ouvrir l\'artiste</string>
+    <string name="genre_missing">Ce genre n\'est plus dans ta bibliothèque.</string>
+    <string name="genre_nothing_to_play">Rien à lire dans ce genre pour l\'instant.</string>
+    <string name="genres_offline_none">Tu es hors ligne, et aucun de tes albums téléchargés n\'a de genre.</string>
     <string name="action_more">Plus d\'options</string>
 
     <string name="library_downloads">Téléchargés</string>

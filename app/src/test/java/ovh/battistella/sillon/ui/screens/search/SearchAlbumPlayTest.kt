@@ -19,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import ovh.battistella.sillon.data.genres.GenreRepository
 import ovh.battistella.sillon.data.home.SearchHomeRepository
 import ovh.battistella.sillon.data.network.NetworkMonitor
 import ovh.battistella.sillon.data.plex.PlexMetadata
@@ -48,6 +49,7 @@ class SearchAlbumPlayTest {
         }
     }
     private val searchHome = mockk<SearchHomeRepository>(relaxed = true) { every { cached } returns emptyFlow() }
+    private val genres = mockk<GenreRepository>(relaxed = true) { every { view } returns emptyFlow() }
     private val sleeveWear = mockk<SleeveWearRepository> { every { levels } returns emptyFlow() }
     private val playback = mockk<PlaybackConnection>(relaxed = true)
 
@@ -63,6 +65,7 @@ class SearchAlbumPlayTest {
             repository = repository,
             playback = playback,
             searchHome = searchHome,
+            genres = genres,
             downloads = mockk<DownloadManager>(relaxed = true),
             settings = mockk<SettingsStore>(relaxed = true),
             network = network,

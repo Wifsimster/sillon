@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ovh.battistella.sillon.data.genres.GenreAlbum
+import ovh.battistella.sillon.data.genres.Genres
 import ovh.battistella.sillon.data.home.HomeAlbum
 import ovh.battistella.sillon.data.home.SearchHome
 import ovh.battistella.sillon.data.jellyfin.JellyfinApi
@@ -428,6 +430,23 @@ class PlexRepository @Inject constructor(
             },
             jellyfin = { deviceId, server ->
                 SearchHome.recentFromTracks(jellyfin.itemsPage(server, deviceId, SearchHome.jellyfinRecentQuery(section.key)).first)
+            },
+        )
+    }
+
+    /** Every album of the music section with its genres, page by page. */
+    suspend fun genreAlbums(): List<GenreAlbum> {
+        val section = currentMusicSection() ?: return emptyList()
+        return onServer(
+            plex = { clientId, server ->
+                Genres.allPages { start ->
+                    api.sectionItems(clientId, server, section.key, Genres.plexAlbumsQuery(start)).metadata.map(Genres::fromPlex)
+                }
+            },
+            jellyfin = { deviceId, server ->
+                Genres.allPages { start ->
+                    jellyfin.rawPage(server, deviceId, Genres.jellyfinAlbumsQuery(section.key, start)).items.map(Genres::fromJellyfin)
+                }
             },
         )
     }

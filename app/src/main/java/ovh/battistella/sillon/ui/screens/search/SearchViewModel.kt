@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.data.genres.GenreRepository
+import ovh.battistella.sillon.data.genres.GenreView
+import ovh.battistella.sillon.data.genres.Genres
 import ovh.battistella.sillon.data.home.CachedHome
 import ovh.battistella.sillon.data.home.HomeAlbum
 import ovh.battistella.sillon.data.home.SearchHome
@@ -69,8 +72,10 @@ data class SearchHomeUi(
     val online: Boolean = true,
     val loading: Boolean = false,
     val classicsNeedWear: Boolean = false,
+    val genres: List<GenreTileUi> = emptyList(),
+    val moreGenres: Boolean = false,
 ) {
-    val isEmpty: Boolean get() = recent.isEmpty() && classics.isEmpty()
+    val isEmpty: Boolean get() = recent.isEmpty() && classics.isEmpty() && genres.isEmpty()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -79,6 +84,7 @@ class SearchViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
     private val searchHome: SearchHomeRepository,
+    private val genres: GenreRepository,
     private val downloads: DownloadManager,
     private val settings: SettingsStore,
     network: NetworkMonitor,
@@ -109,12 +115,11 @@ class SearchViewModel @Inject constructor(
         .flowOn(Dispatchers.IO)
 
     val home: StateFlow<SearchHomeUi> = combine(
-        searchHome.cached,
-        onPhone,
-        online,
-        refreshing,
-        settings.sleeveWear,
-    ) { cached, phone, isOnline, busy, wearOn -> homeUi(cached, phone, isOnline, busy, wearOn) }
+        combine(searchHome.cached, onPhone, online, refreshing, settings.sleeveWear) { cached, phone, isOnline, busy, wearOn ->
+            homeUi(cached, phone, isOnline, busy, wearOn)
+        },
+        genres.view,
+    ) { rows, view -> withGenres(rows, view) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SearchHomeUi(loading = true))
 
@@ -175,6 +180,7 @@ class SearchViewModel @Inject constructor(
         try {
             runCatching { searchHome.refreshRecent() }
             runCatching { searchHome.refreshClassics() }
+            runCatching { genres.refresh() }
         } finally {
             refreshing.value = false
         }
@@ -210,6 +216,13 @@ class SearchViewModel @Inject constructor(
             loading = busy && recentTiles.isEmpty() && classicTiles.isEmpty(),
             classicsNeedWear = !wearOn && classics.isEmpty() && searchHome.classicKeys() == null,
         )
+    }
+
+    private fun withGenres(rows: SearchHomeUi, view: GenreView): SearchHomeUi {
+        val tiles = view.genres.map { it.toTile() }.withGridColors()
+        val shown = rows.copy(genres = tiles.take(Genres.VISIBLE), moreGenres = tiles.size > Genres.VISIBLE)
+        // The spinner is for a first visit with nothing to show yet; genres count as something to show.
+        return if (tiles.isEmpty()) shown else shown.copy(loading = false)
     }
 
     private fun tile(album: HomeAlbum, server: ServerEndpoint?, phone: Map<String, String?>): TileUi {

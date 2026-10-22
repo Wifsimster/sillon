@@ -47,6 +47,8 @@ fun SearchScreen(
     onAlbum: (String) -> Unit,
     onDownloadedAlbum: (String) -> Unit,
     contentPadding: PaddingValues,
+    onGenre: (String) -> Unit = {},
+    onAllGenres: () -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -80,6 +82,8 @@ fun SearchScreen(
                 onAlbum = if (home.online) onAlbum else onDownloadedAlbum,
                 onPlayAlbum = viewModel::playAlbum,
                 contentPadding = contentPadding,
+                onGenre = onGenre,
+                onAllGenres = onAllGenres,
             )
             SearchState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()

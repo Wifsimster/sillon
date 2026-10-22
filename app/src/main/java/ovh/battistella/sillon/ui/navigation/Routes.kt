@@ -17,9 +17,12 @@ object Routes {
     const val PLAYER = "player"
     const val SETTINGS = "settings"
     const val TOGETHER = "together"
+    const val GENRES = "genres"
+    const val GENRE = "genre/{$ARG_KEY}"
 
     fun artist(key: String) = "artist/${android.net.Uri.encode(key)}"
     fun album(key: String) = "album/${android.net.Uri.encode(key)}"
     fun playlist(key: String) = "playlist/${android.net.Uri.encode(key)}"
+    fun genre(key: String) = "genre/${android.net.Uri.encode(key)}"
     fun downloadedAlbum(key: String) = "downloaded/${android.net.Uri.encode(key)}"
 }

@@ -50,6 +50,17 @@ jobs:
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
 
+      # The Robolectric `*Renders` tests draw screens on synthetic data (no server, no real library).
+      - name: Upload UI renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-renders
+          path: |
+            app/build/*-renders/**/*.png
+            app/build/outputs/renders/**/*.png
+          if-no-files-found: ignore
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
