@@ -28,7 +28,7 @@ class PlayerViewModel @Inject constructor(
     private val mysterySession: MysterySession,
     private val mysteryLauncher: MysteryLauncher,
     sleeveWear: SleeveWearRepository,
-) : ViewModel() {
+) : ViewModel(), PlayerControls {
     val state = playback.state
 
     val wear: StateFlow<Wear?> = combine(sleeveWear.levels, state.map { it.albumKey }.distinctUntilChanged()) { levels, album ->
@@ -43,7 +43,7 @@ class PlayerViewModel @Inject constructor(
     private val _startingRadio = MutableStateFlow(false)
     val startingRadio = _startingRadio.asStateFlow()
 
-    fun radioFromCurrent() {
+    override fun radioFromCurrent() {
         val key = state.value.currentKey?.takeIf { it != MysteryMask.HIDDEN_KEY } ?: return
         if (_startingRadio.value) return
         _startingRadio.value = true
@@ -54,17 +54,17 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun reveal() = mysterySession.reveal()
-    fun revealSeen() = mysterySession.markRevealSeen()
-    fun keepSurprise() = mysteryLauncher.keep()
-    fun anotherSurprise() = mysteryLauncher.start()
+    override fun reveal() = mysterySession.reveal()
+    override fun revealSeen() = mysterySession.markRevealSeen()
+    override fun keepSurprise() = mysteryLauncher.keep()
+    override fun anotherSurprise() = mysteryLauncher.start()
 
-    fun playPause() = playback.playPause()
-    fun next() = playback.next()
-    fun previous() = playback.previous()
-    fun seekTo(positionMs: Long) = playback.seekTo(positionMs)
-    fun toggleShuffle() = playback.toggleShuffle()
-    fun cycleRepeat() = playback.cycleRepeat()
+    override fun playPause() = playback.playPause()
+    override fun next() = playback.next()
+    override fun previous() = playback.previous()
+    override fun seekTo(positionMs: Long) = playback.seekTo(positionMs)
+    override fun toggleShuffle() = playback.toggleShuffle()
+    override fun cycleRepeat() = playback.cycleRepeat()
 
     private companion object {
         const val PLAYER_WEAR_INTENSITY = 0.6f

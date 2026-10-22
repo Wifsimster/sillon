@@ -174,7 +174,7 @@
     <string name="mystery_hint_any">Un album entier de ta bibliothèque, sans savoir lequel.</string>
     <string name="mystery_any_album">N\'importe quel album</string>
     <string name="mystery_start">Tirer une pochette surprise</string>
-    <string name="mystery_track_label">Pochette surprise · face %1$d, piste %2$d</string>
+    <string name="mystery_track_label">Pochette surprise · face\u00A0%1$d, piste\u00A0%2$d</string>
     <string name="mystery_album">Album mystère</string>
     <string name="mystery_reveal">Révéler</string>
     <string name="mystery_reveal_hint">Elle se dévoile à la fin du 3ᵉ morceau.</string>

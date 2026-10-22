@@ -58,11 +58,29 @@ import androidx.media3.common.Player
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.formatDuration
+import ovh.battistella.sillon.playback.PlayerUiState
+import ovh.battistella.sillon.playback.mystery.KeepResult
+import ovh.battistella.sillon.playback.mystery.Mystery
 import ovh.battistella.sillon.playback.mystery.MysteryMask
+import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.screens.mystery.MysteryCover
 import ovh.battistella.sillon.ui.screens.mystery.MysteryHiddenActions
 import ovh.battistella.sillon.ui.screens.mystery.MysteryReveal
 import ovh.battistella.sillon.ui.screens.mystery.MysteryRevealedActions
+
+interface PlayerControls {
+    fun radioFromCurrent()
+    fun reveal()
+    fun revealSeen()
+    fun keepSurprise()
+    fun anotherSurprise()
+    fun playPause()
+    fun next()
+    fun previous()
+    fun seekTo(positionMs: Long)
+    fun toggleShuffle()
+    fun cycleRepeat()
+}
 
 @Composable
 fun PlayerScreen(
@@ -77,6 +95,33 @@ fun PlayerScreen(
     val keeping by viewModel.keeping.collectAsStateWithLifecycle()
     val keep by viewModel.keep.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
+    PlayerContent(
+        state = state,
+        startingRadio = startingRadio,
+        mystery = mystery,
+        mysteryStarting = mysteryStarting,
+        keeping = keeping,
+        keep = keep,
+        wear = wear,
+        controls = viewModel,
+        onClose = onClose,
+        onTogether = onTogether,
+    )
+}
+
+@Composable
+fun PlayerContent(
+    state: PlayerUiState,
+    startingRadio: Boolean,
+    mystery: Mystery?,
+    mysteryStarting: Boolean,
+    keeping: Boolean,
+    keep: KeepResult?,
+    wear: Wear?,
+    controls: PlayerControls,
+    onClose: () -> Unit,
+    onTogether: () -> Unit,
+) {
     var scrubbing by remember { mutableStateOf<Float?>(null) }
     val surprise = mystery?.takeIf { state.currentKey == MysteryMask.HIDDEN_KEY || it.contains(state.currentKey.orEmpty()) }
     val hidden = surprise != null && !surprise.revealed
@@ -105,7 +150,7 @@ fun PlayerScreen(
             onTogether = onTogether,
             startingRadio = startingRadio,
             radioEnabled = state.hasMedia,
-            onRadio = viewModel::radioFromCurrent,
+            onRadio = controls::radioFromCurrent,
             showRadio = !hidden,
         )
         val coverModifier = Modifier.fillMaxWidth().widthIn(max = 420.dp).aspectRatio(1f)
@@ -114,7 +159,7 @@ fun PlayerScreen(
             revealing -> MysteryReveal(
                 coverUri = state.artworkUri,
                 onDone = {
-                    viewModel.revealSeen()
+                    controls.revealSeen()
                     view.announceForAccessibility(announcement)
                 },
                 modifier = coverModifier,
@@ -140,14 +185,14 @@ fun PlayerScreen(
         }
         surprise?.let {
             if (hidden) {
-                MysteryHiddenActions(onReveal = viewModel::reveal, offline = it.offline)
+                MysteryHiddenActions(onReveal = controls::reveal, offline = it.offline)
             } else {
                 MysteryRevealedActions(
                     keeping = keeping,
                     keep = keep,
                     starting = mysteryStarting,
-                    onKeep = viewModel::keepSurprise,
-                    onAnother = viewModel::anotherSurprise,
+                    onKeep = controls::keepSurprise,
+                    onAnother = controls::anotherSurprise,
                 )
             }
         }
@@ -159,7 +204,7 @@ fun PlayerScreen(
                 valueRange = 0f..duration,
                 onValueChange = { scrubbing = it },
                 onValueChangeFinished = {
-                    scrubbing?.let { viewModel.seekTo(it.toLong()) }
+                    scrubbing?.let { controls.seekTo(it.toLong()) }
                     scrubbing = null
                 },
                 enabled = state.durationMs > 0,
@@ -177,23 +222,23 @@ fun PlayerScreen(
         ) {
             val active = MaterialTheme.colorScheme.primary
             val inactive = MaterialTheme.colorScheme.onSurfaceVariant
-            IconButton(onClick = viewModel::toggleShuffle) {
+            IconButton(onClick = controls::toggleShuffle) {
                 Icon(Icons.Rounded.Shuffle, stringResource(R.string.album_shuffle), tint = if (state.shuffle) active else inactive)
             }
-            IconButton(onClick = viewModel::previous) {
+            IconButton(onClick = controls::previous) {
                 Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.player_previous), Modifier.size(36.dp))
             }
-            FilledIconButton(onClick = viewModel::playPause, modifier = Modifier.size(72.dp)) {
+            FilledIconButton(onClick = controls::playPause, modifier = Modifier.size(72.dp)) {
                 if (state.isPlaying) {
                     Icon(Icons.Rounded.Pause, stringResource(R.string.player_pause), Modifier.size(40.dp))
                 } else {
                     Icon(Icons.Rounded.PlayArrow, stringResource(R.string.player_play), Modifier.size(40.dp))
                 }
             }
-            IconButton(onClick = viewModel::next, enabled = state.hasNext) {
+            IconButton(onClick = controls::next, enabled = state.hasNext) {
                 Icon(Icons.Rounded.SkipNext, stringResource(R.string.player_next), Modifier.size(36.dp))
             }
-            IconButton(onClick = viewModel::cycleRepeat) {
+            IconButton(onClick = controls::cycleRepeat) {
                 val (icon, tint) = when (state.repeatMode) {
                     Player.REPEAT_MODE_ONE -> Icons.Rounded.RepeatOne to active
                     Player.REPEAT_MODE_ALL -> Icons.Rounded.Repeat to active

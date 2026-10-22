@@ -177,7 +177,7 @@
     <string name="mystery_hint_any">A whole album from your library, without knowing which one.</string>
     <string name="mystery_any_album">Any album</string>
     <string name="mystery_start">Draw a mystery sleeve</string>
-    <string name="mystery_track_label">Mystery sleeve · side %1$d, track %2$d</string>
+    <string name="mystery_track_label">Mystery sleeve · side\u00A0%1$d, track\u00A0%2$d</string>
     <string name="mystery_album">Mystery album</string>
     <string name="mystery_reveal">Reveal</string>
     <string name="mystery_reveal_hint">It reveals itself at the end of the third track.</string>
