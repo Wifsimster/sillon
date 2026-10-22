@@ -74,7 +74,7 @@ class ListeningCacheRepositoryTest {
             ),
         )
         every { network.isMetered() } returns true
-        every { cache.isWhole(key("2")) } returns true
+        coEvery { cache.isWhole(key("2")) } returns true
 
         val (downloaded, cached, streamed) = repository.playable(listOf(track("1"), track("2"), track("3")))
 
@@ -99,14 +99,14 @@ class ListeningCacheRepositoryTest {
     @Test
     fun `signing out empties the cache`() = runTest(timeout = SLOW_FIRST_MOCKS) {
         repository.signOut()
-        coVerify { cache.clear() }
+        coVerify { cache.clear(sweepAgain = true) }
     }
 
     @Test
     fun `leaving the server empties the cache`() = runTest(timeout = SLOW_FIRST_MOCKS) {
         repository.changeServer()
         coVerify { sessionStore.clearServer() }
-        coVerify { cache.clear() }
+        coVerify { cache.clear(sweepAgain = true) }
     }
 
     private companion object {

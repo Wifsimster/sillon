@@ -15,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -36,7 +37,7 @@ class ListeningCache @Inject constructor(
     private val settings: SettingsStore,
 ) {
     private val dir = File(context.noBackupFilesDir, DIR)
-    private val evictor = ListeningCacheEvictor(CacheLimit.bytes(CacheLimit.DEFAULT_GB))
+    private val evictor = ListeningCacheEvictor { used -> CacheLimit.effective(chosenGb, used, freeBytes()) }
     private val cache: SimpleCache by lazy { SimpleCache(dir, evictor, StandaloneDatabaseProvider(context)) }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
@@ -52,7 +53,7 @@ class ListeningCache @Inject constructor(
             combine(settings.listeningCache, settings.listeningCacheGb, ::Pair).collect { (on, gb) ->
                 enabled = on
                 chosenGb = gb
-                runCatching { if (on) applyLimit() else clear() }
+                runCatching { if (on) applyLimit() else clear(sweepAgain = true) }
                     .onFailure { Log.w(TAG, "cache settings not applied", it) }
             }
         }
@@ -70,7 +71,10 @@ class ListeningCache @Inject constructor(
     }
 
     /** The track's original is in the cache from its first byte to its last. */
-    fun isWhole(key: String): Boolean = enabled && runCatching { isWhole(cache, key) }.getOrDefault(false)
+    suspend fun isWhole(key: String): Boolean = enabled && withContext(Dispatchers.IO) {
+        // SimpleCache locks while it loads its index or clears: never on the main thread.
+        runCatching { isWhole(cache, key) }.getOrDefault(false)
+    }
 
     fun usedBytes(): Long = runCatching { cache.cacheSpace }.getOrDefault(0)
 
@@ -83,19 +87,28 @@ class ListeningCache @Inject constructor(
 
     /** Re-reads the free space and trims the cache to what fits. */
     suspend fun applyLimit() = withContext(Dispatchers.IO) {
-        lock.withLock {
-            evictor.resize(cache, CacheLimit.effective(chosenGb, cache.cacheSpace, freeBytes()))
-        }
+        lock.withLock { evictor.refresh(cache) }
     }
 
-    /** Empties the cache; the downloads stay. */
-    suspend fun clear() = withContext(Dispatchers.IO) {
+    /**
+     * Empties the cache; the downloads stay. A track still being written can commit its last
+     * few megabytes just after; with [sweepAgain] (cache turned off, server left) a second pass
+     * a little later takes those too.
+     */
+    suspend fun clear(sweepAgain: Boolean = false) = withContext(Dispatchers.IO) {
         lock.withLock { clearAll(cache) }
+        if (sweepAgain) {
+            scope.launch {
+                delay(SWEEP_AGAIN_MS)
+                runCatching { lock.withLock { clearAll(cache) } }
+            }
+        }
     }
 
     companion object {
         private const val TAG = "SillonCache"
         private const val DIR = "listening-cache"
+        private const val SWEEP_AGAIN_MS = 30_000L
 
         fun isWhole(cache: Cache, key: String): Boolean {
             val length = ContentMetadata.getContentLength(cache.getContentMetadata(key))

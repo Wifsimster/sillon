@@ -121,7 +121,7 @@ class PlexRepository @Inject constructor(
     suspend fun signOut() {
         sessionStore.signOut()
         sleeveWearCache.clear()
-        listeningCache.clear()
+        listeningCache.clear(sweepAgain = true)
     }
 
     /** Leaving a server leaves its music behind: the listening cache is emptied too. */
@@ -130,7 +130,7 @@ class PlexRepository @Inject constructor(
             signOut()
         } else {
             sessionStore.clearServer()
-            listeningCache.clear()
+            listeningCache.clear(sweepAgain = true)
         }
     }
 

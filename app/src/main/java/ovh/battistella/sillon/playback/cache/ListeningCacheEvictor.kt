@@ -9,24 +9,26 @@ import androidx.media3.datasource.cache.CacheSpan
 import java.util.TreeSet
 
 /**
- * Least recently used eviction, like Media3's own evictor, with a limit that can change while
- * the cache is open: the size is a setting, and Media3 fixes its evictor's size at creation.
+ * Least recently used eviction, like Media3's own evictor, with a limit that moves while the
+ * cache is open: the size is a setting, and the free space on the phone shrinks and grows.
+ * [limit] turns the bytes the cache holds into the most it may hold; it is read again before
+ * every new file the cache writes, so a phone filling up holds the cache back mid-listen.
  */
 @OptIn(UnstableApi::class)
-class ListeningCacheEvictor(maxBytes: Long) : CacheEvictor {
+class ListeningCacheEvictor(private val limit: (usedBytes: Long) -> Long) : CacheEvictor {
     private val spans = TreeSet<CacheSpan> { a, b ->
         if (a.lastTouchTimestamp != b.lastTouchTimestamp) a.lastTouchTimestamp.compareTo(b.lastTouchTimestamp) else a.compareTo(b)
     }
     private var size = 0L
 
-    @Volatile var maxBytes: Long = maxBytes
+    @Volatile var maxBytes: Long = Long.MAX_VALUE
         private set
 
-    /** Applies a new limit and evicts at once what no longer fits. */
-    fun resize(cache: Cache, bytes: Long) {
+    /** Reads the limit again and evicts at once what no longer fits. */
+    fun refresh(cache: Cache) {
         // SimpleCache calls the evictor under its own lock; take the same one.
         synchronized(cache) {
-            maxBytes = bytes
+            maxBytes = limit(size)
             evict(cache, 0)
         }
     }
@@ -36,7 +38,8 @@ class ListeningCacheEvictor(maxBytes: Long) : CacheEvictor {
     override fun onCacheInitialized() = Unit
 
     override fun onStartFile(cache: Cache, key: String, position: Long, length: Long) {
-        if (length != C.LENGTH_UNSET.toLong()) evict(cache, length)
+        maxBytes = limit(size)
+        evict(cache, if (length == C.LENGTH_UNSET.toLong()) 0 else length)
     }
 
     override fun onSpanAdded(cache: Cache, span: CacheSpan) {

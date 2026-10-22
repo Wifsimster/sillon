@@ -19,7 +19,9 @@ import org.robolectric.RuntimeEnvironment
 class ListeningCacheEvictorTest {
     @get:Rule val folder = TemporaryFolder()
 
-    private val evictor = ListeningCacheEvictor(maxBytes = 300)
+    /** Free space on the pretend phone; the chosen size is 300 bytes, the reserve 100. */
+    private var free = 1_000L
+    private val evictor = ListeningCacheEvictor { used -> minOf(300L, used + free - 100) }
     private lateinit var cache: SimpleCache
 
     @Before
@@ -60,14 +62,31 @@ class ListeningCacheEvictorTest {
     }
 
     @Test
-    fun `a smaller size evicts at once`() {
+    fun `less room evicts at once`() {
         put("a")
         put("b")
         put("c")
         play("a")
-        evictor.resize(cache, 150)
+        free = -50 // 300 held, 50 short of the reserve: room for 150
+        evictor.refresh(cache)
+        assertEquals(150L, evictor.maxBytes)
         assertEquals(100L, cache.cacheSpace)
         assertTrue(cache.isCached("a", 0, 100))
+    }
+
+    @Test
+    fun `free space shrinking while music plays holds the cache back without a settings change`() {
+        put("a")
+        put("b")
+        assertEquals(300L, evictor.maxBytes)
+        // The camera fills the phone mid-listen: 120 bytes left, 100 of them kept in reserve.
+        free = 120
+        put("c")
+        // The next track was written against the new limit: 200 + 120 - 100 = 220 bytes, so only two fit.
+        assertEquals(220L, evictor.maxBytes)
+        assertTrue(cache.cacheSpace <= 220)
+        assertFalse(cache.isCached("a", 0, 100))
+        assertTrue(cache.isCached("c", 0, 100))
     }
 
     @Test

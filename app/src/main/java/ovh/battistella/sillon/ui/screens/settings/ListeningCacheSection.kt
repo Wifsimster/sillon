@@ -53,7 +53,12 @@ class ListeningCacheViewModel @Inject constructor(
     /** Re-read every second while the screen is open: the cache grows as music plays. */
     val usage = flow {
         while (true) {
-            emit(CacheUsage(cache.usedBytes(), cache.freeBytes()))
+            val usage = CacheUsage(cache.usedBytes(), cache.freeBytes())
+            // The phone filled up while nothing played: trim now, so the cache matches what's shown.
+            if (usage.usedBytes > CacheLimit.effective(sizeGb.value, usage.usedBytes, usage.freeBytes)) {
+                runCatching { cache.applyLimit() }
+            }
+            emit(usage)
             delay(USAGE_REFRESH_MS)
         }
     }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
