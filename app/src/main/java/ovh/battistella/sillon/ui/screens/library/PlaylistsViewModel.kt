@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
-import ovh.battistella.sillon.data.repository.Station
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
@@ -25,24 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
     private val repository: PlexRepository,
-    private val playback: PlaybackConnection,
 ) : ViewModel() {
-    private val _stations = MutableStateFlow<List<Station>>(emptyList())
-    val stations = _stations.asStateFlow()
-
-    private val _startingStation = MutableStateFlow<String?>(null)
-    val startingStation = _startingStation.asStateFlow()
-
-    fun playStation(station: Station) {
-        if (_startingStation.value != null) return
-        _startingStation.value = station.key
-        viewModelScope.launch {
-            runCatching { repository.playable(repository.stationTracks(station)) }
-                .onSuccess { if (it.isNotEmpty()) playback.play(it) }
-            _startingStation.value = null
-        }
-    }
-
     private val _state = MutableStateFlow<Load<List<TileUi>>>(Load.Loading)
     val state = _state.asStateFlow()
 
@@ -52,9 +34,6 @@ class PlaylistsViewModel @Inject constructor(
 
     fun load() {
         _state.value = Load.Loading
-        viewModelScope.launch {
-            _stations.value = runCatching { repository.stations() }.getOrDefault(emptyList())
-        }
         viewModelScope.launch {
             _state.value = runCatching {
                 val server = repository.endpoint()
