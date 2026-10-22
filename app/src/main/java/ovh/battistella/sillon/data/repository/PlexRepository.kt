@@ -38,6 +38,9 @@ import ovh.battistella.sillon.data.wear.SleeveWearCache
 import ovh.battistella.sillon.data.wear.jellyfinAlbumPlays
 import ovh.battistella.sillon.data.wear.plexAlbumPlays
 import ovh.battistella.sillon.playback.PlayableTrack
+import ovh.battistella.sillon.playback.cache.ListeningCache
+import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
+import ovh.battistella.sillon.playback.cache.StreamSource
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -93,6 +96,7 @@ class PlexRepository @Inject constructor(
     private val network: NetworkMonitor,
     private val jellyfin: JellyfinApi,
     private val sleeveWearCache: SleeveWearCache,
+    private val listeningCache: ListeningCache,
 ) {
     val session: Flow<Session> = sessionStore.session
 
@@ -117,10 +121,17 @@ class PlexRepository @Inject constructor(
     suspend fun signOut() {
         sessionStore.signOut()
         sleeveWearCache.clear()
+        listeningCache.clear()
     }
 
+    /** Leaving a server leaves its music behind: the listening cache is emptied too. */
     suspend fun changeServer() {
-        if (jellyfinServer() != null) signOut() else sessionStore.clearServer()
+        if (jellyfinServer() != null) {
+            signOut()
+        } else {
+            sessionStore.clearServer()
+            listeningCache.clear()
+        }
     }
 
     suspend fun findJellyfinServer(input: String): Pair<String, JellyfinPublicInfo> {
@@ -418,13 +429,22 @@ class PlexRepository @Inject constructor(
         return complete.filterNotNull().mapNotNull { track ->
             local[track.ratingKey]?.let { return@mapNotNull it.toPlayable(mode) }
             if (track.partKey == null) return@mapNotNull null
-            val url = quality.kbps?.let { kbps ->
+            val cacheKey = ListeningCacheKeys.track(server.machineId, track.ratingKey)
+            val source = StreamSource.choose(
+                downloaded = false,
+                originalCached = listeningCache.isWhole(cacheKey),
+                transcodeKbps = quality.kbps,
+            )
+            val url = if (source == StreamSource.TRANSCODE) {
+                val kbps = checkNotNull(quality.kbps)
                 val session = UUID.randomUUID().toString()
                 when (server.endpoint.kind) {
                     ServerKind.PLEX -> api.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, session)
                     ServerKind.JELLYFIN -> jellyfin.transcodeUrl(server.endpoint, clientId, track.ratingKey, kbps, session)
                 }
-            } ?: streamUrl(server.endpoint, track) ?: return@mapNotNull null
+            } else {
+                streamUrl(server.endpoint, track) ?: return@mapNotNull null
+            }
             PlayableTrack(
                 ratingKey = track.ratingKey,
                 streamUrl = url,
@@ -436,6 +456,7 @@ class PlexRepository @Inject constructor(
                 artworkUrl = artworkUrl(server.endpoint, track.artwork, PLAYER_ART_PX) ?: fallbackArtworkUrl,
                 gainDb = loudness[track.ratingKey]?.forMode(mode),
                 albumKey = track.parentRatingKey,
+                cacheKey = cacheKey.takeIf { source.cached },
             )
         }
     }

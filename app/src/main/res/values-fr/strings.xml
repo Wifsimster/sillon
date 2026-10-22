@@ -49,6 +49,14 @@
     <string name="downloads_done_count">%1$d terminés</string>
     <string name="downloads_empty">Rien de téléchargé pour l\'instant. Ouvre un album ou une playlist et touche Télécharger pour l\'écouter sans connexion.</string>
     <string name="downloads_wifi_only">Télécharger en Wi-Fi uniquement</string>
+    <string name="settings_cache">Garder en cache ce que j\'écoute</string>
+    <string name="settings_cache_hint">Les morceaux écoutés restent sur le téléphone : la prochaine écoute se passe de connexion. Seule la qualité d\'origine est gardée. À part des téléchargements : quand le cache est plein, les moins récemment écoutés partent en premier.</string>
+    <string name="settings_cache_usage">%1$s utilisés sur %2$s</string>
+    <string name="settings_cache_low_space">Peu d\'espace libre sur le téléphone : le cache est limité à %1$s.</string>
+    <string name="settings_cache_size">Taille du cache</string>
+    <string name="settings_cache_size_gb">%1$d Go</string>
+    <string name="settings_cache_size_no_room">Pas assez d\'espace libre</string>
+    <string name="settings_cache_clear">Vider le cache</string>
     <string name="downloads_retry_failed">Relancer les échecs</string>
     <string name="download">Télécharger</string>
     <string name="download_remove">Supprimer le téléchargement</string>

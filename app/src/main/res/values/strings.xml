@@ -51,6 +51,14 @@
     <string name="downloads_done_count">%1$d done</string>
     <string name="downloads_empty">Nothing downloaded yet. Open an album or a playlist and tap Download to listen without a connection.</string>
     <string name="downloads_wifi_only">Download on Wi-Fi only</string>
+    <string name="settings_cache">Keep what I listen to</string>
+    <string name="settings_cache_hint">Tracks you play stay on this phone, so the next listen needs no connection. Only the original quality is kept. Apart from downloads: when the cache is full, the least recently played go first.</string>
+    <string name="settings_cache_usage">%1$s used of %2$s</string>
+    <string name="settings_cache_low_space">Little free space on this phone: the cache is held to %1$s.</string>
+    <string name="settings_cache_size">Cache size</string>
+    <string name="settings_cache_size_gb">%1$d GB</string>
+    <string name="settings_cache_size_no_room">Not enough free space</string>
+    <string name="settings_cache_clear">Clear the cache</string>
     <string name="downloads_retry_failed">Retry failed downloads</string>
     <string name="download">Download</string>
     <string name="download_remove">Remove download</string>

@@ -198,6 +198,7 @@ fun SettingsScreen(
                     ),
                 )
             }
+            item { ListeningCacheSection() }
         }
     }
 }
