@@ -177,4 +177,26 @@
     <string name="never_played_no_history">Pas encore d\'historique d\'écoute sur ce téléphone. Connecte-toi une fois à ton serveur : la radio marchera ensuite hors ligne avec tes téléchargements.</string>
     <string name="never_played_exhausted">Plus rien à découvrir ici : tu as tout écouté.</string>
     <string name="never_played_failed">La radio n\'a pas pu démarrer. Réessaie.</string>
+    <string name="share_card">Partager une carte</string>
+    <string name="share_card_preview">Carte %1$s pour %2$s</string>
+    <string name="share_card_format">Format</string>
+    <string name="share_card_square">Carré</string>
+    <string name="share_card_story">Story</string>
+    <string name="share_card_style">Style</string>
+    <string name="share_card_vinyl">Vinyle</string>
+    <string name="share_card_label">Étiquette</string>
+    <string name="share_card_polaroid">Polaroid</string>
+    <string name="share_card_note">Quelques mots (facultatif)</string>
+    <string name="share_card_note_count">%1$d/%2$d</string>
+    <string name="share_card_quote">«&#160;%1$s&#160;»</string>
+    <string name="share_card_stars">Afficher ma note</string>
+    <string name="share_card_stars_jellyfin">Jellyfin connaît les favoris, pas les notes en étoiles : un favori s\'affiche avec 5 étoiles.</string>
+    <string name="share_card_lyrics">Citer les paroles</string>
+    <plurals name="share_card_lyrics_hint">
+        <item quantity="one">%1$d ligne au plus</item>
+        <item quantity="many">%1$d lignes au plus</item>
+        <item quantity="other">%1$d lignes au plus</item>
+    </plurals>
+    <string name="share_card_private">La carte est une image créée sur ton téléphone. Elle ne contient aucun lien, et rien sur ton serveur.</string>
+    <string name="share_card_send">Partager</string>
 </resources>

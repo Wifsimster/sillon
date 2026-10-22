@@ -84,6 +84,7 @@ data class PlexMetadata(
     val index: Int? = null,
     val parentIndex: Int? = null,
     val year: Int? = null,
+    val parentYear: Int? = null,
     val duration: Long? = null,
     val leafCount: Int? = null,
     val userRating: Float? = null,
@@ -112,6 +113,15 @@ data class PlexMetadata(
     val albumGain: Float? get() = audioStream?.albumGain ?: trackGain
 
     val trackArtist: String? get() = originalTitle ?: grandparentTitle
+
+    /** Path of the track's lyrics on a Plex server, when it has some. */
+    val lyricsKey: String?
+        get() = media.firstOrNull()?.parts?.firstOrNull()?.streams
+            ?.firstOrNull { it.streamType == STREAM_LYRICS && !it.key.isNullOrBlank() }?.key
+
+    companion object {
+        const val STREAM_LYRICS = 4
+    }
 }
 
 @Serializable
@@ -131,6 +141,8 @@ data class PlexPart(
 @Serializable
 data class PlexStream(
     val streamType: Int = 0,
+    val key: String? = null,
+    val format: String? = null,
     val gain: Float? = null,
     val albumGain: Float? = null,
     val peak: Float? = null,

@@ -227,6 +227,14 @@ class PlexApi(
     suspend fun metadata(clientId: String, server: ServerEndpoint, ratingKey: String): PlexMetadata? =
         get(clientId, server, "library/metadata/$ratingKey").metadata.firstOrNull()
 
+    /** The raw lyrics of a track (LRC, plain text or Plex's lines), or null when the server has none. */
+    suspend fun lyrics(clientId: String, server: ServerEndpoint, trackKey: String): String? {
+        val track = get(clientId, server, "library/metadata/$trackKey", "includeLyrics" to "1").metadata.firstOrNull()
+        val key = track?.lyricsKey ?: return null
+        val url = "${server.uri.trimEnd('/')}/${key.trimStart('/')}".toHttpUrl()
+        return client.fetch(Request.Builder().url(url).headers(clientId, server.token).build())
+    }
+
     suspend fun timeline(
         clientId: String,
         server: ServerEndpoint,
