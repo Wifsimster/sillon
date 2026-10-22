@@ -130,7 +130,7 @@ fun TrackCollectionRoute(
             }
             if (state is Load.Ready) {
                 DownloadAction(download, onDownload = viewModel::download, onRemove = viewModel::removeDownload)
-                QueueMenuAction { place -> queueTracks(place) { viewModel.queueable(null) } }
+                QueueMenuAction(onQueue = { place -> queueTracks(place) { viewModel.queueable(null) } })
             }
         },
         onQueueTrack = { key, place -> queueTracks(place) { viewModel.queueable(key) } },
