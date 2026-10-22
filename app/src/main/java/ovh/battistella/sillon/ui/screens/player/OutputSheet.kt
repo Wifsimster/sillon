@@ -257,5 +257,6 @@ private fun noticeText(notice: OutputNotice): Int = when (notice) {
     OutputNotice.PLEX_TOKEN_REFUSED -> R.string.output_notice_plex_token
     OutputNotice.JELLYFIN_TOKEN_REFUSED -> R.string.output_notice_jellyfin_token
     OutputNotice.MYSTERY_ON_PHONE -> R.string.output_notice_mystery
+    OutputNotice.MYSTERY_NOT_ADDED -> R.string.output_notice_mystery_not_added
     OutputNotice.TOGETHER_ON_PHONE -> R.string.output_notice_together
 }

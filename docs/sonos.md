@@ -22,7 +22,7 @@ not needed.
 | Step | UPnP |
 |---|---|
 | Find speakers | SSDP `M-SEARCH` for `urn:schemas-upnp-org:device:ZonePlayer:1` on 239.255.255.250:1900 (Wi-Fi multicast lock) |
-| Rooms and groups | `ZoneGroupTopology#GetZoneGroupState` on the first speaker that answers; hidden members (Sub, surrounds, stereo pair) are left out |
+| Rooms and groups | `ZoneGroupTopology#GetZoneGroupState` on the first speaker that answers; hidden members (Sub, surrounds, stereo pair) are left out. Only answers with a Sonos id (`RINCON_…`) and a private or link-local IPv4 address are kept: the speaker receives token-bearing URLs |
 | Send the queue | On the group **coordinator**: `RemoveAllTracksFromQueue`, `AddMultipleURIsToQueue` (16 tracks per call, DIDL-Lite metadata), `SetAVTransportURI x-rincon-queue:RINCON_…#0`, `Seek TRACK_NR`, `Seek REL_TIME`, `SetPlayMode`, `Play` |
 | Controls | `Play`, `Pause`, `Next`, `Previous`, `Seek`, `SetPlayMode`; queue edits with `AddMultipleURIsToQueue`, `RemoveTrackRangeFromQueue`, `ReorderTracksInQueue` |
 | Volume | `GroupRenderingControl#SetGroupVolume` / `SetGroupMute`: the phone's volume keys move the group's volume |
@@ -144,6 +144,7 @@ speaker, on the LAN, over HTTP (or HTTPS if the server address is HTTPS).
 | Mystery sleeve | **Not on Sonos.** The Sonos app and any controller on the LAN show the queue; the album can't be hidden there. While a sleeve is hidden, the speakers can't be picked, and a sleeve started during a Sonos session plays on the phone. Once revealed, it can go to Sonos. |
 | Listening cache | Not used: the speaker fetches from the server. |
 | Volume levelling (ReplayGain) | Not applied: the speaker's own volume applies. |
+| Radios that refill (*Never played*) | They stop refilling on Sonos: the speaker plays the tracks already sent, then the queue ends. Back on the phone, the radio refills again. |
 | Play counts | Reported to the server by Sillon, as on the phone. |
 | Android Auto | Not concerned. |
 

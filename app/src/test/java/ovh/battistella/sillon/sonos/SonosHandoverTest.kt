@@ -36,6 +36,7 @@ class SonosHandoverTest {
     private var opened = 0
     private var closed = 0
     private var accessError: Exception? = null
+    private val phonePlayingWhileSending = mutableListOf<Boolean>()
 
     private fun item(key: String) = MediaItem.Builder()
         .setMediaId(key)
@@ -58,7 +59,10 @@ class SonosHandoverTest {
             accessError?.let { throw it }
             SonosAccess(ServerEndpoint("http://192.168.1.5:32400", "transient")) { closed++ }
         },
-        tracks = { keys, _ -> keys.filter { it !in unplayable }.associateWith { SonosTrack(it, uri(it), "<DIDL-Lite/>") } },
+        tracks = { keys, _ ->
+            phonePlayingWhileSending += phone.playWhenReady
+            keys.filter { it !in unplayable }.associateWith { SonosTrack(it, uri(it), "<DIDL-Lite/>") }
+        },
         refuse = { SonosRefusal.refuses(it, mystery = null) },
         togetherActive = { false },
         show = { shown += it },
@@ -91,6 +95,7 @@ class SonosHandoverTest {
         assertEquals(42_000L, speaker.positionMs)
         assertEquals("PLAYING", speaker.transport)
         assertFalse("the phone stops while the speaker plays", phone.playWhenReady)
+        assertEquals("the phone stopped before the queue went out", listOf(false), phonePlayingWhileSending)
         assertSame(handover.player, attached.single())
         assertEquals(Output.OnSonos(group), shown.last())
         assertTrue(told.isEmpty())
@@ -185,6 +190,20 @@ class SonosHandoverTest {
 
         assertEquals(adds, speaker.count("AddMultipleURIsToQueue"))
         assertEquals(2, speaker.queue.size)
+        assertEquals(listOf(OutputNotice.MYSTERY_NOT_ADDED), told)
+    }
+
+    @Test
+    fun `when the speaker refuses the queue, the phone plays on`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a", "b")
+        val handover = handover(unplayable = setOf("a", "b"))
+
+        handover.playOn(group)
+
+        assertEquals(listOf(OutputNotice.FAILED), told)
+        assertTrue(phone.playWhenReady)
+        assertEquals(1, closed)
+        assertNull(handover.player)
     }
 
     @Test

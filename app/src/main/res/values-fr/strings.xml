@@ -283,4 +283,5 @@
     <string name="together_not_on_sonos">Écouter à plusieurs, pas pendant une lecture sur Sonos</string>
     <string name="output_notice_plex_token">Ton serveur Plex n\'a pas fourni de jeton temporaire pour l\'enceinte, et Sillon ne lui confie pas celui de ton compte. La musique reste sur ce téléphone.</string>
     <string name="output_notice_jellyfin_token">Ton serveur Jellyfin n\'a pas fourni de jeton pour l\'enceinte : Sonos a besoin de Quick Connect, à activer dans le tableau de bord du serveur. La musique reste sur ce téléphone.</string>
+    <string name="output_notice_mystery_not_added">La pochette surprise n\'a pas été ajoutée à la file Sonos : l\'app Sonos montrerait l\'album. De retour sur ce téléphone, elle peut se jouer.</string>
 </resources>

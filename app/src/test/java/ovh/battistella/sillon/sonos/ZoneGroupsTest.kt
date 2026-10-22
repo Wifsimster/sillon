@@ -37,6 +37,14 @@ class ZoneGroupsTest {
     }
 
     @Test
+    fun `members without a Sonos id or a local address are left out`() {
+        val odd = state
+            .replace("UUID=\"RINCON_A\"", "UUID=\"FAKE_A\"")
+            .replace("http://192.168.1.25:1400", "http://203.0.113.9:1400")
+        assertEquals(listOf("Living room"), ZoneGroups.parse(odd).map { it.name })
+    }
+
+    @Test
     fun `nothing readable gives no groups`() {
         assertTrue(ZoneGroups.parse("").isEmpty())
         assertTrue(ZoneGroups.parse("not xml").isEmpty())

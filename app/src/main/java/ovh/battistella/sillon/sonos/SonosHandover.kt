@@ -44,12 +44,16 @@ class SonosHandover(
         if (refuse(items)) return tell(OutputNotice.MYSTERY_ON_PHONE)
         val play = current?.wasPlaying ?: phone.playWhenReady
         show(Output.Connecting(group))
+        // The phone stops while the queue goes out, so the two never play together.
+        val phoneWasPlaying = current == null && phone.playWhenReady
+        if (phoneWasPlaying) phone.pause()
         if (current != null) leave(current, pause = true)
         val access = try {
             openAccess()
         } catch (e: Exception) {
             Log.w(TAG, "no way to the server for the speaker: ${e.message}")
             if (current != null) restoreOnPhone(items, index, positionMs, play = false)
+            if (phoneWasPlaying) phone.play()
             show(Output.Phone)
             tell(
                 when ((e as? SonosAccessException)?.reason) {
@@ -84,6 +88,7 @@ class SonosHandover(
                     },
                 )
             },
+            onRefusedAdd = { tell(OutputNotice.MYSTERY_NOT_ADDED) },
             now = now,
         )
         val started = runCatching { next.start(items, index, positionMs, play, phone.shuffleModeEnabled, phone.repeatMode) }
@@ -92,11 +97,11 @@ class SonosHandover(
             next.release()
             access.close()
             if (current != null) restoreOnPhone(items, index, positionMs, play = false)
+            if (phoneWasPlaying) phone.play()
             show(Output.Phone)
             tell(OutputNotice.FAILED)
             return
         }
-        phone.pause()
         player = next
         this.access = access
         attach(next)

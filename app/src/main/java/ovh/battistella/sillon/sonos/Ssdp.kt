@@ -12,7 +12,8 @@ data class SsdpResponse(
     /** `RINCON_…`, the speaker's id in the Sonos topology. */
     val uuid: String? get() = usn?.substringAfter("uuid:", "")?.substringBefore("::")?.takeIf { it.isNotBlank() }
 
-    val isSonos: Boolean get() = uuid?.startsWith("RINCON_") == true || server?.contains("Sonos", ignoreCase = true) == true
+    /** Only a Sonos id counts: a SERVER header saying "Sonos" is easy to fake. */
+    val isSonos: Boolean get() = isSonosId(uuid)
 
     /** `http://host:1400`, where the speaker answers SOAP. */
     val baseUrl: String? get() = baseUrlOf(location)
@@ -51,8 +52,23 @@ object Ssdp {
     }
 }
 
-/** `http://host:port` of a speaker's description URL; only plain http on the LAN. */
+/** A Sonos speaker's id: `RINCON_` and its MAC address. */
+internal fun isSonosId(uuid: String?): Boolean = uuid?.startsWith("RINCON_") == true
+
+/**
+ * `http://host:port` of a speaker's description URL: plain http to a private or link-local IPv4
+ * address only, never a name or a public address (the speaker gets token-bearing URLs).
+ */
 internal fun baseUrlOf(location: String): String? {
     val url = location.toHttpUrlOrNull()?.takeIf { it.scheme == "http" } ?: return null
+    if (!isLocalAddress(url.host)) return null
     return "http://${url.host}:${url.port}"
+}
+
+/** 10/8, 172.16/12, 192.168/16 or 169.254/16, written as an IPv4 literal. */
+internal fun isLocalAddress(host: String): Boolean {
+    val parts = host.split('.').map { it.toIntOrNull() ?: return false }
+    if (parts.size != 4 || parts.any { it !in 0..255 }) return false
+    val (a, b) = parts
+    return a == 10 || (a == 172 && b in 16..31) || (a == 192 && b == 168) || (a == 169 && b == 254)
 }

@@ -39,6 +39,21 @@ class SsdpTest {
     }
 
     @Test
+    fun `a device saying Sonos without a Sonos id is not one`() {
+        assertFalse(Ssdp.parse(answer.replace("uuid:RINCON_000E58AAAAAA01400", "uuid:fake-living-room"))!!.isSonos)
+    }
+
+    @Test
+    fun `only a private or link-local address is kept`() {
+        listOf("10.0.0.7", "172.16.4.2", "172.31.255.1", "192.168.1.20", "169.254.3.3").forEach {
+            assertEquals("http://$it:1400", Ssdp.parse(answer.replace("192.168.1.20", it))!!.baseUrl)
+        }
+        listOf("8.8.8.8", "172.32.0.1", "speaker.example.com", "[fe80::1]", "192.168.1").forEach {
+            assertNull(it, Ssdp.parse(answer.replace("192.168.1.20", it))?.baseUrl)
+        }
+    }
+
+    @Test
     fun `a search, a notify or junk is not an answer`() {
         assertNull(Ssdp.parse(Ssdp.search()))
         assertNull(Ssdp.parse("NOTIFY * HTTP/1.1\r\nLOCATION: http://192.168.1.20:1400/x.xml\r\n\r\n"))

@@ -50,6 +50,8 @@ class SonosPlayer(
     /** Called instead of loading refused items: they go back to the phone. */
     private val onRefused: suspend (items: List<MediaItem>, index: Int, positionMs: Long) -> Unit,
     private val onLost: suspend (SonosLoss) -> Unit,
+    /** Called when refused items are kept off the speaker's queue. */
+    private val onRefusedAdd: () -> Unit = {},
     now: () -> Long = SystemClock::elapsedRealtime,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
     private class Entry(val uid: Long, val item: MediaItem, val track: SonosTrack)
@@ -251,7 +253,10 @@ class SonosPlayer(
     }
 
     override fun handleAddMediaItems(index: Int, mediaItems: MutableList<MediaItem>): ListenableFuture<*> {
-        if (refuse(mediaItems)) return Futures.immediateVoidFuture()
+        if (refuse(mediaItems)) {
+            onRefusedAdd()
+            return Futures.immediateVoidFuture()
+        }
         val items = mediaItems.toList()
         return send {
             val resolved = resolve(items)

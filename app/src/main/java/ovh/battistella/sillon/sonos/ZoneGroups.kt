@@ -23,7 +23,7 @@ object ZoneGroups {
             val members = group.childElements()
                 .filter { it.localName() == "ZoneGroupMember" && it.attr("Invisible") != "1" }
                 .mapNotNull { member ->
-                    val uuid = member.attr("UUID") ?: return@mapNotNull null
+                    val uuid = member.attr("UUID")?.takeIf(::isSonosId) ?: return@mapNotNull null
                     val base = member.attr("Location")?.let(::baseUrlOf) ?: return@mapNotNull null
                     SonosZone(uuid, member.attr("ZoneName")?.takeIf { it.isNotBlank() } ?: uuid, base)
                 }
