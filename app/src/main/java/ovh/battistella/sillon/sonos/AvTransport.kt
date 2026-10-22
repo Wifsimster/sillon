@@ -93,6 +93,8 @@ object AvTransport {
         listOf(INSTANCE, "DesiredVolume" to volume.coerceIn(0, 100).toString()),
     )
 
+    fun groupMute() = SoapCall(SonosService.GROUP_RENDERING, "GetGroupMute", listOf(INSTANCE))
+
     fun setGroupMute(muted: Boolean) = SoapCall(
         SonosService.GROUP_RENDERING,
         "SetGroupMute",
