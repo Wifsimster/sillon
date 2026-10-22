@@ -1,0 +1,231 @@
+package ovh.battistella.sillon.ui.navigation
+
+import android.app.Application
+import android.content.ComponentName
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.test.core.app.ApplicationProvider
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.repository.Station
+import ovh.battistella.sillon.data.settings.CachedLibraryPlays
+import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.ui.components.Load
+import ovh.battistella.sillon.ui.screens.library.LibraryMenuUi
+import ovh.battistella.sillon.ui.screens.library.LibraryMenuViewModel
+import ovh.battistella.sillon.ui.screens.library.NeverPlayedViewModel
+import ovh.battistella.sillon.ui.screens.library.PlaylistsScreen
+import ovh.battistella.sillon.ui.screens.library.PlaylistsViewModel
+import ovh.battistella.sillon.ui.screens.library.TileUi
+import ovh.battistella.sillon.ui.screens.mystery.MysteryViewModel
+import ovh.battistella.sillon.ui.screens.settings.SettingsScreen
+import ovh.battistella.sillon.ui.screens.settings.SettingsViewModel
+import ovh.battistella.sillon.ui.theme.SillonTheme
+import java.io.File
+
+/**
+ * "Before" renders for PR #28, made on `main` (c059a0d) with the same synthetic data as the
+ * "after" ones: the 5-tab bottom bar, the Playlists tab and the settings. Not part of the PR.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(application = Application::class, qualifiers = "w412dp-h915dp-xhdpi")
+class BeforeRenders {
+    private val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @get:Rule
+    val rules: RuleChain = RuleChain.outerRule(RegisterActivity()).around(compose)
+
+    private val out = File("build/before-renders").apply { mkdirs() }
+
+    @Test
+    fun `bar in English`() = bar("en")
+
+    @Test
+    @Config(qualifiers = "+fr")
+    fun `bar in French`() = bar("fr")
+
+    @Test
+    fun `playlists in English`() = playlists("en")
+
+    @Test
+    @Config(qualifiers = "+fr")
+    fun `playlists in French`() = playlists("fr")
+
+    @Test
+    @Config(qualifiers = "w412dp-h2000dp-xhdpi")
+    fun `settings in English`() = settings("en")
+
+    @Test
+    @Config(qualifiers = "fr-w412dp-h2000dp-xhdpi")
+    fun `settings in French`() = settings("fr")
+
+    private fun bar(lang: String) {
+        compose.setContent {
+            SillonTheme(darkTheme = false) {
+                Box(Modifier.testTag(ROOT)) { MainBar(Routes.ARTISTS) }
+            }
+        }
+        save("bottom-bar-before-$lang.png")
+    }
+
+    private fun playlists(lang: String) {
+        compose.setContent {
+            SillonTheme(darkTheme = false) {
+                Fakes().Provide {
+                    Scaffold(modifier = Modifier.testTag(ROOT), bottomBar = { MainBar(Routes.PLAYLISTS) }) { padding ->
+                        PlaylistsScreen(onPlaylist = {}, onFiveStars = {}, contentPadding = padding)
+                    }
+                }
+            }
+        }
+        save("playlists-before-$lang.png")
+    }
+
+    private fun settings(lang: String) {
+        val model = SettingsViewModel(SettingsStore(ApplicationProvider.getApplicationContext()), mockk(relaxed = true))
+        compose.setContent {
+            SillonTheme(darkTheme = false) {
+                Surface(Modifier.testTag(ROOT), color = MaterialTheme.colorScheme.background) {
+                    SettingsScreen(onBack = {}, contentPadding = PaddingValues(), viewModel = model)
+                }
+            }
+        }
+        save("settings-before-$lang.png")
+    }
+
+    /** The bar of `LibraryNavHost` on main, item for item (there it is inline and private). */
+    @Composable
+    private fun MainBar(current: String) {
+        val tabs = listOf(
+            Triple(Routes.ARTISTS, R.string.library_artists, Icons.Rounded.Person),
+            Triple(Routes.ALBUMS, R.string.library_albums, Icons.Rounded.Album),
+            Triple(Routes.PLAYLISTS, R.string.library_playlists, Icons.AutoMirrored.Rounded.QueueMusic),
+            Triple(Routes.SEARCH, R.string.library_search, Icons.Rounded.Search),
+            Triple(Routes.DOWNLOADS, R.string.library_downloads, Icons.Rounded.DownloadDone),
+        )
+        NavigationBar {
+            tabs.forEach { (route, label, icon) ->
+                NavigationBarItem(
+                    selected = route == current,
+                    onClick = {},
+                    icon = { Icon(icon, contentDescription = null) },
+                    label = { Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                )
+            }
+        }
+    }
+
+    private fun save(name: String) {
+        compose.waitForIdle()
+        val root = compose.activity.window.decorView
+        val full = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+        compose.runOnUiThread { root.draw(Canvas(full)) }
+        val b = compose.onNodeWithTag(ROOT).fetchSemanticsNode().boundsInWindow
+        val bitmap = Bitmap.createBitmap(
+            full, b.left.toInt(), b.top.toInt(),
+            b.width.toInt().coerceAtMost(full.width - b.left.toInt()),
+            b.height.toInt().coerceAtMost(full.height - b.top.toInt()),
+        )
+        File(out, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    private class Fakes : ViewModelStoreOwner {
+        override val viewModelStore = ViewModelStore()
+
+        init {
+            seed(
+                mockk<PlaylistsViewModel>(relaxed = true) {
+                    every { state } returns MutableStateFlow(Load.Ready(PLAYLISTS))
+                    every { startingFiveStars } returns MutableStateFlow(false)
+                    every { isJellyfin } returns MutableStateFlow(false)
+                    every { stations } returns MutableStateFlow(listOf(Station("s1", null), Station("s2", "Synthetic radio")))
+                    every { startingStation } returns MutableStateFlow(null)
+                },
+            )
+            seed(
+                mockk<NeverPlayedViewModel>(relaxed = true) {
+                    every { plays } returns MutableStateFlow(CachedLibraryPlays(neverPlayed = 1_234, total = 4_321, fetchedAt = 0))
+                    every { starting } returns MutableStateFlow(null)
+                    every { notice } returns MutableStateFlow(null)
+                },
+            )
+            seed(
+                mockk<MysteryViewModel>(relaxed = true) {
+                    every { starting } returns MutableStateFlow(false)
+                    every { problem } returns MutableStateFlow(null)
+                    every { anyAlbum } returns MutableStateFlow(false)
+                },
+            )
+            seed(mockk<LibraryMenuViewModel>(relaxed = true) { every { state } returns MutableStateFlow(LibraryMenuUi()) })
+        }
+
+        @Composable
+        fun Provide(content: @Composable () -> Unit) {
+            CompositionLocalProvider(LocalViewModelStoreOwner provides this, content = content)
+        }
+
+        private inline fun <reified VM : ViewModel> seed(model: VM) {
+            val factory = object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = model as T
+            }
+            ViewModelProvider(viewModelStore, factory)[VM::class.java]
+        }
+    }
+
+    private class RegisterActivity : TestWatcher() {
+        override fun starting(description: Description) {
+            val app = ApplicationProvider.getApplicationContext<Application>()
+            shadowOf(app.packageManager).addActivityIfNotPresent(ComponentName(app, ComponentActivity::class.java))
+        }
+    }
+
+    private companion object {
+        const val ROOT = "root"
+        val PLAYLISTS = listOf("Synthetic Mix", "Sunday Morning", "Road Trip", "Late Night").mapIndexed { i, title ->
+            TileUi(key = "p$i", title = title, subtitle = null, artworkUrl = null, trackCount = 10 + i * 7)
+        }
+    }
+}
