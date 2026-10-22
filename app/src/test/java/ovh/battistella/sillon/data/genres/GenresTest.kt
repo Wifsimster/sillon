@@ -90,6 +90,17 @@ class GenresTest {
     }
 
     @Test
+    fun `offline the label stays the library's spelling`() {
+        val albums = listOf(album("1", "Rock"), album("2", "Rock"), album("3", "rock"))
+        assertEquals("Rock", Genres.group(albums, onPhone = setOf("3")).single().label)
+    }
+
+    @Test
+    fun `on a tie the capitalised spelling wins`() {
+        assertEquals("Hip Hop", Genres.group(listOf(album("1", "HIP HOP"), album("2", "hip hop"), album("3", "Hip Hop"))).single().label)
+    }
+
+    @Test
     fun `an unrevealed surprise is in no genre and counts nowhere`() {
         val albums = listOf(album("secret", "Rock", "Jazz"), album("2", "Rock"), album("3", "Rock"))
         val genres = Genres.group(albums, hidden = setOf("secret"))

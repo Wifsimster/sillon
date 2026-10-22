@@ -111,20 +111,22 @@ object Genres {
 
     /**
      * The genres of [albums], spellings merged, most albums first. [hidden] albums (an unrevealed
-     * surprise) count nowhere; with [onPhone], only those albums count (offline).
+     * surprise) count nowhere; with [onPhone], only those albums count (offline). The label is the
+     * spelling most albums of the whole library use, so it does not change when going offline.
      */
     fun group(albums: List<GenreAlbum>, hidden: Set<String> = emptySet(), onPhone: Set<String>? = null): List<Genre> {
         val members = LinkedHashMap<String, MutableList<GenreAlbum>>()
         val spellings = HashMap<String, MutableMap<String, Int>>()
         albums.asSequence()
-            .filter { it.key !in hidden && (onPhone == null || it.key in onPhone) }
+            .filter { it.key !in hidden }
             .distinctBy { it.key }
             .forEach { album ->
+                val counted = onPhone == null || album.key in onPhone
                 album.genres.map { it.trim() }.filter { it.isNotEmpty() }
                     .groupBy { normalize(it) }
                     .filterKeys { it.isNotEmpty() }
                     .forEach { (key, names) ->
-                        members.getOrPut(key) { mutableListOf() } += album
+                        if (counted) members.getOrPut(key) { mutableListOf() } += album
                         val counts = spellings.getOrPut(key) { HashMap() }
                         names.distinct().forEach { counts[it] = (counts[it] ?: 0) + 1 }
                     }
@@ -133,9 +135,15 @@ object Genres {
             .sortedWith(compareByDescending<Genre> { it.albums.size }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.label })
     }
 
-    /** The spelling most albums use; on a tie, the first in a stable order. */
+    /** The spelling most albums use; on a tie, a capitalised one ("Rock" over "ROCK" and "rock"), then a stable order. */
     private fun label(counts: Map<String, Int>): String =
-        counts.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).first().key
+        counts.entries.sortedWith(
+            compareByDescending<Map.Entry<String, Int>> { it.value }
+                .thenByDescending { capitalised(it.key) }
+                .thenBy { it.key },
+        ).first().key
+
+    private fun capitalised(name: String): Boolean = name.first().isUpperCase() && name.any { it.isLowerCase() }
 
     /** The artists of a genre, most albums first; compilations ("Various Artists") are left out. */
     fun artists(genre: Genre): List<GenreArtist> =
