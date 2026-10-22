@@ -61,8 +61,7 @@ class OneStarSkipperTest {
     fun `a 1-star track picked from the queue plays`() {
         queue("a1", "b1", "c1", "d1", "e1")
 
-        skipper.chose(3)
-        exo.seekToDefaultPosition(3)
+        skipper.picking(3) { exo.seekToDefaultPosition(3) }
         idle()
 
         assertEquals("d1", current())
@@ -71,12 +70,22 @@ class OneStarSkipperTest {
     @Test
     fun `after a pick, next jumps over 1-star tracks again`() {
         queue("a1", "b1", "c1", "d1", "e1")
-        skipper.chose(3)
-        exo.seekToDefaultPosition(3)
+        skipper.picking(3) { exo.seekToDefaultPosition(3) }
         idle()
 
         exo.seekToPreviousMediaItem()
         idle()
+        exo.seekToNextMediaItem()
+        idle()
+
+        assertEquals("e1", current())
+    }
+
+    @Test
+    fun `a pick whose seek never happens doesn't spare a later next`() {
+        queue("a1", "b1", "c1", "d1", "e1", start = 2)
+
+        skipper.picking(3) { /* the group holds the queue: no seek */ }
         exo.seekToNextMediaItem()
         idle()
 

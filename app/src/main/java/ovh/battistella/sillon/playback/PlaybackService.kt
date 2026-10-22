@@ -169,7 +169,7 @@ class PlaybackService : MediaLibraryService() {
             grouped = { together.state.value.isActive },
             inGroupMode = { groupPlayer?.inGroupMode == true },
             sides = sides,
-            chose = { index -> skipper?.chose(index) },
+            pick = { index, seek -> skipper?.picking(index, seek) ?: seek() },
             describe = { end ->
                 getString(R.string.side_end_title, end.ended) to getString(R.string.side_flip_hint, end.next)
             },
@@ -294,10 +294,16 @@ class PlaybackService : MediaLibraryService() {
         .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
         .build()
 
-    /** Rates [key]; 1 star on the track playing moves on at once, except when listening together. */
+    /**
+     * Rates [key]; 1 star on the track playing moves on at once, except when listening together.
+     * On Sonos the speaker holds the queue: it goes to its next track.
+     */
     private fun rate(key: String, stars: Int?) {
         rater.rate(key, stars)
-        if (stars == 1 && key == mediaSession?.player?.currentMediaItem?.mediaId) skipper?.skipCurrent()
+        val player = mediaSession?.player ?: return
+        if (stars == 1 && key == player.currentMediaItem?.mediaId) {
+            OneStarSkip.moveOn(speaker = sonos, skipCurrent = { skipper?.skipCurrent() })
+        }
     }
 
     private fun applyGain(player: Player, item: MediaItem?) {

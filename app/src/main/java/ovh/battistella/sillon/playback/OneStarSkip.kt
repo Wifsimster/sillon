@@ -32,6 +32,14 @@ object OneStarSkip {
         return null
     }
 
+    /**
+     * The track playing was just rated 1 star: on to the next. On a speaker ([speaker], e.g. Sonos)
+     * the speaker holds the queue and goes to its next track; on the phone, [skipCurrent].
+     */
+    fun moveOn(speaker: Player?, skipCurrent: () -> Unit) {
+        if (speaker == null) skipCurrent() else if (speaker.hasNextMediaItem()) speaker.seekToNextMediaItem()
+    }
+
     /** The first index of [count] tracks that may start a queue, from [from] on, or [from] when all are 1 star. */
     fun start(from: Int, count: Int, isOneStar: (Int) -> Boolean): Int =
         target(from, isOneStar, { (it + 1).takeIf { n -> n < count } }, count) ?: from
@@ -47,9 +55,18 @@ class OneStarSkipper(
 ) : Player.Listener {
     private var chosen: Int? = null
 
-    /** The listener picks the track at [index] from the queue: it plays, even rated 1 star. */
-    fun chose(index: Int) {
+    /**
+     * The listener picks the track at [index] from the queue with [seek]: it plays, even rated
+     * 1 star. The pick lasts only for that seek, so a seek that never happens (nothing queued,
+     * the group holding the queue) leaves nothing behind for a later "next".
+     */
+    fun picking(index: Int, seek: () -> Unit) {
         chosen = index
+        try {
+            seek()
+        } finally {
+            chosen = null
+        }
     }
 
     override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {

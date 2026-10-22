@@ -17,8 +17,8 @@ class SidePlayer(
     private val sides: SideSession,
     private val describe: (SideEnd) -> Pair<String, String>,
     private val onEndedChanged: (SideEnd?) -> Unit,
-    // A track picked by its place in the queue (Android Auto's queue list), not "next".
-    private val chose: (Int) -> Unit = {},
+    // A track picked by its place in the queue (Android Auto's queue list), not "next": runs the seek.
+    private val pick: (index: Int, seek: () -> Unit) -> Unit = { _, seek -> seek() },
 ) : ForwardingPlayer(base) {
     private val listeners = mutableListOf<Player.Listener>()
     private var queue: List<String> = emptyList()
@@ -101,15 +101,13 @@ class SidePlayer(
     override fun seekTo(positionMs: Long) = seeking { super.seekTo(positionMs) }
 
     override fun seekTo(mediaItemIndex: Int, positionMs: Long) = seeking {
-        chose(mediaItemIndex)
-        super.seekTo(mediaItemIndex, positionMs)
+        pick(mediaItemIndex) { super.seekTo(mediaItemIndex, positionMs) }
     }
 
     override fun seekToDefaultPosition() = seeking { super.seekToDefaultPosition() }
 
     override fun seekToDefaultPosition(mediaItemIndex: Int) = seeking {
-        chose(mediaItemIndex)
-        super.seekToDefaultPosition(mediaItemIndex)
+        pick(mediaItemIndex) { super.seekToDefaultPosition(mediaItemIndex) }
     }
 
     override fun seekToPrevious() = seeking { super.seekToPrevious() }
