@@ -510,12 +510,14 @@ class PlaybackService : MediaLibraryService() {
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
+        // Off the main thread: for a legacy browser (Android Auto), Media3 waits for this root on the
+        // main thread, so a root that needs the main thread never comes and the car spins forever.
         @OptIn(UnstableApi::class)
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
+        ): ListenableFuture<LibraryResult<MediaItem>> = scope.future(Dispatchers.IO) {
             when {
                 !libraryTree.isCallerTrusted(browser) -> {
                     Log.w(TAG, "browse root denied to ${browser.packageName}")
