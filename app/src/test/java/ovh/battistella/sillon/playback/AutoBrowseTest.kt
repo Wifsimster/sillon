@@ -13,11 +13,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.android.controller.ServiceController
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -29,6 +31,15 @@ import kotlin.concurrent.thread
 @RunWith(RobolectricTestRunner::class)
 class AutoBrowseTest {
     private val app: Context = ApplicationProvider.getApplicationContext()
+    private var running: ServiceController<PlaybackService>? = null
+    private var browser: MediaBrowser? = null
+
+    // Media3 keeps sessions by id for the whole JVM: each test ends its own.
+    @After
+    fun tearDown() {
+        browser?.disconnect()
+        running?.destroy()
+    }
 
     @Test
     fun `Android Auto gets the library root without blocking the main thread`() = assertBrowses(AUTO)
@@ -38,8 +49,8 @@ class AutoBrowseTest {
 
     private fun assertBrowses(carPackage: String) {
         val service = ComponentName(app, PlaybackService::class.java)
-        val binder = Robolectric.buildService(PlaybackService::class.java).create().get()
-            .onBind(Intent(MediaBrowserService.SERVICE_INTERFACE))
+        val controller = Robolectric.buildService(PlaybackService::class.java).also { running = it }
+        val binder = controller.create().get().onBind(Intent(MediaBrowserService.SERVICE_INTERFACE))
         shadowOf(app as android.app.Application).setComponentNameAndServiceForBindService(service, binder)
         shadowOf(app.packageManager).setPackagesForUid(Process.myUid(), carPackage, app.packageName)
 
@@ -48,8 +59,7 @@ class AutoBrowseTest {
         }
         val connected = AtomicBoolean(false)
         val failed = AtomicBoolean(false)
-        lateinit var browser: MediaBrowser
-        browser = MediaBrowser(
+        val browser = MediaBrowser(
             car,
             service,
             object : MediaBrowser.ConnectionCallback() {
@@ -58,7 +68,7 @@ class AutoBrowseTest {
                 override fun onConnectionFailed() = failed.set(true)
             },
             null,
-        )
+        ).also { this.browser = it }
         browser.connect()
 
         val blocked = awaitOnMain { connected.get() || failed.get() }
