@@ -61,6 +61,21 @@ jobs:
             app/build/outputs/renders/**/*.png
           if-no-files-found: ignore
 
+      # Fails the build on any lint error (no baseline): new errors show up on the PR.
+      - name: Run Android lint
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+            app/build/reports/lint-results-debug.txt
+          if-no-files-found: ignore
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
