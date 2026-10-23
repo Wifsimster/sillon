@@ -53,6 +53,7 @@ class MediaLibraryTree @Inject constructor(
 
     fun root(): MediaItem = folder(BrowseNode.Root, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
 
+    @OptIn(UnstableApi::class)
     fun rootParams(): LibraryParams = LibraryParams.Builder()
         .setExtras(
             Bundle().apply {
@@ -81,6 +82,7 @@ class MediaLibraryTree @Inject constructor(
         BrowseNode.Recent, null -> null
     }
 
+    @OptIn(UnstableApi::class)
     suspend fun resolve(items: List<MediaItem>, startIndex: Int, startPositionMs: Long): MediaItemsWithStartPosition {
         val single = items.singleOrNull()
         val query = single?.requestMetadata?.searchQuery
@@ -120,6 +122,7 @@ class MediaLibraryTree @Inject constructor(
     suspend fun recentRoot(): MediaItem? =
         playbackState.load()?.let { folder(BrowseNode.Recent, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED) }
 
+    @OptIn(UnstableApi::class)
     suspend fun resumption(): MediaItemsWithStartPosition {
         val saved = playbackState.load() ?: return MediaItemsWithStartPosition(emptyList(), 0, 0L)
         val items = MysteryResume.restore(saved.mystery, repository.restoreQueue(saved.keys), sleeve.labels(), mystery)

@@ -510,6 +510,7 @@ class PlaybackService : MediaLibraryService() {
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
+        @OptIn(UnstableApi::class)
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
@@ -518,38 +519,40 @@ class PlaybackService : MediaLibraryService() {
             when {
                 !libraryTree.isCallerTrusted(browser) -> {
                     Log.w(TAG, "browse root denied to ${browser.packageName}")
-                    LibraryResult.ofError(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
+                    LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED)
                 }
                 params?.isRecent == true -> libraryTree.recentRoot()
                     .also { grantSleeve(browser) }
                     ?.let { LibraryResult.ofItem(it, libraryTree.rootParams()) }
-                    ?: LibraryResult.ofError(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
+                    ?: LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
                 else -> LibraryResult.ofItem(libraryTree.root(), libraryTree.rootParams())
                     .also { grantSleeve(browser) }
             }
         }
 
+        @OptIn(UnstableApi::class)
         override fun onGetItem(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             mediaId: String,
         ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
             if (!libraryTree.isCallerTrusted(browser)) {
-                return@future LibraryResult.ofError(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
+                return@future LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED)
             }
             runCatching { libraryTree.item(mediaId) }.fold(
                 onSuccess = { item ->
                     item?.let { grantArtwork(browser, listOf(it)) }
                     item?.let { LibraryResult.ofItem(it, null) }
-                        ?: LibraryResult.ofError(SessionResult.RESULT_ERROR_BAD_VALUE)
+                        ?: LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
                 },
                 onFailure = {
                     Log.w(TAG, "onGetItem failed", it)
-                    LibraryResult.ofError(SessionResult.RESULT_ERROR_IO)
+                    LibraryResult.ofError(SessionError.ERROR_IO)
                 },
             )
         }
 
+        @OptIn(UnstableApi::class)
         override fun onGetChildren(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
@@ -568,7 +571,7 @@ class PlaybackService : MediaLibraryService() {
                 },
                 onFailure = {
                     Log.w(TAG, "onGetChildren failed", it)
-                    LibraryResult.ofError(SessionResult.RESULT_ERROR_IO)
+                    LibraryResult.ofError(SessionError.ERROR_IO)
                 },
             )
         }
@@ -584,6 +587,7 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
+        @OptIn(UnstableApi::class)
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -594,6 +598,7 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
+        @OptIn(UnstableApi::class)
         override fun onSetMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,

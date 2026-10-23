@@ -1,7 +1,9 @@
 package ovh.battistella.sillon.playback
 
 import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionCommands
@@ -21,6 +23,7 @@ object RatingGate {
      * ones (the app, the system, the notification, Android Auto) get to rate, with Media3's
      * setRating as with Sillon's own commands.
      */
+    @OptIn(UnstableApi::class)
     fun commands(trusted: Boolean): SessionCommands =
         MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             .add(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY))
@@ -41,6 +44,7 @@ object RatingGate {
      * playing: a [requestedKey] for another track is refused rather than rated. A surprise sleeve
      * not revealed yet keeps its rating to itself.
      */
+    @OptIn(UnstableApi::class)
     fun check(trusted: Boolean, requestedKey: String?, current: MediaItem?): Verdict {
         if (!trusted) return Verdict.Refuse(SessionError.ERROR_PERMISSION_DENIED)
         val key = current?.mediaId?.takeIf { it.isNotBlank() } ?: return Verdict.Refuse(SessionError.ERROR_BAD_VALUE)

@@ -1,9 +1,11 @@
 package ovh.battistella.sillon.playback
 
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,6 +68,7 @@ class TimelineReporter(
 
     override fun onPlaybackStateChanged(playbackState: Int) = reportCurrent()
 
+    @OptIn(UnstableApi::class)
     override fun onPositionDiscontinuity(
         oldPosition: Player.PositionInfo,
         newPosition: Player.PositionInfo,
