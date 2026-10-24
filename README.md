@@ -21,11 +21,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/01-albums.jpg" width="19%" alt="Albums: a grid of covers" />
-  <img src="docs/screenshots/02-album.jpg" width="19%" alt="An album with popularity bars on each track" />
-  <img src="docs/screenshots/03-player.jpg" width="19%" alt="Now playing, the background tinted by the cover" />
-  <img src="docs/screenshots/04-playlists.jpg" width="19%" alt="Playlists, the My 5 stars mix and the radios" />
-  <img src="docs/screenshots/05-search.jpg" width="19%" alt="Search as you type: artists, albums, tracks" />
+  <img src="docs/screenshots/01-listen.jpg" width="16%" alt="Listen: shuffle, My 5 stars, never played and the mystery sleeve" />
+  <img src="docs/screenshots/02-album.jpg" width="16%" alt="An album with popularity bars on each track" />
+  <img src="docs/screenshots/03-player.jpg" width="16%" alt="Now playing, with stars to rate the track" />
+  <img src="docs/screenshots/04-queue.jpg" width="16%" alt="The play queue, reorder by dragging" />
+  <img src="docs/screenshots/05-playlists.jpg" width="16%" alt="Playlists: a grid of mosaic covers" />
+  <img src="docs/screenshots/06-search.jpg" width="16%" alt="Search before typing: recently played, your classics and genres" />
 </p>
 
 *Sillon* is French for the groove of a record — hence the logo: one continuous
