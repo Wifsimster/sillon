@@ -3,7 +3,7 @@
 Ready-to-paste text for the Google Play Console store listing. Character limits:
 **title ≤ 30**, **short description ≤ 80**, **full description ≤ 4000**.
 Assets: [`store-assets/`](store-assets) (icon 512, feature graphic 1024×500,
-phone screenshots padded to a 2:1 ratio).
+phone screenshots padded to 9:16 (720×1280)).
 
 ---
 
