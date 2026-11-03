@@ -58,6 +58,17 @@ object MediaItems {
         }
     }
 
+    /** [item] read from [fresh]'s stream (URL, type, cache key), keeping its own id and metadata. */
+    @OptIn(UnstableApi::class)
+    fun withStreamOf(item: MediaItem, fresh: MediaItem): MediaItem {
+        val stream = fresh.localConfiguration ?: return item
+        return item.buildUpon()
+            .setUri(stream.uri)
+            .setMimeType(stream.mimeType)
+            .setCustomCacheKey(stream.customCacheKey)
+            .build()
+    }
+
     /** The server's rating carried by [item], or null when it had none. */
     fun ratingOf(item: MediaItem?): Float? =
         item?.mediaMetadata?.extras?.takeIf { it.containsKey(EXTRA_RATING) }?.getFloat(EXTRA_RATING)
