@@ -3,6 +3,7 @@ package ovh.battistella.sillon.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -135,7 +136,7 @@ class PlaybackService : MediaLibraryService() {
         scope.launch { runCatching { repository.revokeLeftoverSpeakerToken() } }
         if (BuildConfig.DEBUG) player.addAnalyticsListener(EventLogger("SillonPlayer"))
         player.addListener(object : Player.Listener {
-            override fun onPlayerError(error: PlaybackException) = fallBackToOriginal(player, error)
+            override fun onPlayerError(error: PlaybackException) = recover(player, error)
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 applyGain(player, mediaItem)
@@ -361,27 +362,38 @@ class PlaybackService : MediaLibraryService() {
             .onFailure { Log.w(TAG, "sleeve grant to ${browser.packageName} failed", it) }
     }
 
-    private val fellBack = mutableSetOf<String>()
+    private val recovery = SourceRecovery()
 
+    /**
+     * A track that can't be read: ask the server for it again, then fall back from a transcode to
+     * the original file (see [SourceRecovery]). It goes on where it stopped, with its own metadata
+     * (a surprise sleeve stays hidden).
+     */
     @OptIn(UnstableApi::class)
-    private fun fallBackToOriginal(player: Player, error: PlaybackException) {
+    private fun recover(player: Player, error: PlaybackException) {
         val item = player.currentMediaItem ?: return
         val uri = item.localConfiguration?.uri?.toString() ?: return
-        if (!MediaItems.isTranscode(uri) || !fellBack.add(item.mediaId)) return
-        Log.w(TAG, "transcode failed (${error.errorCodeName}), falling back to the original file")
+        val action = recovery.decide(item.mediaId, uri, error.errorCode, SystemClock.elapsedRealtime())
+        Log.w(TAG, "playback error ${error.errorCodeName} on ${item.mediaId}: $action", error)
+        if (action == SourceRecovery.Action.GIVE_UP) return
         val index = player.currentMediaItemIndex
         scope.launch {
-            val original = runCatching {
-                repository.metadata(item.mediaId)?.let { repository.streamUrl(repository.endpoint(), it) }
-            }.getOrNull() ?: return@launch
-            val cacheKey = runCatching { ListeningCacheKeys.track(repository.currentServerId(), item.mediaId) }.getOrNull()
-            if (player.currentMediaItem?.mediaId != item.mediaId) return@launch
-            player.replaceMediaItem(
-                index,
-                item.buildUpon().setUri(original).setMimeType(null).setCustomCacheKey(cacheKey).build(),
-            )
-            player.prepare()
-            player.play()
+            val fresh = runCatching {
+                // On Plex the metadata call reconnects when the server's address went stale.
+                val track = repository.metadata(item.mediaId) ?: return@runCatching null
+                when (action) {
+                    SourceRecovery.Action.REFRESH -> repository.playable(listOf(track)).firstOrNull()
+                        ?.let { MediaItems.withStreamOf(item, MediaItems.from(it)) }
+                    else -> repository.streamUrl(repository.endpoint(), track)?.let { original ->
+                        val cacheKey = runCatching { ListeningCacheKeys.track(repository.currentServerId(), item.mediaId) }.getOrNull()
+                        item.buildUpon().setUri(original).setMimeType(null).setCustomCacheKey(cacheKey).build()
+                    }
+                }
+            }.onFailure { Log.w(TAG, "recovery of ${item.mediaId} failed", it) }.getOrNull() ?: return@launch
+            if (player.currentMediaItem?.mediaId != item.mediaId || player.currentMediaItemIndex != index) return@launch
+            // Gone to a Sonos speaker meanwhile: the phone stays quiet.
+            if (sonos != null) return@launch
+            SourceRecovery.resume(player, index, fresh)
         }
     }
 
