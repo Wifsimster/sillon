@@ -41,7 +41,7 @@ class SourceRecoveryTest {
     }
 
     @Test
-    fun `a later pause can go stale again: the budget comes back after the window`() {
+    fun `a later pause can go stale again, the budget comes back after the window`() {
         val recovery = SourceRecovery(windowMs = 60_000)
         recovery.decide("7", transcode, badStatus, nowMs = 0)
         recovery.decide("7", transcode, badStatus, nowMs = 1_000)
