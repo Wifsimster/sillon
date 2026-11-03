@@ -12,7 +12,7 @@ import androidx.media3.common.Player
  * URL. The car shows "Source error" each time.
  *
  * So a source error first asks the server for the track again ([Action.REFRESH]: a new transcode
- * session, on the address the server answers at now). A transcode that still fails falls back to
+ * session; on Plex, also on the address the server answers at now). A transcode that still fails falls back to
  * the original file ([Action.ORIGINAL]). Each track gets that budget once per [windowMs], so a
  * track that keeps failing stops in error instead of looping, and a later pause can recover again.
  */
@@ -39,13 +39,17 @@ class SourceRecovery(private val windowMs: Long = WINDOW_MS) {
     companion object {
         const val WINDOW_MS = 60_000L
 
-        /** Plays [fresh] in place of the track at [index], from [positionMs] where it stopped. */
-        fun resume(player: Player, index: Int, fresh: MediaItem, positionMs: Long) {
+        /**
+         * Plays [fresh] in place of the track at [index], from where it stands now (where it
+         * stopped, or where the user sought to meanwhile). Play or pause stays the user's: the
+         * player keeps playWhenReady through an error, so a paused track stays paused.
+         */
+        fun resume(player: Player, index: Int, fresh: MediaItem) {
+            val positionMs = player.currentPosition.coerceAtLeast(0)
             player.replaceMediaItem(index, fresh)
             // A new URL replaces the item, which would start it over.
             player.seekTo(index, positionMs)
             player.prepare()
-            player.play()
         }
 
         /** Reading the stream failed (network, HTTP status, a server answer that isn't audio), not decoding it. */

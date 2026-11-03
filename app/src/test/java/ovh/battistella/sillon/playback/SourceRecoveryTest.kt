@@ -87,27 +87,39 @@ class SourceRecoveryTest {
 
     @Test
     fun `the fresh stream takes the track's place where it stopped, with the track's own metadata`() {
+        val fresh = swap(playing = true)
+        assertEquals(3, exo.mediaItemCount)
+        assertEquals(1, exo.currentMediaItemIndex)
+        assertEquals("7", exo.currentMediaItem?.mediaId)
+        assertEquals(fresh, exo.currentMediaItem?.localConfiguration?.uri.toString())
+        assertEquals("Surprise", exo.currentMediaItem?.mediaMetadata?.title)
+        assertEquals(95_000, exo.currentPosition)
+        assertTrue(exo.playWhenReady)
+    }
+
+    @Test
+    fun `a paused track stays paused once its stream is fresh`() {
+        swap(playing = false)
+        assertEquals(95_000, exo.currentPosition)
+        assertFalse(exo.playWhenReady)
+    }
+
+    /** Puts a stale transcode at index 1, 95 s in, then swaps in a fresh stream; returns its URL. */
+    private fun swap(playing: Boolean): String {
         val masked = MediaMetadata.Builder().setTitle("Surprise").build()
         val stale = MediaItem.Builder().setMediaId("7").setUri(transcode).setMimeType(MimeTypes.APPLICATION_M3U8)
             .setMediaMetadata(masked).build()
         exo.setMediaItems(listOf(item("6"), stale, item("8")), 1, 95_000)
+        exo.playWhenReady = playing
         val freshUri = transcode.replace("session=old", "session=new")
         val fresh = MediaItems.withStreamOf(
             stale,
             MediaItem.Builder().setMediaId("7").setUri(freshUri).setMimeType(MimeTypes.APPLICATION_M3U8)
                 .setMediaMetadata(MediaMetadata.Builder().setTitle("Real title").build()).build(),
         )
-
-        SourceRecovery.resume(exo, 1, fresh, 95_000)
+        SourceRecovery.resume(exo, 1, fresh)
         shadowOf(Looper.getMainLooper()).idle()
-
-        assertEquals(3, exo.mediaItemCount)
-        assertEquals(1, exo.currentMediaItemIndex)
-        assertEquals("7", exo.currentMediaItem?.mediaId)
-        assertEquals(freshUri, exo.currentMediaItem?.localConfiguration?.uri.toString())
-        assertEquals("Surprise", exo.currentMediaItem?.mediaMetadata?.title)
-        assertEquals(95_000, exo.currentPosition)
-        assertTrue(exo.playWhenReady)
+        return freshUri
     }
 
     private fun item(id: String) = MediaItem.Builder().setMediaId(id).setUri("https://server/$id.flac").build()

@@ -377,10 +377,9 @@ class PlaybackService : MediaLibraryService() {
         Log.w(TAG, "playback error ${error.errorCodeName} on ${item.mediaId}: $action", error)
         if (action == SourceRecovery.Action.GIVE_UP) return
         val index = player.currentMediaItemIndex
-        val positionMs = player.currentPosition.coerceAtLeast(0)
         scope.launch {
             val fresh = runCatching {
-                // The metadata call reconnects to the server when its address went stale.
+                // On Plex the metadata call reconnects when the server's address went stale.
                 val track = repository.metadata(item.mediaId) ?: return@runCatching null
                 when (action) {
                     SourceRecovery.Action.REFRESH -> repository.playable(listOf(track)).firstOrNull()
@@ -392,7 +391,9 @@ class PlaybackService : MediaLibraryService() {
                 }
             }.onFailure { Log.w(TAG, "recovery of ${item.mediaId} failed", it) }.getOrNull() ?: return@launch
             if (player.currentMediaItem?.mediaId != item.mediaId || player.currentMediaItemIndex != index) return@launch
-            SourceRecovery.resume(player, index, fresh, positionMs)
+            // Gone to a Sonos speaker meanwhile: the phone stays quiet.
+            if (sonos != null) return@launch
+            SourceRecovery.resume(player, index, fresh)
         }
     }
 
