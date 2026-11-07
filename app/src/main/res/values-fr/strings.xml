@@ -326,6 +326,9 @@
     <string name="rating_love">J\'adore (5 étoiles)</string>
     <string name="rating_love_undo">Retirer les 5 étoiles</string>
     <string name="rating_dislike">Pas pour moi (1 étoile, suivant)</string>
+    <string name="rating_star_pick">Noter %1$d étoiles</string>
+    <string name="rating_star_next">Noté %1$d étoiles, touche pour %2$d</string>
+    <string name="rating_star_clear">Noté %1$d étoiles, touche pour effacer</string>
     <string name="rating_waiting">Hors ligne : ta note partira dès que tu seras connecté.</string>
     <string name="rating_failed">Ta note n\'est pas arrivée sur le serveur. Touche pour réessayer.</string>
     <string name="rating_jellyfin_only">Jellyfin ne garde que 1 étoile (je n\'aime pas) et 5 étoiles (favori).</string>
