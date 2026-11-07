@@ -280,7 +280,7 @@ class PlaybackService : MediaLibraryService() {
                 val rating = rater.state.value.book.ratingOf(item.mediaId, MediaItems.ratingOf(item))
                 val loved = Stars.isFiveStars(rating)
                 if (AutoStars.offered(jellyfin)) {
-                    listOf(loveButton(loved), starButton(Stars.of(rating)), dislikeButton())
+                    listOf(loveButton(loved), dislikeButton(), starButton(Stars.of(rating)))
                 } else {
                     listOf(loveButton(loved), dislikeButton())
                 }
@@ -304,7 +304,7 @@ class PlaybackService : MediaLibraryService() {
         return CommandButton.Builder(if (shown != null) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)
             .setDisplayName(
                 when {
-                    shown == null -> getString(R.string.rating_star_pick, next ?: Stars.MAX)
+                    shown == null -> getString(R.string.rating_star_pick, next)
                     next == null -> getString(R.string.rating_star_clear, shown)
                     else -> getString(R.string.rating_star_next, shown, next)
                 },
