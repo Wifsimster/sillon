@@ -324,6 +324,9 @@
     <string name="rating_love">Love it (5 stars)</string>
     <string name="rating_love_undo">Remove the 5 stars</string>
     <string name="rating_dislike">Not for me (1 star, next)</string>
+    <string name="rating_star_pick">Rate %1$d stars</string>
+    <string name="rating_star_next">Rated %1$d stars, tap for %2$d</string>
+    <string name="rating_star_clear">Rated %1$d stars, tap to clear</string>
     <string name="rating_waiting">Offline: your rating leaves once you are back online.</string>
     <string name="rating_failed">Your rating did not reach the server. Touch to try again.</string>
     <string name="rating_jellyfin_only">Jellyfin keeps 1 star (dislike) and 5 stars (favourite) only.</string>

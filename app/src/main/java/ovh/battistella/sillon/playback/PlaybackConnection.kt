@@ -284,6 +284,7 @@ class PlaybackConnection @Inject constructor(
         const val ACTION_RATE = "ovh.battistella.sillon.RATE"
         const val ACTION_LOVE = "ovh.battistella.sillon.LOVE"
         const val ACTION_DISLIKE = "ovh.battistella.sillon.DISLIKE"
+        const val ACTION_STAR_STEP = "ovh.battistella.sillon.STAR_STEP"
         const val RATE_KEY = "key"
         const val RATE_STARS = "stars"
     }

@@ -49,6 +49,7 @@ class RatingGateTest {
         assertFalse(commands.contains(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY)))
         assertFalse(commands.contains(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY)))
         assertFalse(commands.contains(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY)))
+        assertFalse(commands.contains(SessionCommand(PlaybackConnection.ACTION_STAR_STEP, Bundle.EMPTY)))
         assertTrue(commands.contains(SessionCommand(SideSession.ACTION_FLIP, Bundle.EMPTY)))
     }
 
@@ -60,6 +61,7 @@ class RatingGateTest {
         assertTrue(commands.contains(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY)))
         assertTrue(commands.contains(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY)))
         assertTrue(commands.contains(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY)))
+        assertTrue(commands.contains(SessionCommand(PlaybackConnection.ACTION_STAR_STEP, Bundle.EMPTY)))
     }
 
     @Test
