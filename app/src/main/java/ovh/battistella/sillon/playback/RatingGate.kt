@@ -32,7 +32,6 @@ object RatingGate {
                     add(SessionCommand(PlaybackConnection.ACTION_RATE, Bundle.EMPTY))
                     add(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
                     add(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
-                    add(SessionCommand(PlaybackConnection.ACTION_STAR_STEP, Bundle.EMPTY))
                 } else {
                     remove(SessionCommand.COMMAND_CODE_SESSION_SET_RATING)
                 }
