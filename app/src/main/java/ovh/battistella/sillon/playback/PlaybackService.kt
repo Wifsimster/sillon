@@ -196,12 +196,6 @@ class PlaybackService : MediaLibraryService() {
                 refreshButtons()
             }
         }
-        scope.launch {
-            repository.isJellyfin.distinctUntilChanged().collect { value ->
-                jellyfin = value
-                refreshButtons()
-            }
-        }
         refreshButtons()
         scope.launch {
             sonosOutput.requests.collect { request ->
@@ -278,55 +272,28 @@ class PlaybackService : MediaLibraryService() {
             item == null || item.mediaId.isBlank() || MysteryMask.isMasked(item) -> emptyList()
             else -> {
                 val rating = rater.state.value.book.ratingOf(item.mediaId, MediaItems.ratingOf(item))
-                val loved = Stars.isFiveStars(rating)
-                if (AutoStars.offered(jellyfin)) {
-                    listOf(loveButton(loved), dislikeButton(), starButton(Stars.of(rating)))
-                } else {
-                    listOf(loveButton(loved), dislikeButton())
-                }
+                val stars = Stars.of(rating)
+                listOf(oneStarButton(stars == 1), fiveStarButton(stars == Stars.MAX))
             }
         }
         session.setCustomLayout(buttons)
     }
 
     @OptIn(UnstableApi::class)
-    private fun loveButton(loved: Boolean): CommandButton =
-        CommandButton.Builder(if (loved) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
-            .setDisplayName(getString(if (loved) R.string.rating_love_undo else R.string.rating_love))
-            .setCustomIconResId(if (loved) R.drawable.ic_heart_filled else R.drawable.ic_heart)
+    private fun oneStarButton(rated: Boolean): CommandButton =
+        CommandButton.Builder(if (rated) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)
+            .setDisplayName(getString(R.string.rating_dislike))
+            .setCustomIconResId(if (rated) R.drawable.ic_star_1_filled else R.drawable.ic_star_1)
+            .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
+            .build()
+
+    @OptIn(UnstableApi::class)
+    private fun fiveStarButton(rated: Boolean): CommandButton =
+        CommandButton.Builder(if (rated) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)
+            .setDisplayName(getString(if (rated) R.string.rating_love_undo else R.string.rating_love))
+            .setCustomIconResId(if (rated) R.drawable.ic_star_5_filled else R.drawable.ic_star_5)
             .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_LOVE, Bundle.EMPTY))
             .build()
-
-    @OptIn(UnstableApi::class)
-    private fun starButton(stars: Int?): CommandButton {
-        val shown = AutoStars.shown(stars)
-        val next = AutoStars.next(stars)
-        return CommandButton.Builder(if (shown != null) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)
-            .setDisplayName(
-                when {
-                    shown == null -> getString(R.string.rating_star_pick, next)
-                    next == null -> getString(R.string.rating_star_clear, shown)
-                    else -> getString(R.string.rating_star_next, shown, next)
-                },
-            )
-            .setCustomIconResId(
-                when (shown) {
-                    2 -> R.drawable.ic_star_2
-                    3 -> R.drawable.ic_star_3
-                    4 -> R.drawable.ic_star_4
-                    else -> R.drawable.ic_star
-                },
-            )
-            .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_STAR_STEP, Bundle.EMPTY))
-            .build()
-    }
-
-    @OptIn(UnstableApi::class)
-    private fun dislikeButton(): CommandButton = CommandButton.Builder(CommandButton.ICON_THUMB_DOWN_UNFILLED)
-        .setDisplayName(getString(R.string.rating_dislike))
-        .setCustomIconResId(R.drawable.ic_thumb_down)
-        .setSessionCommand(SessionCommand(PlaybackConnection.ACTION_DISLIKE, Bundle.EMPTY))
-        .build()
 
     /**
      * Rates [key]; 1 star on the track playing moves on at once, except when listening together.
@@ -347,8 +314,6 @@ class PlaybackService : MediaLibraryService() {
         player.volume = MediaItems.volumeFor(gain)
         if (BuildConfig.DEBUG) Log.d(TAG, "gain ${item?.mediaId}: $gain dB -> volume ${player.volume}")
     }
-
-    @Volatile private var jellyfin = false
 
     private var queueSaver: Job? = null
 
@@ -514,14 +479,6 @@ class PlaybackService : MediaLibraryService() {
                         is RatingGate.Verdict.Refuse -> return Futures.immediateFuture(SessionResult(verdict.error))
                     }
                     rate(key, args.getInt(PlaybackConnection.RATE_STARS).takeIf { it in 1..Stars.MAX })
-                }
-                PlaybackConnection.ACTION_STAR_STEP -> {
-                    val key = when (val verdict = RatingGate.check(trusted, null, current)) {
-                        is RatingGate.Verdict.Rate -> verdict.key
-                        is RatingGate.Verdict.Refuse -> return Futures.immediateFuture(SessionResult(verdict.error))
-                    }
-                    if (!AutoStars.offered(jellyfin)) return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
-                    rate(key, AutoStars.next(rater.state.value.book.starsOf(key, MediaItems.ratingOf(current))))
                 }
                 PlaybackConnection.ACTION_LOVE, PlaybackConnection.ACTION_DISLIKE -> {
                     val key = when (val verdict = RatingGate.check(trusted, null, current)) {
