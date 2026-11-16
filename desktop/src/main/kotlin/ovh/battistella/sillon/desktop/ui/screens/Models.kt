@@ -56,6 +56,7 @@ class SectionGridModel(
     private val scope: CoroutineScope,
     private val subtitle: (PlexMetadata) -> String? = { null },
     private val fetch: suspend (String) -> List<PlexMetadata>,
+    private val onFetched: (String, List<PlexMetadata>) -> Unit = { _, _ -> },
 ) {
     private val repository = graph.repository
     private val _state = MutableStateFlow<Load<SectionGridUi>>(Load.Loading)
@@ -78,7 +79,7 @@ class SectionGridModel(
                 } else {
                     val server = repository.endpoint()
                     val tiles = withContext(Dispatchers.Default) {
-                        fetch(section.key).map {
+                        fetch(section.key).also { onFetched(section.key, it) }.map {
                             TileUi(it.ratingKey, it.title, subtitle(it), repository.artworkUrl(server, it.thumb, TILE_ART_PX))
                         }
                     }

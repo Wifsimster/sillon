@@ -6,9 +6,13 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import coil3.ImageLoader
+import kotlinx.coroutines.runBlocking
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
@@ -17,15 +21,25 @@ import okio.Path.Companion.toOkioPath
 import org.jetbrains.skia.Image
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.i18n.stringsFor
+import ovh.battistella.sillon.desktop.platform.DesktopStorage
+import ovh.battistella.sillon.desktop.platform.SingleInstance
+import ovh.battistella.sillon.desktop.platform.WindowPlacement as SavedPlacement
 import ovh.battistella.sillon.desktop.ui.SillonApp
 import ovh.battistella.sillon.desktop.ui.handleShortcut
 import ovh.battistella.sillon.desktop.ui.rememberAppState
 import ovh.battistella.sillon.desktop.ui.theme.SillonTheme
 import java.awt.Dimension
+import java.awt.GraphicsEnvironment
+import java.awt.Rectangle
 import java.io.File
+import kotlin.system.exitProcess
 
-fun main() {
-    val graph = AppGraph()
+fun main(args: Array<String>) {
+    if (args.firstOrNull() == "--self-test") exitProcess(SelfTest.run(args.getOrNull(1)?.let(::File)))
+    val storage = DesktopStorage()
+    val instance = SingleInstance.acquire(File(storage.privateDir, "sillon.lock")) ?: return
+    val graph = AppGraph(storage)
+    val saved = runBlocking { runCatching { graph.prefs.window() }.getOrNull() }
     SingletonImageLoader.setSafe { context ->
         ImageLoader.Builder(context)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { graph.client })) }
@@ -43,19 +57,27 @@ fun main() {
     }
     val strings = stringsFor()
     application {
-        val windowState = rememberWindowState(size = DpSize(1280.dp, 820.dp))
+        val windowState = rememberWindowState(
+            placement = if (saved?.maximized == true) WindowPlacement.Maximized else WindowPlacement.Floating,
+            position = visiblePosition(saved),
+            size = DpSize((saved?.width ?: 1280).coerceAtLeast(MIN_WIDTH).dp, (saved?.height ?: 820).coerceAtLeast(MIN_HEIGHT).dp),
+        )
         val app = rememberAppState(graph)
+        val close = {
+            runBlocking { runCatching { graph.prefs.setWindow(placementOf(windowState)) } }
+            graph.close()
+            instance.release()
+            exitApplication()
+        }
+        app.exit = close
         Window(
-            onCloseRequest = {
-                graph.close()
-                exitApplication()
-            },
+            onCloseRequest = close,
             state = windowState,
             title = "Sillon",
             icon = icon,
             onPreviewKeyEvent = { handleShortcut(it, app) },
         ) {
-            window.minimumSize = Dimension(960, 600)
+            window.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT)
             CompositionLocalProvider(LocalStrings provides strings) {
                 SillonTheme {
                     SillonApp(app)
@@ -65,4 +87,29 @@ fun main() {
     }
 }
 
+private fun placementOf(state: WindowState): SavedPlacement {
+    val position = state.position.takeIf { it.isSpecified }
+    return SavedPlacement(
+        width = state.size.width.value.toInt(),
+        height = state.size.height.value.toInt(),
+        x = position?.x?.value?.toInt(),
+        y = position?.y?.value?.toInt(),
+        maximized = state.placement == WindowPlacement.Maximized,
+    )
+}
+
+private fun visiblePosition(saved: SavedPlacement?): WindowPosition {
+    val x = saved?.x ?: return WindowPosition.PlatformDefault
+    val y = saved.y ?: return WindowPosition.PlatformDefault
+    val visible = runCatching {
+        GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.any { screen ->
+            screen.defaultConfiguration.bounds.intersects(Rectangle(x, y, TITLE_GRIP, TITLE_GRIP))
+        }
+    }.getOrDefault(false)
+    return if (visible) WindowPosition(x.dp, y.dp) else WindowPosition.PlatformDefault
+}
+
 private const val IMAGE_CACHE_BYTES = 256L * 1024 * 1024
+private const val MIN_WIDTH = 960
+private const val MIN_HEIGHT = 600
+private const val TITLE_GRIP = 80

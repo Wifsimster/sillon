@@ -83,9 +83,11 @@ fun Cover(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(10.dp),
     description: String? = null,
+    wear: Wear? = null,
 ) {
     var loaded by remember(url) { mutableStateOf(false) }
-    Box(modifier.clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+    val worn = if (wear != null && loaded) Modifier.sleeveWear(wear) else Modifier
+    Box(modifier.clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHigh).then(worn), contentAlignment = Alignment.Center) {
         if (!loaded) SillonMark(Modifier.fillMaxSize().padding(6.dp), groove = MaterialTheme.colorScheme.outlineVariant)
         if (url != null) {
             AsyncImage(

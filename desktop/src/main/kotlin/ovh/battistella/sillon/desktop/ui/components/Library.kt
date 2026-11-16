@@ -80,6 +80,7 @@ fun TileGrid(
     modifier: Modifier = Modifier,
     round: Boolean = false,
     state: LazyGridState = rememberLazyGridState(),
+    wear: Map<String, Int> = emptyMap(),
     header: (@Composable () -> Unit)? = null,
 ) {
     LazyVerticalGrid(
@@ -93,12 +94,12 @@ fun TileGrid(
         if (header != null) {
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { header() }
         }
-        items(tiles, key = { it.key }) { tile -> Tile(tile, round) { onClick(tile) } }
+        items(tiles, key = { it.key }) { tile -> Tile(tile, round, wear = Wear.of(wear, tile.key)) { onClick(tile) } }
     }
 }
 
 @Composable
-fun Tile(tile: TileUi, round: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun Tile(tile: TileUi, round: Boolean, modifier: Modifier = Modifier, wear: Wear? = null, onClick: () -> Unit) {
     Column(
         modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(6.dp),
         horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start,
@@ -107,6 +108,7 @@ fun Tile(tile: TileUi, round: Boolean, modifier: Modifier = Modifier, onClick: (
             url = tile.artworkUrl,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
             shape = if (round) CircleShape else RoundedCornerShape(10.dp),
+            wear = wear,
         )
         Spacer(Modifier.height(8.dp))
         Text(

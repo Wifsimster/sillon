@@ -36,6 +36,7 @@ import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.StreamQuality
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
+import ovh.battistella.sillon.desktop.update.UpdateState
 
 @Composable
 fun SettingsScreen(app: AppState) {
@@ -46,6 +47,9 @@ fun SettingsScreen(app: AppState) {
     val quality by settings.wifiQuality.collectAsState(StreamQuality.ORIGINAL)
     val loudness by settings.loudness.collectAsState(LoudnessMode.TRACK)
     val skipOneStar by settings.skipOneStar.collectAsState(true)
+    val sleeveWear by settings.sleeveWear.collectAsState(true)
+    val autoUpdate by graph.prefs.autoUpdate.collectAsState(true)
+    val update by graph.updater.state.collectAsState()
     val session by graph.repository.session.collectAsState(null)
     val sectionKey by graph.repository.musicSectionKey.collectAsState(null)
     var sections by remember { mutableStateOf<List<PlexDirectory>>(emptyList()) }
@@ -75,14 +79,9 @@ fun SettingsScreen(app: AppState) {
                 },
             ) { scope.launch { settings.setLoudness(option) } }
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(strings.settingsSkipOneStar, style = MaterialTheme.typography.titleMedium)
-                Text(strings.settingsSkipOneStarHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.width(16.dp))
-            Switch(checked = skipOneStar, onCheckedChange = { scope.launch { settings.setSkipOneStar(it) } })
-        }
+        Toggle(strings.settingsSkipOneStar, strings.settingsSkipOneStarHint, skipOneStar) { scope.launch { settings.setSkipOneStar(it) } }
+        Header(strings.settingsAppearance)
+        Toggle(strings.settingsSleeveWear, strings.settingsSleeveWearHint, sleeveWear) { scope.launch { settings.setSleeveWear(it) } }
         if (sections.size > 1) {
             Header(strings.settingsLibrary)
             val chosen = sectionKey ?: sections.first().key
@@ -106,6 +105,37 @@ fun SettingsScreen(app: AppState) {
         }
         Header(strings.settingsAbout)
         Text(strings.settingsVersion(graph.version), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (graph.updater.enabled) {
+            Header(strings.settingsUpdates)
+            Toggle(strings.settingsAutoUpdate, strings.settingsAutoUpdateHint, autoUpdate) { scope.launch { graph.prefs.setAutoUpdate(it) } }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = graph.updater::retry, enabled = update !is UpdateState.Checking && update !is UpdateState.Downloading) {
+                    Text(strings.updateCheckNow)
+                }
+                val status = when (val u = update) {
+                    UpdateState.Checking -> strings.updateChecking
+                    UpdateState.UpToDate -> strings.updateUpToDate
+                    is UpdateState.Failed -> if (u.release == null) strings.updateCheckFailed else strings.updateFailed(u.release.version)
+                    is UpdateState.Available -> strings.updateAvailable(u.release.version)
+                    is UpdateState.Downloading -> strings.updateDownloading(u.release.version, (u.progress * 100).toInt())
+                    is UpdateState.Ready -> strings.updateReady(u.release.version)
+                    UpdateState.Idle -> null
+                }
+                if (status != null) Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Toggle(title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(16.dp))
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 

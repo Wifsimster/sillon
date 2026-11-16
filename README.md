@@ -115,15 +115,22 @@ administrator rights needed, and comes with its own Java runtime.
 The desktop app signs in the same way, and plays the same library: artists,
 albums, playlists, search as you type, gapless playback, the queue (play next,
 add, reorder, remove), radios, star ratings and *My 5 stars*, skipping 1-star
-tracks, loudness levelling, streaming quality, lyrics, downloads for offline
-listening, and play reports to your server. It resumes the queue where you
-stopped, and speaks English and French.
+tracks, loudness levelling, streaming quality, lyrics, genres, sleeve wear,
+downloads for offline listening, and play reports to your server. It resumes
+the queue where you stopped, and speaks English and French.
+
+It keeps itself up to date: now and then it asks GitHub whether a new release
+is out, downloads the installer, checks it against the release's SHA-256, and
+tells you when it is ready, with what changed. Installing is one click, and the
+first start after an update shows what is new. That request to GitHub is the
+only one Sillon makes to anything but your server; *Settings → Updates* turns
+it off.
 
 Shortcuts: `Space` play or pause, `Ctrl` + `→` / `←` next or previous track,
 `Ctrl` + `F` search, `Esc` back.
 
 Not on Windows yet: Play on Sonos, Listen together, the mystery sleeve, share
-cards, sleeve wear, genres, listening by side and the listening cache.
+cards, listening by side and the listening cache.
 
 ## Everything it does
 
@@ -161,7 +168,7 @@ groove `#2A241E`, sleeve cream `#F6EFE4`, label amber `#E8A33D` and rust
 
 1. The Windows app out of preview: a signed installer, then what Android has
    and Windows doesn't yet (Play on Sonos, Listen together, the mystery sleeve,
-   share cards, sleeve wear, genres).
+   share cards).
 
 Ideas and bug reports are welcome in the
 [issues](https://github.com/Wifsimster/sillon/issues).
@@ -214,6 +221,7 @@ desktop/src/main/kotlin/ovh/battistella/sillon/desktop/   Windows (Compose Multi
 ├─ player/           libmpv binding, the queue engine, play reports and resume
 ├─ platform/         Storage, network and the downloads file on a computer
 ├─ download/         Download queue
+├─ update/           Release feed, changelog, download and install of updates
 ├─ i18n/             English and French
 └─ ui/               Screens, the player bar, the queue, theme
 ```
@@ -231,7 +239,7 @@ The desktop app:
 ./gradlew :desktop:test       # desktop unit tests (the player tests need libmpv)
 ./gradlew :desktop:run        # run it (Linux or macOS: with libmpv installed)
 bash scripts/fetch-libmpv.sh  # Windows: fetch libmpv-2.dll, checked against its SHA-256
-./gradlew :desktop:packageMsi # on Windows → desktop/build/compose/binaries/main/msi/
+./gradlew :desktop:packageReleaseMsi   # on Windows → desktop/build/compose/binaries/main-release/msi/
 ```
 
 Requires JDK 17 and the Android SDK. Every push builds debug and release APKs

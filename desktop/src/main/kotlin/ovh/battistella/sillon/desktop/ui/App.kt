@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Person
@@ -52,6 +53,8 @@ import ovh.battistella.sillon.desktop.ui.screens.ArtistScreen
 import ovh.battistella.sillon.desktop.ui.screens.CollectionKind
 import ovh.battistella.sillon.desktop.ui.screens.CollectionScreen
 import ovh.battistella.sillon.desktop.ui.screens.DownloadsScreen
+import ovh.battistella.sillon.desktop.ui.screens.GenreScreen
+import ovh.battistella.sillon.desktop.ui.screens.GenresScreen
 import ovh.battistella.sillon.desktop.ui.screens.ListenScreen
 import ovh.battistella.sillon.desktop.ui.screens.PlaylistsScreen
 import ovh.battistella.sillon.desktop.ui.screens.SearchScreen
@@ -69,11 +72,17 @@ fun SillonApp(app: AppState) {
         }
         Session.SignedOut -> {
             LaunchedEffect(Unit) { app.clear() }
-            SignInScreen(app)
+            Column {
+                UpdateBanner(app)
+                SignInScreen(app)
+            }
         }
         is Session.NeedsServer -> {
             LaunchedEffect(Unit) { app.clear() }
-            ServersScreen(app)
+            Column {
+                UpdateBanner(app)
+                ServersScreen(app)
+            }
         }
         is Session.Ready -> key(s.server.machineId) {
             LaunchedEffect(Unit) {
@@ -91,6 +100,7 @@ private fun Shell(app: AppState) {
     val unavailable by app.graph.playback.unavailable.collectAsState()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column {
+            UpdateBanner(app)
             unavailable?.let { reason ->
                 Text(
                     strings.audioUnavailable(reason),
@@ -131,6 +141,7 @@ private fun Sidebar(app: AppState) {
         NavItem(app, Screen.Artists, Icons.Filled.Person, strings.artists)
         NavItem(app, Screen.Albums, Icons.Filled.Album, strings.albums)
         NavItem(app, Screen.Playlists, Icons.AutoMirrored.Filled.QueueMusic, strings.playlists)
+        NavItem(app, Screen.Genres, Icons.Filled.Category, strings.genres)
         NavItem(app, Screen.Downloads, Icons.Filled.Download, strings.downloads)
         Spacer(Modifier.weight(1f))
         NavItem(app, Screen.Settings, Icons.Filled.Settings, strings.settings)
@@ -174,6 +185,7 @@ private fun Content(app: AppState) {
                     Screen.Artists -> strings.artists
                     Screen.Albums -> strings.albums
                     Screen.Playlists -> strings.playlists
+                    Screen.Genres -> strings.genres
                     Screen.Downloads -> strings.downloads
                     Screen.Settings -> strings.settings
                     else -> ""
@@ -189,6 +201,8 @@ private fun Content(app: AppState) {
                     Screen.Artists -> SectionGridScreen(app, entry, artists = true)
                     Screen.Albums -> SectionGridScreen(app, entry, artists = false)
                     Screen.Playlists -> PlaylistsScreen(app, entry)
+                    Screen.Genres -> GenresScreen(app, entry)
+                    is Screen.Genre -> GenreScreen(app, entry, screen.key)
                     Screen.Downloads -> DownloadsScreen(app, entry)
                     Screen.Settings -> SettingsScreen(app)
                     Screen.FiveStars -> CollectionScreen(app, entry, CollectionKind.FIVE_STARS, "")

@@ -44,6 +44,7 @@ import ovh.battistella.sillon.desktop.ui.components.LoadContent
 import ovh.battistella.sillon.desktop.ui.components.Message
 import ovh.battistella.sillon.desktop.ui.components.TileGrid
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
+import ovh.battistella.sillon.desktop.ui.components.Wear
 import ovh.battistella.sillon.desktop.ui.components.formatDuration
 
 @Composable
@@ -52,18 +53,30 @@ fun SectionGridScreen(app: AppState, entry: StackEntry, artists: Boolean) {
     val repository = app.graph.repository
     val model = entry.model("grid") { scope ->
         if (artists) {
-            SectionGridModel(app.graph, scope) { repository.artists(it) }
+            SectionGridModel(app.graph, scope, fetch = { repository.artists(it) })
         } else {
-            SectionGridModel(app.graph, scope, subtitle = { it.parentTitle }) { repository.albums(it) }
+            SectionGridModel(
+                app.graph,
+                scope,
+                subtitle = { it.parentTitle },
+                fetch = { repository.albums(it) },
+                onFetched = { section, albums -> app.graph.sleeveWear.refresh(section, albums) },
+            )
         }
     }
     val state by model.state.collectAsState()
+    val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     LoadContent(state, model::load) { ui ->
         val tiles = ui.tiles
         when {
             tiles == null -> Message(strings.libraryNoMusic)
             tiles.isEmpty() -> Message(strings.libraryEmpty)
-            else -> TileGrid(tiles, onClick = { app.open(if (artists) Screen.Artist(it.key) else Screen.Album(it.key)) }, round = artists)
+            else -> TileGrid(
+                tiles,
+                onClick = { app.open(if (artists) Screen.Artist(it.key) else Screen.Album(it.key)) },
+                round = artists,
+                wear = if (artists) emptyMap() else wear,
+            )
         }
     }
 }
@@ -91,8 +104,9 @@ fun ArtistScreen(app: AppState, entry: StackEntry, key: String) {
     val model = entry.model("artist") { scope -> ArtistModel(app.graph, scope, key) }
     val state by model.state.collectAsState()
     val startingRadio by model.startingRadio.collectAsState()
+    val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     LoadContent(state, model::load) { ui ->
-        TileGrid(ui.albums, onClick = { app.open(Screen.Album(it.key)) }) {
+        TileGrid(ui.albums, onClick = { app.open(Screen.Album(it.key)) }, wear = wear) {
             Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Cover(ui.artworkUrl, Modifier.size(160.dp), shape = CircleShape)
                 Spacer(Modifier.width(24.dp))
@@ -125,11 +139,12 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
     val now by app.graph.playback.state.collectAsState()
     val ratings by app.graph.playback.ratings.collectAsState()
     val skipOneStar by app.graph.settings.skipOneStar.collectAsState(true)
+    val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     LoadContent(state, model::load) { ui ->
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp)) {
             item {
                 Row(Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalAlignment = Alignment.Bottom) {
-                    Cover(ui.artworkUrl, Modifier.size(220.dp))
+                    Cover(ui.artworkUrl, Modifier.size(220.dp), wear = if (kind == CollectionKind.ALBUM) Wear.of(wear, key) else null)
                     Spacer(Modifier.width(24.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(ui.title, style = MaterialTheme.typography.displaySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
