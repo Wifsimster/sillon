@@ -76,6 +76,15 @@ their licences in [`docs/fonts/`](docs/fonts).
   up and away in 900 ms. With *Remove animations* on, the screen fades in with
   the arm already lifted.
 
+## On a computer
+
+The Windows app keeps the same identity: the same palette, Fraunces and
+DM Sans, the spiral on the sign-in screen and behind covers that are still
+loading. The layout is a desktop one: the library on the left, the page in the
+middle, the player along the bottom, the queue as a panel on the right. The
+cover still tints the full-size player. Corners, type scale and colour roles
+come from the same tables as above (`desktop/.../ui/theme/Theme.kt`).
+
 ## Voice
 
 Short, warm, direct, in the second person (*tu* in French). Say what happens

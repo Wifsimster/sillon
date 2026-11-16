@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>Your own music, the way a music app should feel.</strong><br/>
-  A free, open-source Android player for the music library on your Plex or Jellyfin server.
+  A free, open-source player for the music library on your Plex or Jellyfin server, on Android and on Windows.
 </p>
 
 <p align="center">
@@ -104,6 +104,27 @@ built: `sha256sum -c SHA256SUMS.txt`. Want the tip of `main`? The
 [*latest* pre-release](https://github.com/Wifsimster/sillon/releases/tag/latest)
 is rebuilt on every push.
 
+### On Windows (preview)
+
+👉 **[Download the installer](https://github.com/Wifsimster/sillon/releases/latest/download/Sillon-windows-x64.msi)**
+(`Sillon-windows-x64.msi`, Windows 10 or 11, 64-bit) from the latest release
+and open it. The installer isn't signed yet: Windows SmartScreen asks before
+running it (*More info* → *Run anyway*). It installs for your user only, no
+administrator rights needed, and comes with its own Java runtime.
+
+The desktop app signs in the same way, and plays the same library: artists,
+albums, playlists, search as you type, gapless playback, the queue (play next,
+add, reorder, remove), radios, star ratings and *My 5 stars*, skipping 1-star
+tracks, loudness levelling, streaming quality, lyrics, downloads for offline
+listening, and play reports to your server. It resumes the queue where you
+stopped, and speaks English and French.
+
+Shortcuts: `Space` play or pause, `Ctrl` + `→` / `←` next or previous track,
+`Ctrl` + `F` search, `Esc` back.
+
+Not on Windows yet: Play on Sonos, Listen together, the mystery sleeve, share
+cards, sleeve wear, genres, listening by side and the listening cache.
+
 ## Everything it does
 
 | | |
@@ -138,7 +159,9 @@ groove `#2A241E`, sleeve cream `#F6EFE4`, label amber `#E8A33D` and rust
 
 ## Roadmap
 
-1. A Windows desktop app.
+1. The Windows app out of preview: a signed installer, then what Android has
+   and Windows doesn't yet (Play on Sonos, Listen together, the mystery sleeve,
+   share cards, sleeve wear, genres).
 
 Ideas and bug reports are welcome in the
 [issues](https://github.com/Wifsimster/sillon/issues).
@@ -160,24 +183,39 @@ Ideas and bug reports are welcome in the
 The build, CI and release setup come from
 [Ondes](https://github.com/Wifsimster/ondes), the podcast player of the same author.
 
+The Windows app is Kotlin too: Compose Multiplatform for the UI,
+[libmpv](https://mpv.io/) (LGPL build, loaded through JNA) for playback, and
+the same Plex and Jellyfin code as Android, from the `shared` module.
+
 ## Project layout
 
 ```
-app/src/main/java/ovh/battistella/sillon/
+shared/src/main/kotlin/ovh/battistella/sillon/     Kotlin/JVM, no Android: used by both apps
 ├─ data/plex/        Plex wire models, HTTP client, connection selection
 ├─ data/jellyfin/    Jellyfin client, mapped onto the same models
 ├─ data/session/     Account token + chosen server (DataStore)
 ├─ data/settings/    Settings, saved queue, never-played counts (DataStore)
-├─ data/local/       Downloaded tracks (Room)
-├─ data/network/     Wi-Fi / mobile data / offline monitor
+├─ data/local/       Downloaded tracks: the table and its queries
+├─ data/rating/      Star ratings: the book, the store, sending them
 ├─ data/wear/        Sleeve wear: play counts per album, levels, cache
 ├─ data/repository/  PlexRepository: what the UI asks for, from Plex or Jellyfin
+└─ data/storage/, data/network/, playback/cache/   What each platform provides
+
+app/src/main/java/ovh/battistella/sillon/          Android
+├─ data/             Room database, storage and network for Android, genres, search page
 ├─ download/         Download queue and WorkManager worker
 ├─ playback/         Media3 service, Android Auto tree, radios, play reports
 ├─ together/         Listen together: clock sync, session, drift correction
 ├─ sonos/            Play on Sonos: SSDP discovery, UPnP/SOAP control, the Sonos player
 ├─ ui/               Compose screens, navigation, theme, components
-└─ di/               Hilt module
+└─ di/               Hilt modules
+
+desktop/src/main/kotlin/ovh/battistella/sillon/desktop/   Windows (Compose Multiplatform)
+├─ player/           libmpv binding, the queue engine, play reports and resume
+├─ platform/         Storage, network and the downloads file on a computer
+├─ download/         Download queue
+├─ i18n/             English and French
+└─ ui/               Screens, the player bar, the queue, theme
 ```
 
 ## Build
@@ -185,6 +223,15 @@ app/src/main/java/ovh/battistella/sillon/
 ```bash
 ./gradlew testDebugUnitTest   # JVM unit tests
 ./gradlew assembleDebug       # → app/build/outputs/apk/debug/app-debug.apk
+```
+
+The desktop app:
+
+```bash
+./gradlew :desktop:test       # desktop unit tests (the player tests need libmpv)
+./gradlew :desktop:run        # run it (Linux or macOS: with libmpv installed)
+bash scripts/fetch-libmpv.sh  # Windows: fetch libmpv-2.dll, checked against its SHA-256
+./gradlew :desktop:packageMsi # on Windows → desktop/build/compose/binaries/main/msi/
 ```
 
 Requires JDK 17 and the Android SDK. Every push builds debug and release APKs
