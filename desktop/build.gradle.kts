@@ -78,6 +78,13 @@ compose.desktop {
         mainClass = "ovh.battistella.sillon.desktop.MainKt"
         jvmArgs += listOf("-Xmx512m", "-Dfile.encoding=UTF-8")
 
+        buildTypes.release.proguard {
+            version.set("7.6.1")
+            obfuscate.set(false)
+            optimize.set(false)
+            configurationFiles.from(project.file("proguard-rules.pro"))
+        }
+
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Sillon"

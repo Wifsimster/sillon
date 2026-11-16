@@ -82,14 +82,21 @@ jobs:
       - name: Fetch libmpv
         run: bash scripts/fetch-libmpv.sh
 
+      - name: Self-test the app as it ships
+        run: |
+          ./gradlew :desktop:createReleaseDistributable --stacktrace
+          desktop/build/compose/binaries/main-release/app/Sillon/Sillon.exe --self-test "$PWD/self-test.txt" || true
+          cat self-test.txt
+          test "$(grep -c '^ok' self-test.txt)" = "4"
+
       - name: Build the Windows installer
-        run: ./gradlew :desktop:packageMsi --stacktrace
+        run: ./gradlew :desktop:packageReleaseMsi --stacktrace
 
       - name: Add the installer to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist
-          cp desktop/build/compose/binaries/main/msi/*.msi dist/Sillon-windows-x64.msi
+          cp desktop/build/compose/binaries/main-release/msi/*.msi dist/Sillon-windows-x64.msi
           (cd dist && sha256sum Sillon-windows-x64.msi > SHA256SUMS-windows.txt)
           gh release upload "${{ needs.release.outputs.tag }}" dist/Sillon-windows-x64.msi dist/SHA256SUMS-windows.txt --clobber --repo "${{ github.repository }}"
