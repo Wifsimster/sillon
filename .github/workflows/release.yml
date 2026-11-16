@@ -20,6 +20,8 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.released.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,3 +55,41 @@ jobs:
             -p @semantic-release/exec \
             -p @semantic-release/git \
             semantic-release
+
+      - name: Find the tag just released
+        id: released
+        run: echo "tag=$(git tag --points-at HEAD | grep -E '^v[0-9]' | head -n 1)" >> "$GITHUB_OUTPUT"
+
+  windows:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout the release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Fetch libmpv
+        run: bash scripts/fetch-libmpv.sh
+
+      - name: Build the Windows installer
+        run: ./gradlew :desktop:packageMsi --stacktrace
+
+      - name: Add the installer to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          cp desktop/build/compose/binaries/main/msi/*.msi dist/Sillon-windows-x64.msi
+          (cd dist && sha256sum Sillon-windows-x64.msi > SHA256SUMS-windows.txt)
+          gh release upload "${{ needs.release.outputs.tag }}" dist/Sillon-windows-x64.msi dist/SHA256SUMS-windows.txt --clobber --repo "${{ github.repository }}"
