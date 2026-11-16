@@ -48,6 +48,7 @@ fun QueuePanel(app: AppState, modifier: Modifier = Modifier) {
     val strings = LocalStrings.current
     val playback = app.graph.playback
     val state by playback.state.collectAsState()
+    val radio by playback.radio.collectAsState()
     val list = rememberLazyListState()
     LaunchedEffect(state.index, state.queue.size) {
         if (state.index >= 0) runCatching { list.animateScrollToItem(state.index) }
@@ -78,10 +79,17 @@ fun QueuePanel(app: AppState, modifier: Modifier = Modifier) {
                     onMoveDown = { playback.move(index, index + 1) },
                 )
             }
+            if (radio && state.index < state.queue.lastIndex) {
+                item { Text(strings.queueRadioContinues, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
             if (state.index == state.queue.lastIndex) {
                 item {
                     Section(strings.queueUpNext)
-                    Text(strings.queueNothingNext, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (radio) strings.queueRadioContinues else strings.queueNothingNext,
+                        Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

@@ -44,6 +44,10 @@ class Playback(
     private var reported: String? = null
 
     private val _unavailable = MutableStateFlow<String?>(null)
+    private val _radio = MutableStateFlow(false)
+    val radio: StateFlow<Boolean> = _radio.asStateFlow()
+    private var more: (suspend () -> List<PlayableTrack>)? = null
+    private var refilling: Job? = null
 
     private val listener = object : EngineListener {
         override fun onTransition(transition: Transition) {
@@ -96,6 +100,7 @@ class Playback(
                 lastReported = null
                 reportCurrent()
                 persist()
+                if (transition.current == null) endRadio() else refillIfLow()
             }
         }
         scope.launch {
@@ -110,8 +115,15 @@ class Playback(
     private fun shouldSkip(track: PlayableTrack): Boolean =
         skipOneStar && rater.state.value.book.isOneStar(track.ratingKey, track.userRating)
 
-    fun play(tracks: List<PlayableTrack>, startIndex: Int = 0, shuffle: Boolean = false, pickStart: Boolean = false) {
+    fun play(
+        tracks: List<PlayableTrack>,
+        startIndex: Int = 0,
+        shuffle: Boolean = false,
+        pickStart: Boolean = false,
+        more: (suspend () -> List<PlayableTrack>)? = null,
+    ) {
         if (tracks.isEmpty()) return
+        startRadio(more)
         val start = if (pickStart && !shuffle) {
             (startIndex..tracks.lastIndex).firstOrNull { !shouldSkip(tracks[it]) } ?: startIndex
         } else {
@@ -138,7 +150,30 @@ class Playback(
 
     fun addToQueue(tracks: List<PlayableTrack>) = engine?.append(tracks)
 
-    fun replaceUpcoming(tracks: List<PlayableTrack>) = engine?.replaceUpcoming(tracks)
+    fun replaceUpcoming(tracks: List<PlayableTrack>, more: (suspend () -> List<PlayableTrack>)? = null) {
+        if (tracks.isEmpty()) return
+        startRadio(more)
+        engine?.replaceUpcoming(tracks)
+    }
+
+    private fun startRadio(source: (suspend () -> List<PlayableTrack>)?) {
+        refilling?.cancel()
+        more = source
+        _radio.value = source != null
+    }
+
+    private fun endRadio() = startRadio(null)
+
+    private fun refillIfLow() {
+        val source = more ?: return
+        val now = state.value
+        if (now.queue.size - now.index - 1 > REFILL_BELOW || refilling?.isActive == true) return
+        refilling = scope.launch {
+            val fresh = RadioRefill.fresh(state.value.queue, runCatching { source() }.getOrDefault(emptyList()))
+            if (more !== source) return@launch
+            if (fresh.isEmpty()) endRadio() else engine?.append(fresh)
+        }
+    }
 
     fun setVolume(volume: Float) = engine?.setVolume(volume)
 
@@ -158,6 +193,7 @@ class Playback(
     }
 
     fun stop() {
+        endRadio()
         engine?.clear()
         scope.launch { runCatching { saved.clear() } }
     }
@@ -261,5 +297,13 @@ class Playback(
         const val MAX_SAVED_TRACKS = 500
         const val RELEASE_TIMEOUT_MS = 2_000L
         const val NEAR_END_MS = 3_000L
+        const val REFILL_BELOW = 5
+    }
+}
+
+object RadioRefill {
+    fun fresh(queue: List<PlayableTrack>, drawn: List<PlayableTrack>): List<PlayableTrack> {
+        val known = queue.mapTo(HashSet()) { it.ratingKey }
+        return drawn.filter { known.add(it.ratingKey) }
     }
 }

@@ -57,6 +57,7 @@ import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.components.Cover
 import ovh.battistella.sillon.desktop.ui.components.Wear
+import ovh.battistella.sillon.playback.PlayableTrack
 
 @Composable
 fun NowPlaying(app: AppState) {
@@ -149,8 +150,8 @@ fun NowPlaying(app: AppState) {
                         onClick = {
                             startingRadio = true
                             scope.launch {
-                                runCatching { repository.playable(repository.trackRadioTracks(track.ratingKey)) }
-                                    .onSuccess { playback.replaceUpcoming(it) }
+                                val draw: suspend () -> List<PlayableTrack> = { repository.playable(repository.trackRadioTracks(track.ratingKey)) }
+                                runCatching { draw() }.onSuccess { playback.replaceUpcoming(it, more = draw) }
                                 startingRadio = false
                             }
                         },

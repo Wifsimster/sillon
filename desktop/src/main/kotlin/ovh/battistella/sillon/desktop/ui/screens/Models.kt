@@ -135,8 +135,8 @@ class ArtistModel(private val graph: AppGraph, private val scope: CoroutineScope
         if (_startingRadio.value) return
         _startingRadio.value = true
         scope.launch {
-            runCatching { repository.playable(repository.artistRadioTracks(key)) }
-                .onSuccess { if (it.isNotEmpty()) graph.playback.play(it) }
+            val draw: suspend () -> List<PlayableTrack> = { repository.playable(repository.artistRadioTracks(key)) }
+            runCatching { draw() }.onSuccess { if (it.isNotEmpty()) graph.playback.play(it, more = draw) }
             _startingRadio.value = false
         }
     }
@@ -354,9 +354,10 @@ class ListenModel(private val graph: AppGraph, private val scope: CoroutineScope
     }
 
     fun shuffle() = start(ListenTile.SHUFFLE.name) {
-        val fromServer = serverOrNull { repository.playable(repository.libraryShuffleTracks()).takeIf { it.isNotEmpty() } }
+        val draw: suspend () -> List<PlayableTrack> = { repository.playable(repository.libraryShuffleTracks()) }
+        val fromServer = serverOrNull { draw().takeIf { it.isNotEmpty() } }
         if (fromServer != null) {
-            playback.play(fromServer)
+            playback.play(fromServer, more = draw)
             return@start null
         }
         if (playDownloads { true }) ListenNotice.SHUFFLE_FROM_DOWNLOADS else ListenNotice.FAILED
@@ -381,22 +382,16 @@ class ListenModel(private val graph: AppGraph, private val scope: CoroutineScope
         }
     }
 
-    fun neverPlayed() = start(ListenTile.NEVER_PLAYED.name) {
-        val tracks = repository.playable(repository.neverPlayedTracks())
-        if (tracks.isEmpty()) {
-            ListenNotice.NOTHING
-        } else {
-            playback.play(tracks)
-            null
-        }
-    }
+    fun neverPlayed() = radio(ListenTile.NEVER_PLAYED.name) { repository.playable(repository.neverPlayedTracks()) }
 
-    fun station(station: Station) = start(station.key) {
-        val tracks = repository.playable(repository.stationTracks(station))
+    fun station(station: Station) = radio(station.key) { repository.playable(repository.stationTracks(station)) }
+
+    private fun radio(id: String, draw: suspend () -> List<PlayableTrack>) = start(id) {
+        val tracks = draw()
         if (tracks.isEmpty()) {
             ListenNotice.NOTHING
         } else {
-            playback.play(tracks)
+            playback.play(tracks, more = draw)
             null
         }
     }

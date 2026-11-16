@@ -106,6 +106,7 @@ interface Strings {
     val queueNowPlaying: String
     val queueUpNext: String
     val queueNothingNext: String
+    val queueRadioContinues: String
     val queueRemove: String
     val queueMoveUp: String
     val queueMoveDown: String
@@ -279,6 +280,7 @@ object EnglishStrings : Strings {
     override val queueNowPlaying = "Now playing"
     override val queueUpNext = "Up next"
     override val queueNothingNext = "Nothing after this track."
+    override val queueRadioContinues = "The radio continues…"
     override val queueRemove = "Remove"
     override val queueMoveUp = "Move up"
     override val queueMoveDown = "Move down"
@@ -452,6 +454,7 @@ object FrenchStrings : Strings {
     override val queueNowPlaying = "En cours"
     override val queueUpNext = "À suivre"
     override val queueNothingNext = "Rien après ce titre."
+    override val queueRadioContinues = "La radio continue…"
     override val queueRemove = "Retirer"
     override val queueMoveUp = "Monter"
     override val queueMoveDown = "Descendre"
