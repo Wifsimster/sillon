@@ -37,6 +37,7 @@ class ListeningCache @Inject constructor(
     private val settings: SettingsStore,
 ) : TrackCache {
     private val dir = File(context.noBackupFilesDir, DIR)
+    private val storageManager: StorageManager? = context.getSystemService(StorageManager::class.java)
     private val evictor = ListeningCacheEvictor { used -> CacheLimit.effective(chosenGb, used, freeBytes()) }
     private val cache: SimpleCache by lazy { SimpleCache(dir, evictor, StandaloneDatabaseProvider(context)) }
     private val transcodes = TranscodeCache { cache }
@@ -101,7 +102,7 @@ class ListeningCache @Inject constructor(
     /** Free space for the cache, counting what the system would clear from other apps' caches. */
     fun freeBytes(): Long {
         val path = dir.takeIf { it.exists() } ?: context.noBackupFilesDir
-        val storage = context.getSystemService(StorageManager::class.java)
+        val storage = storageManager ?: return path.usableSpace
         return runCatching { storage.getAllocatableBytes(storage.getUuidForPath(path)) }.getOrElse { path.usableSpace }
     }
 
