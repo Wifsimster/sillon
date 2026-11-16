@@ -9,12 +9,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import ovh.battistella.sillon.data.storage.AndroidStorage
 
 /** A Sonos speaker's Jellyfin token stays in the real session store until it is revoked. */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
 class SpeakerTokenStoreTest {
-    private val store = SessionStore(ApplicationProvider.getApplicationContext<Application>())
+    private val store = SessionStore(AndroidStorage(ApplicationProvider.getApplicationContext<Application>()))
 
     @Test
     fun `signing out of Sillon keeps the speaker token to revoke, and the client id`() = runTest {

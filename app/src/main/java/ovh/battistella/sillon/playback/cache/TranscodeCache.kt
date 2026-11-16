@@ -13,13 +13,6 @@ import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
 import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
 import androidx.media3.exoplayer.hls.playlist.HlsPlaylistParser
 
-/** What the listening cache holds whole for one track. */
-data class CachedVersions(val original: Boolean, val transcodeKbps: Int?) {
-    companion object {
-        val NONE = CachedVersions(original = false, transcodeKbps = null)
-    }
-}
-
 /**
  * The transcoded copies in the listening cache. A transcode is an HLS tree (playlists, then
  * segments) whose URLs carry a play session that changes on every play; each file is kept under

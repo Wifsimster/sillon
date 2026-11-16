@@ -1,0 +1,114 @@
+package ovh.battistella.sillon.desktop.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.unit.dp
+import ovh.battistella.sillon.desktop.i18n.LocalStrings
+import ovh.battistella.sillon.desktop.ui.AppState
+import ovh.battistella.sillon.desktop.ui.Screen
+import ovh.battistella.sillon.desktop.ui.StackEntry
+import ovh.battistella.sillon.desktop.ui.components.LoadContent
+import ovh.battistella.sillon.desktop.ui.components.Message
+import ovh.battistella.sillon.desktop.ui.components.Tile
+import ovh.battistella.sillon.desktop.ui.components.TileUi
+import ovh.battistella.sillon.desktop.ui.components.TrackRow
+
+@Composable
+fun SearchScreen(app: AppState, entry: StackEntry) {
+    val strings = LocalStrings.current
+    val model = entry.model("search") { scope -> SearchModel(app.graph, scope) }
+    val query by model.query.collectAsState()
+    val results by model.results.collectAsState()
+    val recent by model.recent.collectAsState()
+    val now by app.graph.playback.state.collectAsState()
+    val ratings by app.graph.playback.ratings.collectAsState()
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    DisposableEffect(Unit) { onDispose { app.typing = false } }
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = model::setQuery,
+            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp)
+                .focusRequester(focus)
+                .onFocusChanged { app.typing = it.isFocused },
+            placeholder = { Text(strings.searchHint) },
+            leadingIcon = { Icon(Icons.Filled.Search, null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) IconButton(onClick = { model.setQuery("") }) { Icon(Icons.Filled.Close, strings.searchClear) }
+            },
+            singleLine = true,
+            shape = MaterialTheme.shapes.extraLarge,
+        )
+        LoadContent(results, model::retry) { found ->
+            when {
+                found == null -> if (recent.isEmpty()) {
+                    Message(strings.searchStart)
+                } else {
+                    LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
+                        item { TileRow(strings.searchRecent, recent, round = false) { app.open(Screen.Album(it.key)) } }
+                    }
+                }
+                found.isEmpty -> Message(strings.searchNoResults(found.query))
+                else -> LazyColumn(contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (found.artists.isNotEmpty()) {
+                        item { TileRow(strings.artists, found.artists, round = true) { app.open(Screen.Artist(it.key)) } }
+                    }
+                    if (found.albums.isNotEmpty()) {
+                        item { TileRow(strings.albums, found.albums, round = false) { app.open(Screen.Album(it.key)) } }
+                    }
+                    if (found.tracks.isNotEmpty()) {
+                        item { Text(strings.tracks, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge) }
+                        items(found.tracks, key = { it.key }) { track ->
+                            TrackRow(
+                                track = track.copy(stars = ratings.book.starsOf(track.key, track.rating)),
+                                playing = now.current?.ratingKey == track.key,
+                                skipped = false,
+                                onPlay = { model.play(track.key) },
+                                onPlayNext = { model.playNext(track.key) },
+                                onAddToQueue = { model.addToQueue(track.key) },
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TileRow(title: String, tiles: List<TileUi>, round: Boolean, onClick: (TileUi) -> Unit) {
+    Column {
+        Text(title, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge)
+        LazyRow(contentPadding = PaddingValues(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(tiles, key = { it.key }) { tile -> Tile(tile, round, Modifier.width(160.dp)) { onClick(tile) } }
+        }
+    }
+}

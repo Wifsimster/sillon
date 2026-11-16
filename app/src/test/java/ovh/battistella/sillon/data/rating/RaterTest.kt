@@ -23,12 +23,13 @@ import ovh.battistella.sillon.data.plex.PlexHttpException
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.FiveStarsCache
 import java.io.IOException
+import ovh.battistella.sillon.data.storage.AndroidStorage
 
 /** A rating shows at once, waits on the phone without a network, and leaves once back online. */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
 class RaterTest {
-    private val store = RatingStore(ApplicationProvider.getApplicationContext())
+    private val store = RatingStore(AndroidStorage(ApplicationProvider.getApplicationContext()))
     private val online = MutableStateFlow(false)
     private val network = mockk<NetworkMonitor> { every { online } returns this@RaterTest.online }
     private val fiveStars = mockk<FiveStarsCache>(relaxed = true)
@@ -89,7 +90,7 @@ class RaterTest {
         Rater(repository, store, fiveStars, network).rate("t1", 1)
         until { it.sendState("t1") == RatingSend.WAITING_FOR_NETWORK }
 
-        val again = RatingStore(ApplicationProvider.getApplicationContext())
+        val again = RatingStore(AndroidStorage(ApplicationProvider.getApplicationContext()))
         assertEquals(mapOf("t1" to 2), again.book("m1").pending)
     }
 

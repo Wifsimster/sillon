@@ -76,6 +76,20 @@ jobs:
             app/build/reports/lint-results-debug.txt
           if-no-files-found: ignore
 
+      - name: Install libmpv for the desktop tests
+        run: sudo apt-get update && sudo apt-get install -y libmpv2
+
+      - name: Run desktop unit tests
+        run: ./gradlew :desktop:test --stacktrace
+
+      - name: Upload desktop test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-test-report
+          path: desktop/build/reports/tests/test
+          if-no-files-found: ignore
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
@@ -160,3 +174,74 @@ jobs:
 
             Looking for a stable version instead? See the
             [latest release](https://github.com/${{ github.repository }}/releases/latest).
+
+  desktop:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Fetch libmpv
+        run: bash scripts/fetch-libmpv.sh
+
+      - name: Run desktop unit tests
+        run: ./gradlew :desktop:test --stacktrace
+
+      - name: Upload desktop test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-test-report
+          path: desktop/build/reports/tests/test
+          if-no-files-found: ignore
+
+      - name: Build the Windows installer
+        run: ./gradlew :desktop:packageMsi --stacktrace
+
+      - name: Stage the installer
+        run: |
+          mkdir -p dist
+          cp desktop/build/compose/binaries/main/msi/*.msi dist/Sillon-windows-x64.msi
+          (cd dist && sha256sum Sillon-windows-x64.msi > SHA256SUMS-windows.txt)
+          cat dist/SHA256SUMS-windows.txt
+
+      - name: Upload the Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: sillon-windows-msi
+          path: dist/*
+          if-no-files-found: error
+
+  publish-desktop:
+    if: github.ref == 'refs/heads/main'
+    needs: [build, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: sillon-windows-msi
+          path: dist
+
+      - name: Add the installer to the rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload latest dist/Sillon-windows-x64.msi dist/SHA256SUMS-windows.txt --clobber --repo "${{ github.repository }}"

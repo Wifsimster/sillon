@@ -8,23 +8,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 
-data class PlayableTrack(
-    val ratingKey: String,
-    val streamUrl: String,
-    val title: String,
-    val artist: String?,
-    val album: String?,
-    val trackNumber: Int?,
-    val durationMs: Long?,
-    val artworkUrl: String?,
-    val gainDb: Float? = null,
-    val albumKey: String? = null,
-    /** Set when the original file is streamed: the listening cache keeps it under this key. */
-    val cacheKey: String? = null,
-    /** The server's rating (0–10), so the player knows the 1-star tracks of the queue. */
-    val userRating: Float? = null,
-)
-
 object MediaItems {
     @OptIn(UnstableApi::class)
     fun from(track: PlayableTrack): MediaItem {
@@ -77,11 +60,7 @@ object MediaItems {
     const val EXTRA_ALBUM_KEY = "ovh.battistella.sillon.ALBUM_KEY"
     const val EXTRA_RATING = "ovh.battistella.sillon.RATING"
 
-    fun volumeFor(gainDb: Float?): Float =
-        if (gainDb == null) 1f else Math.pow(10.0, gainDb / 20.0).toFloat().coerceIn(MIN_VOLUME, 1f)
+    fun volumeFor(gainDb: Float?): Float = TrackGain.volumeFor(gainDb)
 
-    private const val MIN_VOLUME = 0.1f
-
-    fun isTranscode(url: String): Boolean =
-        url.contains("/transcode/universal/") || url.substringBefore('?').endsWith(".m3u8")
+    fun isTranscode(url: String): Boolean = StreamUrls.isTranscode(url)
 }
