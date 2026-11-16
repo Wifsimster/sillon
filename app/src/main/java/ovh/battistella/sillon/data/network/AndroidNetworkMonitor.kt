@@ -13,23 +13,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NetworkMonitor @Inject constructor(
+class AndroidNetworkMonitor @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
-    fun isMetered(): Boolean {
+) : NetworkMonitor {
+    override fun isMetered(): Boolean {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
         val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
         return !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
-    fun isOnline(): Boolean {
+    override fun isOnline(): Boolean {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return true
         val capabilities = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     /** Whether the phone has a network, now and on every change. */
-    val online: Flow<Boolean> = callbackFlow {
+    override val online: Flow<Boolean> = callbackFlow {
         val manager = context.getSystemService(ConnectivityManager::class.java)
         if (manager == null) {
             trySend(true)

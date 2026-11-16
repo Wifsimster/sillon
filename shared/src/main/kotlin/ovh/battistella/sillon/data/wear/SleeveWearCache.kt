@@ -1,25 +1,24 @@
 package ovh.battistella.sillon.data.wear
 
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.security.MessageDigest
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import ovh.battistella.sillon.data.session.Session
-import java.io.File
-import java.security.MessageDigest
-import javax.inject.Inject
-import javax.inject.Singleton
+import ovh.battistella.sillon.data.storage.AppStorage
 
 @Serializable
 data class CachedPlays(val owner: String, val sectionKey: String, val albums: Map<String, AlbumPlays>)
 
 /** Play counts on disk, one file per server and account, removed on sign-out. */
 @Singleton
-class SleeveWearCache @Inject constructor(@ApplicationContext private val context: Context) {
+class SleeveWearCache @Inject constructor(private val storage: AppStorage) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val dir get() = File(context.noBackupFilesDir, "sleeve-wear")
+    private val dir get() = File(storage.privateDir, "sleeve-wear")
 
     suspend fun read(owner: String): CachedPlays? = withContext(Dispatchers.IO) {
         runCatching { json.decodeFromString(CachedPlays.serializer(), file(owner).readText()) }

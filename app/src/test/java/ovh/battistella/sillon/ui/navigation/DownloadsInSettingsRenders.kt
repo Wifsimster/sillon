@@ -37,6 +37,7 @@ import ovh.battistella.sillon.data.local.DownloadEntity
 import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.storage.AndroidStorage
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
@@ -76,7 +77,7 @@ class DownloadsInSettingsRenders {
         save(capture { SillonNavigationBar(Routes.LISTEN) {} }, "bottom-bar-$PHASE-$lang.png")
         val repository = mockk<PlexRepository> { coEvery { currentServerId() } returns "s" }
         val downloads = mockk<DownloadManager>(relaxed = true) { every { observe("s") } returns flowOf(ROWS) }
-        val store = SettingsStore(context)
+        val store = SettingsStore(AndroidStorage(context))
         val settings = SettingsViewModel(store, downloads, repository)
         save(
             capture { SettingsScreen(onBack = {}, onDownloads = {}, contentPadding = PaddingValues(), viewModel = settings) },

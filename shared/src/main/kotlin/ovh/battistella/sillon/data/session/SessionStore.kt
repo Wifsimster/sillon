@@ -1,22 +1,17 @@
 package ovh.battistella.sillon.data.session
 
-import android.content.Context
-import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import ovh.battistella.sillon.data.plex.ServerEndpoint
 import ovh.battistella.sillon.data.plex.ServerKind
-import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
-
-private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
+import ovh.battistella.sillon.data.storage.AppStorage
 
 data class SelectedServer(
     val machineId: String,
@@ -32,9 +27,11 @@ sealed interface Session {
 
 @Singleton
 class SessionStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val storage: AppStorage,
 ) {
-    private val store get() = context.sessionDataStore
+    private val prefs = storage.preferences("session")
+
+    private val store get() = prefs
 
     val session: Flow<Session> = store.data.map { prefs ->
         val userToken = prefs[USER_TOKEN] ?: return@map Session.SignedOut

@@ -1,19 +1,14 @@
 package ovh.battistella.sillon.data.settings
 
-import android.content.Context
-import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import ovh.battistella.sillon.data.plex.PlexJson
-import javax.inject.Inject
-import javax.inject.Singleton
-
-private val Context.neverPlayedDataStore: DataStore<Preferences> by preferencesDataStore(name = "never_played")
+import ovh.battistella.sillon.data.storage.AppStorage
 
 @Serializable
 data class CachedLibraryPlays(
@@ -31,15 +26,17 @@ data class OfflineHistory(
 
 @Singleton
 class NeverPlayedCache @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val storage: AppStorage,
 ) {
+    private val prefs = storage.preferences("never_played")
+
     suspend fun plays(serverId: String, sectionKey: String): CachedLibraryPlays? =
         read(playsKey(serverId, sectionKey))?.let {
             runCatching { PlexJson.decodeFromString(CachedLibraryPlays.serializer(), it) }.getOrNull()
         }
 
     suspend fun savePlays(serverId: String, sectionKey: String, plays: CachedLibraryPlays) {
-        context.neverPlayedDataStore.edit {
+        prefs.edit {
             it[playsKey(serverId, sectionKey)] = PlexJson.encodeToString(CachedLibraryPlays.serializer(), plays)
         }
     }
@@ -50,7 +47,7 @@ class NeverPlayedCache @Inject constructor(
         }
 
     suspend fun saveHistory(serverId: String, history: OfflineHistory) {
-        context.neverPlayedDataStore.edit {
+        prefs.edit {
             it[historyKey(serverId)] = PlexJson.encodeToString(OfflineHistory.serializer(), history)
         }
     }
@@ -61,7 +58,7 @@ class NeverPlayedCache @Inject constructor(
         saveHistory(serverId, history.copy(neverPlayed = history.neverPlayed - key))
     }
 
-    private suspend fun read(key: Preferences.Key<String>): String? = context.neverPlayedDataStore.data.first()[key]
+    private suspend fun read(key: Preferences.Key<String>): String? = prefs.data.first()[key]
 
     private fun playsKey(serverId: String, sectionKey: String) = stringPreferencesKey("plays|$serverId|$sectionKey")
 

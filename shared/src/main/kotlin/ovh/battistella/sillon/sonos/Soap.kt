@@ -63,7 +63,7 @@ object Soap {
     }.getOrNull()
 }
 
-internal fun parseXml(xml: String): Element {
+fun parseXml(xml: String): Element {
     val factory = DocumentBuilderFactory.newInstance()
     factory.isNamespaceAware = false
     // Speakers never send a DTD; refuse one rather than resolve it (Android's parser ignores these flags).
@@ -72,14 +72,14 @@ internal fun parseXml(xml: String): Element {
     return factory.newDocumentBuilder().parse(InputSource(StringReader(xml))).documentElement
 }
 
-internal fun Element.localName(): String = tagName.substringAfter(':')
+fun Element.localName(): String = tagName.substringAfter(':')
 
-internal fun Element.childElements(): List<Element> {
+fun Element.childElements(): List<Element> {
     val nodes = childNodes
     return (0 until nodes.length).mapNotNull { nodes.item(it) as? Element }
 }
 
-internal fun Element.descendants(): Sequence<Element> = sequence {
+fun Element.descendants(): Sequence<Element> = sequence {
     val stack = ArrayDeque<Element>().apply { add(this@descendants) }
     while (stack.isNotEmpty()) {
         val next = stack.removeFirst()
@@ -89,4 +89,4 @@ internal fun Element.descendants(): Sequence<Element> = sequence {
     }
 }
 
-internal fun Element.attr(name: String): String? = getAttribute(name).takeIf { hasAttribute(name) }
+fun Element.attr(name: String): String? = getAttribute(name).takeIf { hasAttribute(name) }

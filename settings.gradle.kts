@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Sillon"
 include(":app")
+include(":shared")

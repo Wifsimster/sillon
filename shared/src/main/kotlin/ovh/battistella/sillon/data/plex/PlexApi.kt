@@ -27,6 +27,7 @@ data class PlexDevice(
     val version: String,
     val platformVersion: String,
     val deviceName: String,
+    val platform: String = "Android",
 )
 
 enum class ServerKind { PLEX, JELLYFIN }
@@ -396,9 +397,9 @@ class PlexApi(
         header("X-Plex-Product", device.product)
         header("X-Plex-Version", device.version)
         header("X-Plex-Client-Identifier", clientId)
-        header("X-Plex-Platform", "Android")
+        header("X-Plex-Platform", device.platform)
         header("X-Plex-Platform-Version", device.platformVersion)
-        header("X-Plex-Device", "Android")
+        header("X-Plex-Device", device.platform)
         header("X-Plex-Device-Name", device.deviceName)
         if (token != null) header("X-Plex-Token", token)
     }
@@ -427,7 +428,7 @@ fun streamEndpoint(streamUrl: String): ServerEndpoint? {
     return ServerEndpoint(base.toString().trimEnd('/'), token)
 }
 
-internal suspend fun OkHttpClient.fetch(request: Request): String =
+suspend fun OkHttpClient.fetch(request: Request): String =
     suspendCancellableCoroutine { cont ->
         val call = newCall(request)
         cont.invokeOnCancellation { call.cancel() }

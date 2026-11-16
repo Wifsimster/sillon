@@ -36,6 +36,7 @@ import ovh.battistella.sillon.data.local.DownloadEntity
 import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.storage.AndroidStorage
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.ui.screens.downloads.DownloadsScreen
 import ovh.battistella.sillon.ui.screens.downloads.DownloadsViewModel
@@ -69,7 +70,7 @@ class DownloadsInSettingsTest {
         val downloads = mockk<DownloadManager>(relaxed = true) {
             every { observe("s") } returns flowOf(listOf(row("1", "album-1"), row("2", "album-1")))
         }
-        val settings = SettingsStore(context)
+        val settings = SettingsStore(AndroidStorage(context))
         val settingsModel = SettingsViewModel(settings, downloads, repository)
         val downloadsModel = DownloadsViewModel(repository, downloads, settings)
         lateinit var nav: NavHostController

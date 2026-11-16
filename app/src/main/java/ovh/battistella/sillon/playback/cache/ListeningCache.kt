@@ -35,7 +35,7 @@ import javax.inject.Singleton
 class ListeningCache @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsStore,
-) {
+) : TrackCache {
     private val dir = File(context.noBackupFilesDir, DIR)
     private val evictor = ListeningCacheEvictor { used -> CacheLimit.effective(chosenGb, used, freeBytes()) }
     private val cache: SimpleCache by lazy { SimpleCache(dir, evictor, StandaloneDatabaseProvider(context)) }
@@ -76,7 +76,7 @@ class ListeningCache @Inject constructor(
     }
 
     /** The copies of a track that are whole in the cache: the original, or the best of [kbpsChoices]. */
-    suspend fun versions(serverId: String, trackKey: String, kbpsChoices: List<Int>): CachedVersions {
+    override suspend fun versions(serverId: String, trackKey: String, kbpsChoices: List<Int>): CachedVersions {
         if (!enabled) return CachedVersions.NONE
         // SimpleCache locks while it loads its index or clears: never on the main thread.
         return withContext(Dispatchers.IO) {
@@ -85,12 +85,15 @@ class ListeningCache @Inject constructor(
     }
 
     /** [session] streams a transcode from the server: keep it as it plays. */
-    fun streamTranscode(session: String, serverId: String, trackKey: String, kbps: Int) =
+    override fun streamTranscode(session: String, serverId: String, trackKey: String, kbps: Int) {
         transcodes.register(session, ListeningCacheKeys.transcode(serverId, trackKey, kbps))
+    }
 
     /** [session] plays the whole transcode already in the cache. */
-    suspend fun replayTranscode(session: String, serverId: String, trackKey: String, kbps: Int) = withContext(Dispatchers.IO) {
-        runCatching { transcodes.reuse(session, ListeningCacheKeys.transcode(serverId, trackKey, kbps)) }
+    override suspend fun replayTranscode(session: String, serverId: String, trackKey: String, kbps: Int) {
+        withContext(Dispatchers.IO) {
+            runCatching { transcodes.reuse(session, ListeningCacheKeys.transcode(serverId, trackKey, kbps)) }
+        }
     }
 
     fun usedBytes(): Long = runCatching { cache.cacheSpace }.getOrDefault(0)
@@ -112,7 +115,7 @@ class ListeningCache @Inject constructor(
      * few megabytes just after; with [sweepAgain] (cache turned off, server left) a second pass
      * a little later takes those too.
      */
-    suspend fun clear(sweepAgain: Boolean = false) = withContext(Dispatchers.IO) {
+    override suspend fun clear(sweepAgain: Boolean): Unit = withContext(Dispatchers.IO) {
         lock.withLock { clearAll(cache) }
         if (sweepAgain) {
             scope.launch {

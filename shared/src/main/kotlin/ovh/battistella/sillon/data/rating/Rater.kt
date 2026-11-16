@@ -52,7 +52,7 @@ class Rater @Inject constructor(
     private var retryDelayMs: Long? = null
 
     /** The first wait before trying a server out of reach again; tests shorten it. */
-    internal var firstRetryMs = FIRST_RETRY_MS
+    var firstRetryMs = FIRST_RETRY_MS
 
     val state: StateFlow<ServerRatings> = store.state
 

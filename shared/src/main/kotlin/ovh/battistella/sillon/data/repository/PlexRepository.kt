@@ -1,6 +1,5 @@
 package ovh.battistella.sillon.data.repository
 
-import android.net.Uri
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -48,7 +47,8 @@ import ovh.battistella.sillon.data.wear.SleeveWearCache
 import ovh.battistella.sillon.data.wear.jellyfinAlbumPlays
 import ovh.battistella.sillon.data.wear.plexAlbumPlays
 import ovh.battistella.sillon.playback.PlayableTrack
-import ovh.battistella.sillon.playback.cache.ListeningCache
+import ovh.battistella.sillon.playback.StreamUrls
+import ovh.battistella.sillon.playback.cache.TrackCache
 import ovh.battistella.sillon.playback.cache.ListeningCacheKeys
 import ovh.battistella.sillon.playback.cache.StreamSource
 import ovh.battistella.sillon.sonos.Didl
@@ -69,13 +69,13 @@ fun DownloadEntity.isPlayableOffline(): Boolean =
 
 fun DownloadEntity.toPlayable(loudness: LoudnessMode = LoudnessMode.OFF): PlayableTrack = PlayableTrack(
     ratingKey = ratingKey,
-    streamUrl = Uri.fromFile(File(checkNotNull(filePath))).toString(),
+    streamUrl = StreamUrls.ofFile(File(checkNotNull(filePath))),
     title = title,
     artist = artist,
     album = album,
     trackNumber = trackNumber,
     durationMs = durationMs,
-    artworkUrl = artworkPath?.let { Uri.fromFile(File(it)).toString() },
+    artworkUrl = artworkPath?.let { StreamUrls.ofFile(File(it)) },
     gainDb = when (loudness) {
         LoudnessMode.OFF -> null
         LoudnessMode.TRACK -> gainDb
@@ -117,7 +117,7 @@ class PlexRepository @Inject constructor(
     private val jellyfin: JellyfinApi,
     private val sleeveWearCache: SleeveWearCache,
     private val fiveStarsCache: FiveStarsCache,
-    private val listeningCache: ListeningCache,
+    private val listeningCache: TrackCache,
     private val ratings: RatingStore,
 ) {
     val session: Flow<Session> = sessionStore.session

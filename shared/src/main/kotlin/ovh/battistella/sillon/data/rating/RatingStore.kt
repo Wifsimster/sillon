@@ -1,12 +1,10 @@
 package ovh.battistella.sillon.data.rating
 
-import android.content.Context
-import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,10 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ovh.battistella.sillon.data.plex.PlexJson
-import javax.inject.Inject
-import javax.inject.Singleton
-
-private val Context.ratingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "ratings")
+import ovh.battistella.sillon.data.storage.AppStorage
 
 /** The [RatingBook] of the server in use, in memory for the player and kept on the phone. */
 data class ServerRatings(val serverId: String? = null, val book: RatingBook = RatingBook())
@@ -28,8 +23,10 @@ data class ServerRatings(val serverId: String? = null, val book: RatingBook = Ra
  */
 @Singleton
 class RatingStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val storage: AppStorage,
 ) {
+    private val prefs = storage.preferences("ratings")
+
     private val lock = Mutex()
     private val _state = MutableStateFlow(ServerRatings())
     val state: StateFlow<ServerRatings> = _state.asStateFlow()
@@ -42,20 +39,20 @@ class RatingStore @Inject constructor(
         val after = change(before)
         if (after != before) {
             _state.value = ServerRatings(serverId, after)
-            context.ratingsDataStore.edit { it[key(serverId)] = PlexJson.encodeToString(RatingBook.serializer(), after) }
+            prefs.edit { it[key(serverId)] = PlexJson.encodeToString(RatingBook.serializer(), after) }
         }
         after
     }
 
     suspend fun clear() = lock.withLock {
         _state.value = ServerRatings()
-        context.ratingsDataStore.edit { it.clear() }
+        prefs.edit { it.clear() }
     }
 
     private suspend fun load(serverId: String): RatingBook {
         val current = _state.value
         if (current.serverId == serverId) return current.book
-        val saved = context.ratingsDataStore.data.first()[key(serverId)]
+        val saved = prefs.data.first()[key(serverId)]
             ?.let { runCatching { PlexJson.decodeFromString(RatingBook.serializer(), it) }.getOrNull() }
             ?: RatingBook()
         _state.value = ServerRatings(serverId, saved)

@@ -16,11 +16,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.storage.AndroidStorage
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
 class FiveStarsCacheTest {
-    private val cache = FiveStarsCache(ApplicationProvider.getApplicationContext())
+    private val cache = FiveStarsCache(AndroidStorage(ApplicationProvider.getApplicationContext()))
 
     @Before
     fun setUp() = runBlocking { cache.clear() }
