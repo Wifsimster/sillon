@@ -70,6 +70,8 @@ their licences in [`docs/fonts/`](docs/fonts).
 ## Shape and motion
 
 - Corners: 6 / 10 / 16 / 24 / 32 dp (extra small → extra large). Covers use 8–16 dp, circles for artists.
+- An album's page shows the record peeking out of its sleeve. While the album plays, the record slides
+  further out and turns at 33⅓ rpm; with *Remove animations* on, it moves out without turning.
 - The player's tint animates over 600 ms when the track changes.
 - Splash screen: the spiral on vinyl black, then the app.
 - End of a side (*Listen by side*): the spiral as a record, the tonearm swings
