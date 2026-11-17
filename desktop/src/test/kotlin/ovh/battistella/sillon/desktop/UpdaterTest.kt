@@ -92,12 +92,18 @@ class UpdaterTest {
     }
 
     private val dir get() = File(folder.root, "updates")
+    private val work get() = File(folder.root, "temp/sillon-update")
+    private val launchedIn = mutableListOf<File>()
 
     private fun installer(current: String, canInstall: Boolean = true) = UpdateInstaller(
         dir = dir,
         currentVersion = current,
         canInstall = canInstall,
-        launch = { launched += it },
+        workDir = work,
+        launch = { command, cwd ->
+            launched += command
+            launchedIn += cwd
+        },
         executable = { "C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe" },
     )
 
@@ -147,10 +153,15 @@ class UpdaterTest {
         assertEquals(checksum, UpdateInstaller.sha256(ready.installer))
         assertTrue(updater.install())
         val command = launched.single()
-        assertEquals(listOf("cmd.exe", "/c", "start"), command.take(3))
+        assertEquals(listOf("cmd.exe", "/c", File(work, "update.cmd").absolutePath), command)
+        assertEquals(work, launchedIn.single())
+        val copy = File(work, ready.installer.name)
+        assertEquals(checksum, UpdateInstaller.sha256(copy))
         val script = File(command.last()).readText()
-        assertTrue(script.contains("msiexec /i \"${ready.installer.absolutePath}\" /passive /norestart"))
-        assertTrue(script.contains("start \"\" \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\""))
+        assertEquals(1, script.trim().lines().size)
+        assertTrue(script.contains("msiexec /i \"${copy.absolutePath}\" /passive /norestart /l* \"${File(work, "install.log").absolutePath}\""))
+        assertTrue(script.contains("(if exist \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\" start \"\" \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\")"))
+        assertFalse(script.contains(dir.absolutePath))
         assertEquals("1.27.0", prefs.attemptedVersion())
     }
 
@@ -275,8 +286,10 @@ class UpdaterTest {
     @Test
     fun `the install script never relaunches something that is not Sillon`() {
         val msi = File("C:\\cache\\Sillon-1.27.0.msi")
-        assertFalse(UpdateInstaller.installScript(msi, "C:\\Program Files\\Java\\bin\\java.exe").contains("start \"\""))
-        assertFalse(UpdateInstaller.installScript(msi, null).contains("start \"\""))
-        assertFalse(UpdateInstaller.installScript(msi, "C:\\x\\Sillon\" & calc & \".exe").contains("calc"))
+        val log = File("C:\\cache\\install.log")
+        assertFalse(UpdateInstaller.installScript(msi, log, "C:\\Program Files\\Java\\bin\\java.exe").contains("start \"\""))
+        assertFalse(UpdateInstaller.installScript(msi, log, null).contains("start \"\""))
+        assertFalse(UpdateInstaller.installScript(msi, log, "C:\\x\\Sillon\" & calc & \".exe").contains("calc"))
+        assertFalse(UpdateInstaller.installScript(msi, log, "C:\\x\\Sillon & calc.exe").contains("calc"))
     }
 }

@@ -228,6 +228,35 @@ jobs:
       - name: Put Sillon's logo in the installer
         run: pwsh -File scripts/brand-installer.ps1 -Msi "$(ls desktop/build/compose/binaries/main-release/msi/*.msi)" -Banner desktop/installer/banner.bmp -Dialog desktop/installer/dialog.bmp
 
+      - name: Update an installed Sillon with this installer
+        run: |
+          curl -fsSL --retry 3 -o previous.msi https://github.com/Wifsimster/sillon/releases/download/v1.27.0/Sillon-windows-x64.msi
+          cmd //c "start /wait msiexec /i previous.msi /qn /norestart"
+          installed="$(cygpath -u "$LOCALAPPDATA")/Sillon/Sillon.exe"
+          test -f "$installed"
+          "$installed" --self-test "$PWD/before.txt" || true
+          echo "before: $(grep -c '^ok' before.txt) checks"
+          test "$(grep -c '^ok' before.txt)" = "4"
+          next="$(cygpath -w "$(ls "$PWD"/desktop/build/compose/binaries/main-release/msi/*.msi)")"
+          desktop/build/compose/binaries/main-release/app/Sillon/Sillon.exe --install-update "$next" "$(cygpath -w "$installed")"
+          log="$(cygpath -u "$TEMP")/sillon-update/install.log"
+          for i in $(seq 1 150); do
+            if [ -f "$log" ] && tr -d '\0' < "$log" | grep -q "Installation success or error status"; then break; fi
+            sleep 2
+          done
+          tr -d '\0' < "$log" | grep "Installation success or error status" | tail -n 1
+          tr -d '\0' < "$log" | grep -q "Installation success or error status: 0"
+          for i in $(seq 1 30); do
+            if tasklist //FI "IMAGENAME eq Sillon.exe" | grep -qi "Sillon.exe"; then echo "Sillon started again"; break; fi
+            sleep 2
+          done
+          tasklist //FI "IMAGENAME eq Sillon.exe" | grep -qi "Sillon.exe"
+          taskkill //F //IM Sillon.exe
+          sleep 3
+          "$installed" --self-test "$PWD/after.txt" || true
+          cat after.txt
+          test "$(grep -c '^ok' after.txt)" = "5"
+
       - name: Stage the installer
         run: |
           mkdir -p dist

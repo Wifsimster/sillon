@@ -23,6 +23,7 @@ import ovh.battistella.sillon.desktop.player.PlayerEngine
 import ovh.battistella.sillon.desktop.ui.components.SillonMark
 import ovh.battistella.sillon.desktop.ui.theme.SillonTheme
 import ovh.battistella.sillon.desktop.update.Changelog
+import ovh.battistella.sillon.desktop.update.UpdateInstaller
 import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.StreamUrls
 import java.io.ByteArrayInputStream
@@ -109,6 +110,15 @@ object SelfTest {
         println(text)
         runCatching { report?.writeText(text + System.lineSeparator()) }
         return if (failed) 1 else 0
+    }
+
+    fun installUpdate(msi: File, relaunch: String?): Int {
+        if (!msi.isFile) return 2
+        val dir = Files.createTempDirectory("sillon-update-source").toFile()
+        val copy = msi.copyTo(File(dir, msi.name), overwrite = true)
+        val installer = UpdateInstaller(dir, "0.0.1", executable = { relaunch })
+        installer.remember("9999.0.0", copy, UpdateInstaller.sha256(copy))
+        return if (installer.run() != null) 0 else 1
     }
 
     private const val PLAYBACK_TIMEOUT_MS = 15_000L

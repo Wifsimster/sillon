@@ -42,7 +42,8 @@ class UpdateInstaller(
     private val dir: File,
     private val currentVersion: String,
     private val canInstall: Boolean = isWindows(),
-    private val launch: (List<String>) -> Unit = { ProcessBuilder(it).start() },
+    private val workDir: File = File(System.getProperty("java.io.tmpdir"), "sillon-update"),
+    private val launch: (List<String>, File) -> Unit = ::detached,
     private val executable: () -> String? = { ProcessHandle.current().info().command().orElse(null) },
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -61,6 +62,7 @@ class UpdateInstaller(
     }
 
     fun forget() {
+        runCatching { workDir.deleteRecursively() }
         dir.listFiles()?.filter { it.name.endsWith(".msi") || it.name.endsWith(".part") || it.name.endsWith(".cmd") || it == marker }
             ?.forEach { it.delete() }
     }
@@ -73,16 +75,19 @@ class UpdateInstaller(
     fun run(): String? {
         if (!canInstall) return null
         val (update, installer) = pending() ?: return null
-        val path = installer.absolutePath
-        if (path.contains('"') || path.contains('%')) return null
         if (runCatching { sha256(installer) }.getOrNull() != update.sha256) {
             forget()
             return null
         }
         return runCatching {
-            val script = File(dir, "update.cmd")
-            script.writeText(installScript(installer, executable()), Charsets.UTF_8)
-            launch(listOf("cmd.exe", "/c", "start", "\"\"", "/min", script.absolutePath))
+            workDir.deleteRecursively()
+            workDir.mkdirs()
+            val copy = installer.copyTo(File(workDir, installer.name), overwrite = true)
+            val script = File(workDir, "update.cmd")
+            val paths = listOf(copy.absolutePath, script.absolutePath)
+            check(paths.none { it.contains('"') || it.contains('%') || it.contains('&') })
+            script.writeText(installScript(copy, File(workDir, "install.log"), executable()), Charsets.UTF_8)
+            launch(listOf("cmd.exe", "/c", script.absolutePath), workDir)
             update.version
         }.getOrNull()
     }
@@ -105,17 +110,26 @@ class UpdateInstaller(
             return digest.digest().joinToString("") { "%02x".format(it) }
         }
 
-        fun installScript(installer: File, executable: String?): String {
+        fun installScript(installer: File, log: File, executable: String?): String {
             val relaunch = executable?.takeIf {
-                it.substringAfterLast('\\').substringAfterLast('/').startsWith("Sillon", ignoreCase = true) && !it.contains('"') && !it.contains('%')
+                it.substringAfterLast('\\').substringAfterLast('/').startsWith("Sillon", ignoreCase = true) &&
+                    it.none { c -> c == '"' || c == '%' || c == '&' }
             }
             return buildString {
-                append("@echo off\r\n")
-                append("chcp 65001 >nul\r\n")
-                append("ping -n 3 127.0.0.1 >nul\r\n")
-                append("msiexec /i \"").append(installer.absolutePath).append("\" /passive /norestart\r\n")
-                if (relaunch != null) append("start \"\" \"").append(relaunch).append("\"\r\n")
+                append("@echo off & chcp 65001 >nul & ping -n 3 127.0.0.1 >nul")
+                append(" & msiexec /i \"").append(installer.absolutePath).append("\" /passive /norestart /l* \"").append(log.absolutePath).append("\"")
+                if (relaunch != null) append(" & (if exist \"").append(relaunch).append("\" start \"\" \"").append(relaunch).append("\")")
+                append("\r\n")
             }
+        }
+
+        fun detached(command: List<String>, workDir: File) {
+            ProcessBuilder(command)
+                .directory(workDir)
+                .redirectInput(ProcessBuilder.Redirect.from(File("NUL")))
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .start()
         }
 
         fun installAtStartup(installer: UpdateInstaller, prefs: DesktopPrefs): Boolean = runBlocking {

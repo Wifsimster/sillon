@@ -44,6 +44,7 @@ import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     if (args.firstOrNull() == "--self-test") exitProcess(SelfTest.run(args.getOrNull(1)?.let(::File)))
+    if (args.firstOrNull() == "--install-update" && args.size >= 2) exitProcess(SelfTest.installUpdate(File(args[1]), args.getOrNull(2)))
     val storage = DesktopStorage()
     val instance = SingleInstance.acquire(File(storage.privateDir, "sillon.lock")) ?: return
     val updates = UpdateInstaller(File(storage.privateDir, "updates"), AppGraph.runningVersion())
