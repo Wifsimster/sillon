@@ -34,6 +34,7 @@ import ovh.battistella.sillon.desktop.platform.NoTrackCache
 import ovh.battistella.sillon.desktop.player.Mpv
 import ovh.battistella.sillon.desktop.player.Playback
 import ovh.battistella.sillon.desktop.player.PlayerEngine
+import ovh.battistella.sillon.desktop.player.Waveforms
 import ovh.battistella.sillon.desktop.ui.screens.GenreLibrary
 import ovh.battistella.sillon.desktop.update.UpdateFeed
 import ovh.battistella.sillon.desktop.update.Updater
@@ -88,6 +89,8 @@ class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
     val sleeveWear = SleeveWearRepository(repository, sleeveWearCache, settings)
 
     val genres = GenreLibrary(repository)
+
+    val waveforms = Waveforms(repository)
 
     val downloadFiles = DownloadFiles(storage.filesDir)
 

@@ -721,6 +721,11 @@ class PlexRepository @Inject constructor(
         ),
     )
 
+    suspend fun loudnessLevels(trackKey: String, samples: Int): List<Float> = onServer(
+        plex = { clientId, server -> api.loudnessLevels(clientId, server, trackKey, samples) },
+        jellyfin = { _, _ -> emptyList() },
+    )
+
     suspend fun reportPlayback(
         server: ServerEndpoint,
         ratingKey: String,

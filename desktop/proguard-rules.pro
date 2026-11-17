@@ -4,6 +4,7 @@
 
 -keep class ovh.battistella.sillon.desktop.MainKt { *; }
 -keep class ovh.battistella.sillon.desktop.player.** { *; }
+-keep class ovh.battistella.sillon.desktop.platform.** { *; }
 -keep class com.sun.jna.** { *; }
 -keep class * implements com.sun.jna.** { *; }
 

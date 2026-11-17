@@ -46,6 +46,7 @@ data class MediaContainer(
     @SerialName("Directory") val directories: List<PlexDirectory> = emptyList(),
     @SerialName("Metadata") val metadata: List<PlexMetadata> = emptyList(),
     @SerialName("Hub") val hubs: List<PlexHub> = emptyList(),
+    @SerialName("Level") val levels: List<PlexLevel> = emptyList(),
     val playQueueID: Long? = null,
     /** A transient token, from `/security/token`. */
     val token: String? = null,
@@ -117,6 +118,8 @@ data class PlexMetadata(
 
     val albumGain: Float? get() = audioStream?.albumGain ?: trackGain
 
+    val audioStreamId: Long? get() = audioStream?.id
+
     val trackArtist: String? get() = originalTitle ?: grandparentTitle
 
     /** Path of the track's lyrics on a Plex server, when it has some. */
@@ -157,7 +160,11 @@ data class PlexStream(
     val samplingRate: Int? = null,
     val bitDepth: Int? = null,
     val bitrate: Int? = null,
+    val id: Long? = null,
 )
+
+@Serializable
+data class PlexLevel(val v: Float = 0f)
 
 @Serializable
 data class PlexStations(

@@ -1,6 +1,10 @@
 package ovh.battistella.sillon.desktop
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
@@ -23,6 +27,7 @@ import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.i18n.stringsFor
 import ovh.battistella.sillon.desktop.platform.DesktopStorage
 import ovh.battistella.sillon.desktop.platform.SingleInstance
+import ovh.battistella.sillon.desktop.platform.WindowChrome
 import ovh.battistella.sillon.desktop.platform.WindowPlacement as SavedPlacement
 import ovh.battistella.sillon.desktop.ui.SillonApp
 import ovh.battistella.sillon.desktop.ui.handleShortcut
@@ -80,6 +85,9 @@ fun main(args: Array<String>) {
             window.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT)
             CompositionLocalProvider(LocalStrings provides strings) {
                 SillonTheme {
+                    val background = MaterialTheme.colorScheme.background
+                    val dark = isSystemInDarkTheme()
+                    LaunchedEffect(background, dark) { WindowChrome.blend(window.windowHandle, background.toArgb(), dark) }
                     SillonApp(app)
                 }
             }

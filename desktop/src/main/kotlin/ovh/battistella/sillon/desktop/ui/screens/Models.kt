@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ import ovh.battistella.sillon.desktop.ui.components.TileUi
 import ovh.battistella.sillon.desktop.ui.components.TrackUi
 import ovh.battistella.sillon.desktop.ui.components.toFailed
 import ovh.battistella.sillon.playback.PlayableTrack
+import java.time.LocalDate
 import kotlin.math.ln
 
 const val TILE_ART_PX = 400
@@ -436,6 +438,8 @@ class ListenModel(private val graph: AppGraph, private val scope: CoroutineScope
     }
 }
 
+data class ShelfUi(val shelf: Shelf, val tiles: List<TileUi>)
+
 data class SearchResults(
     val query: String,
     val artists: List<TileUi>,
@@ -455,6 +459,10 @@ class SearchModel(private val graph: AppGraph, private val scope: CoroutineScope
     val recent = _recent.asStateFlow()
     private var job: Job? = null
     private var found: List<PlexMetadata> = emptyList()
+    private val _shelves = MutableStateFlow<List<ShelfUi>>(emptyList())
+    val shelves = _shelves.asStateFlow()
+    private val _startingShelf = MutableStateFlow<String?>(null)
+    val startingShelf = _startingShelf.asStateFlow()
 
     init {
         scope.launch {
@@ -462,6 +470,36 @@ class SearchModel(private val graph: AppGraph, private val scope: CoroutineScope
                 val server = repository.endpoint()
                 repository.recentAlbums().map { TileUi(it.key, it.title, it.artist, repository.artworkUrl(server, it.thumb, TILE_ART_PX)) }
             }.getOrDefault(emptyList())
+        }
+        scope.launch {
+            _shelves.value = runCatching {
+                val server = repository.endpoint()
+                val albums = graph.genres.shelfAlbums()
+                withContext(Dispatchers.Default) {
+                    Shelves.of(albums, LocalDate.now()).map { shelf ->
+                        ShelfUi(
+                            shelf,
+                            shelf.albums.map { TileUi(it.key, it.title, it.artist, repository.artworkUrl(server, it.thumb, TILE_ART_PX)) },
+                        )
+                    }
+                }
+            }.getOrDefault(emptyList())
+        }
+    }
+
+    fun playShelf(shelf: Shelf) {
+        if (_startingShelf.value != null) return
+        _startingShelf.value = shelf.id
+        scope.launch {
+            runCatching {
+                val drawn = coroutineScope {
+                    shelf.albums.shuffled().take(SHELF_ALBUMS).map { album ->
+                        async { runCatching { repository.tracksOf(album.key) }.getOrDefault(emptyList()) }
+                    }.awaitAll().flatten()
+                }
+                repository.playable(repository.withoutOneStar(drawn).shuffled().take(SHELF_TRACKS))
+            }.onSuccess { if (it.isNotEmpty()) graph.playback.play(it) }
+            _startingShelf.value = null
         }
     }
 
@@ -522,5 +560,7 @@ class SearchModel(private val graph: AppGraph, private val scope: CoroutineScope
 
     private companion object {
         const val DEBOUNCE_MS = 300L
+        const val SHELF_ALBUMS = 12
+        const val SHELF_TRACKS = 100
     }
 }

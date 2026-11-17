@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.desktop.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import ovh.battistella.sillon.desktop.ui.screens.ShelfKind
 import java.util.Locale
 
 interface Strings {
@@ -38,6 +39,8 @@ interface Strings {
     val jellyfinErrorQuickConnect: String
     val jellyfinErrorOther: String
     val jellyfinOtherServer: String
+    val codeCopy: String
+    val codeCopied: String
 
     val serversTitle: String
     val serversEmpty: String
@@ -70,6 +73,7 @@ interface Strings {
     fun searchNoResults(query: String): String
     val searchRecent: String
     val searchStart: String
+    fun shelfTitle(kind: ShelfKind, label: String?): String
 
     val downloadsEmpty: String
     val download: String
@@ -212,6 +216,8 @@ object EnglishStrings : Strings {
     override val jellyfinErrorQuickConnect = "Quick Connect is turned off on this server."
     override val jellyfinErrorOther = "Sign-in failed. Check the server and try again."
     override val jellyfinOtherServer = "Another server"
+    override val codeCopy = "Copy the code"
+    override val codeCopied = "Code copied"
 
     override val serversTitle = "Choose a server"
     override val serversEmpty = "No Plex Media Server is linked to this account."
@@ -244,6 +250,21 @@ object EnglishStrings : Strings {
     override fun searchNoResults(query: String) = "Nothing found for “$query”."
     override val searchRecent = "Recently played"
     override val searchStart = "Search your library as you type."
+    override fun shelfTitle(kind: ShelfKind, label: String?) = when (kind) {
+        ShelfKind.HALLOWEEN -> "Halloween chills"
+        ShelfKind.CHRISTMAS -> "Christmas is coming"
+        ShelfKind.LOVE -> "For Valentine's Day"
+        ShelfKind.SUMMER -> "Sounds of summer"
+        ShelfKind.SOUNDTRACKS -> "Soundtracks"
+        ShelfKind.LIVE -> "On stage"
+        ShelfKind.CHILL -> "Taking it easy"
+        ShelfKind.PARTY -> "For a party"
+        ShelfKind.FOCUS -> "To concentrate"
+        ShelfKind.DECADE -> "The ${label.orEmpty()}s"
+        ShelfKind.GENRE -> "Today: ${label.orEmpty()}"
+        ShelfKind.ARTIST -> "All of ${label.orEmpty()}"
+        ShelfKind.REDISCOVER -> "To rediscover"
+    }
 
     override val downloadsEmpty = "Nothing downloaded yet. Open an album or a playlist and choose Download to listen without a connection."
     override val download = "Download"
@@ -386,6 +407,8 @@ object FrenchStrings : Strings {
     override val jellyfinErrorQuickConnect = "Quick Connect est désactivé sur ce serveur."
     override val jellyfinErrorOther = "La connexion a échoué. Vérifie le serveur et réessaie."
     override val jellyfinOtherServer = "Un autre serveur"
+    override val codeCopy = "Copier le code"
+    override val codeCopied = "Code copié"
 
     override val serversTitle = "Choisis un serveur"
     override val serversEmpty = "Aucun Plex Media Server n'est lié à ce compte."
@@ -418,6 +441,21 @@ object FrenchStrings : Strings {
     override fun searchNoResults(query: String) = "Rien trouvé pour « $query »."
     override val searchRecent = "Écoutés récemment"
     override val searchStart = "Cherche dans ta bibliothèque au fil de la frappe."
+    override fun shelfTitle(kind: ShelfKind, label: String?) = when (kind) {
+        ShelfKind.HALLOWEEN -> "Frissons d'Halloween"
+        ShelfKind.CHRISTMAS -> "Noël approche"
+        ShelfKind.LOVE -> "Pour la Saint-Valentin"
+        ShelfKind.SUMMER -> "Sons d'été"
+        ShelfKind.SOUNDTRACKS -> "Bandes originales"
+        ShelfKind.LIVE -> "En concert"
+        ShelfKind.CHILL -> "Au calme"
+        ShelfKind.PARTY -> "Pour faire la fête"
+        ShelfKind.FOCUS -> "Pour se concentrer"
+        ShelfKind.DECADE -> "Les années ${label.orEmpty()}"
+        ShelfKind.GENRE -> "Aujourd'hui : ${label.orEmpty()}"
+        ShelfKind.ARTIST -> "Tout ${label.orEmpty()}"
+        ShelfKind.REDISCOVER -> "À redécouvrir"
+    }
 
     override val downloadsEmpty = "Rien de téléchargé pour l'instant. Ouvre un album ou une playlist et choisis Télécharger pour écouter sans connexion."
     override val download = "Télécharger"

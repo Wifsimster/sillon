@@ -220,10 +220,13 @@ jobs:
         run: |
           desktop/build/compose/binaries/main-release/app/Sillon/Sillon.exe --self-test "$PWD/self-test.txt" || true
           cat self-test.txt
-          test "$(grep -c '^ok' self-test.txt)" = "4"
+          test "$(grep -c '^ok' self-test.txt)" = "5"
 
       - name: Build the Windows installer
         run: ./gradlew :desktop:packageReleaseMsi --stacktrace
+
+      - name: Put Sillon's logo in the installer
+        run: pwsh -File scripts/brand-installer.ps1 -Msi "$(ls desktop/build/compose/binaries/main-release/msi/*.msi)" -Banner desktop/installer/banner.bmp -Dialog desktop/installer/dialog.bmp
 
       - name: Stage the installer
         run: |
