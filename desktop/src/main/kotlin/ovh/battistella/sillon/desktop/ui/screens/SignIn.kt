@@ -14,7 +14,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,6 +39,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -132,6 +139,41 @@ private class PlexSignInModel(private val repository: PlexRepository, private va
     }
 }
 
+@Composable
+private fun CopyableCode(code: String) {
+    val strings = LocalStrings.current
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(code) { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(COPIED_SHOWN_MS)
+            copied = false
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        SelectionContainer {
+            Text(code, style = MaterialTheme.typography.displaySmall.copy(letterSpacing = 6.sp))
+        }
+        FilledTonalIconButton(onClick = {
+            clipboard.setText(AnnotatedString(code))
+            copied = true
+        }) {
+            Icon(
+                if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                if (copied) strings.codeCopied else strings.codeCopy,
+                Modifier.size(20.dp),
+            )
+        }
+    }
+    Text(
+        if (copied) strings.codeCopied else "",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary,
+    )
+}
+
+private const val COPIED_SHOWN_MS = 2_000L
+
 private fun openInBrowser(url: String) {
     runCatching { Desktop.getDesktop().browse(URI(url)) }
 }
@@ -150,9 +192,7 @@ private fun PlexSignIn(repository: PlexRepository, onBack: () -> Unit) {
         is PlexSignInState.Waiting -> {
             Button(onClick = { openInBrowser(s.authUrl) }, Modifier.fillMaxWidth()) { Text(strings.plexOpenBrowser) }
             Text(strings.plexOrLink, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-            SelectionContainer {
-                Text(s.code, style = MaterialTheme.typography.displaySmall.copy(letterSpacing = 6.sp))
-            }
+            CopyableCode(s.code)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 Text(strings.plexWaiting, style = MaterialTheme.typography.bodyMedium)
@@ -284,7 +324,7 @@ private fun JellyfinSignIn(repository: PlexRepository, onBack: () -> Unit) {
         val code = state.quickConnectCode
         if (code != null) {
             Text(strings.jellyfinQuickConnectBody, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-            SelectionContainer { Text(code, style = MaterialTheme.typography.displaySmall.copy(letterSpacing = 6.sp)) }
+            CopyableCode(code)
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
         } else {
             OutlinedTextField(

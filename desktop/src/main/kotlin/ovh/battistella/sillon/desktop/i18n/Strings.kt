@@ -38,6 +38,8 @@ interface Strings {
     val jellyfinErrorQuickConnect: String
     val jellyfinErrorOther: String
     val jellyfinOtherServer: String
+    val codeCopy: String
+    val codeCopied: String
 
     val serversTitle: String
     val serversEmpty: String
@@ -212,6 +214,8 @@ object EnglishStrings : Strings {
     override val jellyfinErrorQuickConnect = "Quick Connect is turned off on this server."
     override val jellyfinErrorOther = "Sign-in failed. Check the server and try again."
     override val jellyfinOtherServer = "Another server"
+    override val codeCopy = "Copy the code"
+    override val codeCopied = "Code copied"
 
     override val serversTitle = "Choose a server"
     override val serversEmpty = "No Plex Media Server is linked to this account."
@@ -386,6 +390,8 @@ object FrenchStrings : Strings {
     override val jellyfinErrorQuickConnect = "Quick Connect est désactivé sur ce serveur."
     override val jellyfinErrorOther = "La connexion a échoué. Vérifie le serveur et réessaie."
     override val jellyfinOtherServer = "Un autre serveur"
+    override val codeCopy = "Copier le code"
+    override val codeCopied = "Code copié"
 
     override val serversTitle = "Choisis un serveur"
     override val serversEmpty = "Aucun Plex Media Server n'est lié à ce compte."

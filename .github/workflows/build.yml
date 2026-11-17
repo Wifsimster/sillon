@@ -225,6 +225,9 @@ jobs:
       - name: Build the Windows installer
         run: ./gradlew :desktop:packageReleaseMsi --stacktrace
 
+      - name: Put Sillon's logo in the installer
+        run: pwsh -File scripts/brand-installer.ps1 -Msi "$(ls desktop/build/compose/binaries/main-release/msi/*.msi)" -Banner desktop/installer/banner.bmp -Dialog desktop/installer/dialog.bmp
+
       - name: Stage the installer
         run: |
           mkdir -p dist
