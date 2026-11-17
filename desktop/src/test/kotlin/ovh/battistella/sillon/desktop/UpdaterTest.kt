@@ -24,6 +24,7 @@ import ovh.battistella.sillon.desktop.platform.DesktopPrefs
 import ovh.battistella.sillon.desktop.platform.DesktopStorage
 import ovh.battistella.sillon.desktop.update.Changelog
 import ovh.battistella.sillon.desktop.update.UpdateFeed
+import ovh.battistella.sillon.desktop.update.UpdateInstaller
 import ovh.battistella.sillon.desktop.update.UpdateState
 import ovh.battistella.sillon.desktop.update.Updater
 import ovh.battistella.sillon.desktop.update.Versions
@@ -90,16 +91,25 @@ class UpdaterTest {
         server.shutdown()
     }
 
-    private fun updater(current: String, canInstall: Boolean = true, executable: String? = "C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe") = Updater(
+    private val dir get() = File(folder.root, "updates")
+
+    private fun installer(current: String, canInstall: Boolean = true) = UpdateInstaller(
+        dir = dir,
+        currentVersion = current,
+        canInstall = canInstall,
+        launch = { launched += it },
+        executable = { "C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe" },
+    )
+
+    private fun updater(current: String, canInstall: Boolean = true) = Updater(
         feed = UpdateFeed(OkHttpClient(), server.url("/repo/")),
         client = OkHttpClient(),
         prefs = prefs,
         currentVersion = current,
-        dir = File(folder.root, "updates"),
+        dir = dir,
         scope = scope,
         canInstall = canInstall,
-        launch = { launched += it },
-        executable = { executable },
+        installer = installer(current, canInstall),
     )
 
     @Test
@@ -134,22 +144,78 @@ class UpdaterTest {
         val ready = updater.state.value as UpdateState.Ready
         assertEquals("1.27.0", ready.release.version)
         assertEquals(installer.size.toLong(), ready.installer.length())
-        assertEquals(checksum, Updater.sha256(ready.installer))
+        assertEquals(checksum, UpdateInstaller.sha256(ready.installer))
         assertTrue(updater.install())
         val command = launched.single()
         assertEquals(listOf("cmd.exe", "/c", "start"), command.take(3))
         val script = File(command.last()).readText()
         assertTrue(script.contains("msiexec /i \"${ready.installer.absolutePath}\" /passive /norestart"))
         assertTrue(script.contains("start \"\" \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\""))
+        assertEquals("1.27.0", prefs.attemptedVersion())
+    }
+
+    @Test
+    fun `an update downloaded in one session installs itself at the next start, without a word`() = runBlocking {
+        updater("1.26.0").check(manual = false)
+        assertTrue(launched.isEmpty())
+        assertTrue(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+        assertEquals(1, launched.size)
+        assertTrue(File(launched.single().last()).readText().contains("msiexec /i"))
+    }
+
+    @Test
+    fun `an install that did not take is not tried again at every start`() = runBlocking {
+        updater("1.26.0").check(manual = false)
+        assertTrue(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+        assertFalse(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+        assertEquals(1, launched.size)
+        val after = updater("1.26.0")
+        after.start()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (after.state.value !is UpdateState.NotInstalled && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        assertEquals("1.27.0", (after.state.value as UpdateState.NotInstalled).version)
+        Thread.sleep(300)
+        assertTrue(after.state.value is UpdateState.NotInstalled)
+        after.check(manual = true)
+        assertTrue(after.state.value is UpdateState.Ready)
+        assertTrue(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+    }
+
+    @Test
+    fun `nothing installs at start when there is nothing newer, the file was changed, or updates are off`() = runBlocking {
+        assertFalse(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+        updater("1.26.0").check(manual = false)
+        assertFalse(UpdateInstaller.installAtStartup(installer("1.27.0"), prefs))
+        prefs.setAutoUpdate(false)
+        assertFalse(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+        prefs.setAutoUpdate(true)
+        File(dir, "Sillon-1.27.0.msi").appendBytes(byteArrayOf(1))
+        assertFalse(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
+        assertTrue(launched.isEmpty())
+        assertFalse(File(dir, "Sillon-1.27.0.msi").exists())
+    }
+
+    @Test
+    fun `a release whose installer is not published yet is waited for, quietly`() = runBlocking {
+        withInstaller = false
+        val updater = updater("1.26.0")
+        assertFalse(updater.check(manual = false))
+        assertEquals(UpdateState.Idle, updater.state.value)
+        withInstaller = true
+        assertTrue(updater.check(manual = false))
+        assertTrue(updater.state.value is UpdateState.Ready)
     }
 
     @Test
     fun `an installer that does not match its checksum is thrown away`() = runBlocking {
         checksum = "0".repeat(64)
         val updater = updater("1.26.0")
-        updater.check(manual = false)
+        assertFalse(updater.check(manual = false))
+        assertEquals(UpdateState.Idle, updater.state.value)
+        updater.check(manual = true)
         assertTrue(updater.state.value is UpdateState.Failed)
         assertFalse(updater.install())
+        assertFalse(UpdateInstaller.installAtStartup(installer("1.26.0"), prefs))
         assertTrue(launched.isEmpty())
         assertEquals(emptyList<String>(), File(folder.root, "updates").list().orEmpty().filter { it.endsWith(".msi") })
     }
@@ -177,10 +243,6 @@ class UpdaterTest {
         updater.check(manual = false)
         assertTrue(updater.state.value is UpdateState.Available)
         assertFalse(updater.install())
-        withInstaller = false
-        val windows = updater("1.26.0")
-        windows.check(manual = false)
-        assertTrue(windows.state.value is UpdateState.Available)
     }
 
     @Test
@@ -213,8 +275,8 @@ class UpdaterTest {
     @Test
     fun `the install script never relaunches something that is not Sillon`() {
         val msi = File("C:\\cache\\Sillon-1.27.0.msi")
-        assertFalse(Updater.installScript(msi, "C:\\Program Files\\Java\\bin\\java.exe").contains("start \"\""))
-        assertFalse(Updater.installScript(msi, null).contains("start \"\""))
-        assertFalse(Updater.installScript(msi, "C:\\x\\Sillon\" & calc & \".exe").contains("calc"))
+        assertFalse(UpdateInstaller.installScript(msi, "C:\\Program Files\\Java\\bin\\java.exe").contains("start \"\""))
+        assertFalse(UpdateInstaller.installScript(msi, null).contains("start \"\""))
+        assertFalse(UpdateInstaller.installScript(msi, "C:\\x\\Sillon\" & calc & \".exe").contains("calc"))
     }
 }

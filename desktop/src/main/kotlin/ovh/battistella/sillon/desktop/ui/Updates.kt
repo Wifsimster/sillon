@@ -53,9 +53,26 @@ fun UpdateBanner(app: AppState) {
         if (updater.install()) app.exit() else installFailed = true
     }
 
+    (state as? UpdateState.NotInstalled)?.let { missed ->
+        Row(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                strings.updateNotInstalled(missed.version),
+                Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = updater::retry) { Text(strings.retry) }
+            TextButton(onClick = { runCatching { Desktop.getDesktop().browse(URI(missed.pageUrl)) } }) { Text(strings.updateOpenPage) }
+            TextButton(onClick = updater::later) { Text(strings.updateLater) }
+        }
+    }
     val release = when (val s = state) {
         is UpdateState.Available -> s.release
-        is UpdateState.Downloading -> s.release
+        is UpdateState.Downloading -> s.release.takeUnless { s.quiet }
         is UpdateState.Ready -> s.release
         is UpdateState.Failed -> s.release
         else -> null
@@ -87,6 +104,7 @@ fun UpdateBanner(app: AppState) {
                         Button(onClick = ::install) { Text(strings.updateInstall) }
                     }
                     is UpdateState.Downloading -> Unit
+                    is UpdateState.NotInstalled -> Unit
                     is UpdateState.Failed -> {
                         TextButton(onClick = updater::retry) { Text(strings.retry) }
                         TextButton(onClick = { openPage(release) }) { Text(strings.updateOpenPage) }

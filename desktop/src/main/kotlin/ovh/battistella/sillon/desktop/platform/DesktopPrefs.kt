@@ -57,6 +57,12 @@ class DesktopPrefs(storage: AppStorage) {
         prefs.edit { it[SKIPPED_VERSION] = version }
     }
 
+    suspend fun attemptedVersion(): String? = prefs.data.first()[ATTEMPTED_VERSION]
+
+    suspend fun setAttemptedVersion(version: String?) {
+        prefs.edit { it.setOrRemove(ATTEMPTED_VERSION, version) }
+    }
+
     private fun <T> androidx.datastore.preferences.core.MutablePreferences.setOrRemove(key: Preferences.Key<T>, value: T?) {
         if (value != null) this[key] = value else remove(key)
     }
@@ -71,5 +77,6 @@ class DesktopPrefs(storage: AppStorage) {
         val WINDOW_MAXIMIZED = booleanPreferencesKey("window_maximized")
         val LAST_SEEN_VERSION = stringPreferencesKey("last_seen_version")
         val SKIPPED_VERSION = stringPreferencesKey("skipped_version")
+        val ATTEMPTED_VERSION = stringPreferencesKey("attempted_version")
     }
 }

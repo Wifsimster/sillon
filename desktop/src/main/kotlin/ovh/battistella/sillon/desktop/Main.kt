@@ -25,6 +25,7 @@ import okio.Path.Companion.toOkioPath
 import org.jetbrains.skia.Image
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.i18n.stringsFor
+import ovh.battistella.sillon.desktop.platform.DesktopPrefs
 import ovh.battistella.sillon.desktop.platform.DesktopStorage
 import ovh.battistella.sillon.desktop.platform.SingleInstance
 import ovh.battistella.sillon.desktop.platform.WindowChrome
@@ -33,6 +34,8 @@ import ovh.battistella.sillon.desktop.ui.SillonApp
 import ovh.battistella.sillon.desktop.ui.handleShortcut
 import ovh.battistella.sillon.desktop.ui.rememberAppState
 import ovh.battistella.sillon.desktop.ui.theme.SillonTheme
+import ovh.battistella.sillon.desktop.update.UpdateInstaller
+import ovh.battistella.sillon.desktop.update.Versions
 import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 import java.awt.Rectangle
@@ -43,6 +46,11 @@ fun main(args: Array<String>) {
     if (args.firstOrNull() == "--self-test") exitProcess(SelfTest.run(args.getOrNull(1)?.let(::File)))
     val storage = DesktopStorage()
     val instance = SingleInstance.acquire(File(storage.privateDir, "sillon.lock")) ?: return
+    val updates = UpdateInstaller(File(storage.privateDir, "updates"), AppGraph.runningVersion())
+    if (Versions.isRelease(AppGraph.runningVersion()) && UpdateInstaller.installAtStartup(updates, DesktopPrefs(storage))) {
+        instance.release()
+        exitProcess(0)
+    }
     val graph = AppGraph(storage)
     val saved = runBlocking { runCatching { graph.prefs.window() }.getOrNull() }
     SingletonImageLoader.setSafe { context ->
