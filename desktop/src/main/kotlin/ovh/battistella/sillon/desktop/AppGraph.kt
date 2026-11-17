@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit
 class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    val version: String = AppGraph::class.java.getResource("/sillon-version.txt")?.readText()?.trim().orEmpty().ifBlank { "0.0.0" }
+    val version: String = packagedVersion()
 
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -106,7 +106,7 @@ class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
         feed = UpdateFeed(client, (System.getProperty("sillon.update.feed") ?: UpdateFeed.DEFAULT).toHttpUrl()),
         client = client,
         prefs = prefs,
-        currentVersion = System.getProperty("sillon.update.version") ?: version,
+        currentVersion = runningVersion(),
         dir = File(storage.privateDir, "updates"),
         scope = scope,
     )
@@ -129,6 +129,11 @@ class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
 
     companion object {
         private const val VOLUME_SAVE_DELAY_MS = 500L
+
+        fun packagedVersion(): String =
+            AppGraph::class.java.getResource("/sillon-version.txt")?.readText()?.trim().orEmpty().ifBlank { "0.0.0" }
+
+        fun runningVersion(): String = System.getProperty("sillon.update.version") ?: packagedVersion()
 
         fun platformName(): String {
             val os = System.getProperty("os.name").orEmpty().lowercase()

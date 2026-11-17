@@ -119,6 +119,7 @@ fun SettingsScreen(app: AppState) {
                     is UpdateState.Available -> strings.updateAvailable(u.release.version)
                     is UpdateState.Downloading -> strings.updateDownloading(u.release.version, (u.progress * 100).toInt())
                     is UpdateState.Ready -> strings.updateReady(u.release.version)
+                    is UpdateState.NotInstalled -> strings.updateNotInstalled(u.version)
                     UpdateState.Idle -> null
                 }
                 if (status != null) Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant)

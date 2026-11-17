@@ -119,10 +119,11 @@ tracks, loudness levelling, streaming quality, lyrics, genres, sleeve wear,
 downloads for offline listening, and play reports to your server. It resumes
 the queue where you stopped, and speaks English and French.
 
-It keeps itself up to date: now and then it asks GitHub whether a new release
-is out, downloads the installer, checks it against the release's SHA-256, and
-tells you when it is ready, with what changed. Installing is one click, and the
-first start after an update shows what is new. That request to GitHub is the
+It keeps itself up to date, without asking: now and then it asks GitHub
+whether a new release is out, downloads the installer in the background and
+checks it against the release's SHA-256. The update installs itself the next
+time Sillon starts (a progress bar, then the app), and that first start shows
+what is new. That request to GitHub is the
 only one Sillon makes to anything but your server; *Settings → Updates* turns
 it off.
 

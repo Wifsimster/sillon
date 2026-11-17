@@ -159,6 +159,7 @@ interface Strings {
     val updateUpToDate: String
     val updateCheckFailed: String
     fun updateReady(version: String): String
+    fun updateNotInstalled(version: String): String
     fun updateAvailable(version: String): String
     fun updateDownloading(version: String, percent: Int): String
     fun updateFailed(version: String): String
@@ -344,16 +345,17 @@ object EnglishStrings : Strings {
     override val settingsLibrary = "Music library"
     override val settingsUpdates = "Updates"
     override val settingsAutoUpdate = "Update automatically"
-    override val settingsAutoUpdateHint = "Sillon asks GitHub now and then whether a new version is out, downloads it, and tells you when it's ready to install."
+    override val settingsAutoUpdateHint = "Sillon asks GitHub now and then whether a new version is out, downloads it, and installs it the next time it starts."
     override val updateCheckNow = "Check now"
     override val updateChecking = "Checking…"
     override val updateUpToDate = "Sillon is up to date."
     override val updateCheckFailed = "Couldn't check for updates. Try again later."
-    override fun updateReady(version: String) = "Sillon $version is ready to install."
+    override fun updateReady(version: String) = "Sillon $version will be installed the next time Sillon starts."
+    override fun updateNotInstalled(version: String) = "Sillon $version could not be installed on its own."
     override fun updateAvailable(version: String) = "Sillon $version is out."
     override fun updateDownloading(version: String, percent: Int) = "Downloading Sillon $version… $percent%"
     override fun updateFailed(version: String) = "Sillon $version couldn't be downloaded."
-    override val updateInstall = "Install and restart"
+    override val updateInstall = "Restart now"
     override val updateLater = "Later"
     override val updateSkip = "Skip this version"
     override val updateWhatsNew = "What's new"
@@ -535,16 +537,17 @@ object FrenchStrings : Strings {
     override val settingsLibrary = "Bibliothèque musicale"
     override val settingsUpdates = "Mises à jour"
     override val settingsAutoUpdate = "Mettre à jour automatiquement"
-    override val settingsAutoUpdateHint = "Sillon demande de temps en temps à GitHub si une nouvelle version est sortie, la télécharge, et te prévient quand elle est prête à installer."
+    override val settingsAutoUpdateHint = "Sillon demande de temps en temps à GitHub si une nouvelle version est sortie, la télécharge, et l'installe à son prochain démarrage."
     override val updateCheckNow = "Vérifier maintenant"
     override val updateChecking = "Vérification…"
     override val updateUpToDate = "Sillon est à jour."
     override val updateCheckFailed = "Impossible de vérifier les mises à jour. Réessaie plus tard."
-    override fun updateReady(version: String) = "Sillon $version est prête à installer."
+    override fun updateReady(version: String) = "Sillon $version sera installée au prochain démarrage de Sillon."
+    override fun updateNotInstalled(version: String) = "Sillon $version n'a pas pu s'installer toute seule."
     override fun updateAvailable(version: String) = "Sillon $version est sortie."
     override fun updateDownloading(version: String, percent: Int) = "Téléchargement de Sillon $version… $percent %"
     override fun updateFailed(version: String) = "Sillon $version n'a pas pu être téléchargée."
-    override val updateInstall = "Installer et redémarrer"
+    override val updateInstall = "Redémarrer maintenant"
     override val updateLater = "Plus tard"
     override val updateSkip = "Ignorer cette version"
     override val updateWhatsNew = "Nouveautés"
