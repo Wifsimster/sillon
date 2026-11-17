@@ -57,6 +57,7 @@ fun main(args: Array<String>) {
         exitProcess(0)
     }
     val graph = AppGraph(storage)
+    val startMaximized = System.getProperty("sillon.window.start") == "maximized"
     val saved = runBlocking { runCatching { graph.prefs.window() }.getOrNull() }
     SingletonImageLoader.setSafe { context ->
         ImageLoader.Builder(context)
@@ -76,7 +77,7 @@ fun main(args: Array<String>) {
     val strings = stringsFor()
     application {
         val windowState = rememberWindowState(
-            placement = if (saved?.maximized == true) WindowPlacement.Maximized else WindowPlacement.Floating,
+            placement = if (saved?.maximized == true || startMaximized) WindowPlacement.Maximized else WindowPlacement.Floating,
             position = visiblePosition(saved),
             size = DpSize((saved?.width ?: 1280).coerceAtLeast(MIN_WIDTH).dp, (saved?.height ?: 820).coerceAtLeast(MIN_HEIGHT).dp),
         )
@@ -115,9 +116,7 @@ fun main(args: Array<String>) {
                     draggable = { modifier, content -> WindowDraggableArea(modifier) { content() } },
                 )
             }
-            if (customFrame && saved?.maximized == true) {
-                LaunchedEffect(window) { window.maximizedBounds = WindowChrome.workArea(window) }
-            }
+            if (customFrame) window.maximizedBounds = WindowChrome.workArea(window)
             CompositionLocalProvider(LocalStrings provides strings, LocalWindowFrame provides frame) {
                 SillonTheme {
                     val background = MaterialTheme.colorScheme.background
