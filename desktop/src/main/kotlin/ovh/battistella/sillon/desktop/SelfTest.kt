@@ -17,6 +17,7 @@ import ovh.battistella.sillon.data.plex.PlexJson
 import ovh.battistella.sillon.data.plex.PlexResponse
 import ovh.battistella.sillon.desktop.platform.DesktopPrefs
 import ovh.battistella.sillon.desktop.platform.DesktopStorage
+import ovh.battistella.sillon.desktop.platform.WindowChrome
 import ovh.battistella.sillon.desktop.player.Mpv
 import ovh.battistella.sillon.desktop.player.PlayerEngine
 import ovh.battistella.sillon.desktop.ui.components.SillonMark
@@ -77,6 +78,10 @@ object SelfTest {
             } finally {
                 engine.release()
             }
+        }
+        step("window") {
+            WindowChrome.blend(0, 0xFF15120F.toInt(), dark = true)
+            check(WindowChrome.colorRef(0xFF15120F.toInt()) == 0x000F1215)
         }
         step("rendering") {
             val scene = ImageComposeScene(width = 320, height = 200, density = Density(1f)) {

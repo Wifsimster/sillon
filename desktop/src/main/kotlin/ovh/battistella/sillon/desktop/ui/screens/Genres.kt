@@ -66,15 +66,32 @@ class GenreLibrary(private val repository: PlexRepository) {
     private var owner: String? = null
     private var albums: List<GenreAlbum>? = null
 
-    suspend fun genres(refresh: Boolean = false): List<Genre> = lock.withLock {
+    suspend fun genres(refresh: Boolean = false): List<Genre> = Genres.group(albums(refresh))
+
+    suspend fun albums(refresh: Boolean = false): List<GenreAlbum> = lock.withLock {
         val server = repository.currentServerId() + "|" + repository.currentMusicSection()?.key
         val cached = albums.takeIf { owner == server && !refresh }
-        val list = cached ?: repository.genreAlbums().also {
+        cached ?: repository.genreAlbums().also {
             owner = server
             albums = it
         }
-        Genres.group(list)
     }
+
+    suspend fun shelfAlbums(): List<ShelfAlbum> {
+        val section = repository.currentMusicSection() ?: return emptyList()
+        val server = repository.currentServerId() + "|" + section.key
+        val known = lock.withLock { years.takeIf { yearsOwner == server } }
+        val byKey = known ?: repository.albums(section.key).associate { it.ratingKey to it.year }.also {
+            lock.withLock {
+                yearsOwner = server
+                years = it
+            }
+        }
+        return albums().map { ShelfAlbum(it.key, it.title, it.artist, it.thumb, it.genres, byKey[it.key]) }
+    }
+
+    private var yearsOwner: String? = null
+    private var years: Map<String, Int?>? = null
 }
 
 class GenresModel(private val graph: AppGraph, private val scope: CoroutineScope) {

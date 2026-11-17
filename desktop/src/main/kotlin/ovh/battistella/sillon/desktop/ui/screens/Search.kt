@@ -2,6 +2,8 @@ package ovh.battistella.sillon.desktop.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +28,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -38,6 +44,7 @@ import ovh.battistella.sillon.desktop.ui.components.Message
 import ovh.battistella.sillon.desktop.ui.components.Tile
 import ovh.battistella.sillon.desktop.ui.components.TileUi
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
+import ovh.battistella.sillon.desktop.ui.components.Wear
 
 @Composable
 fun SearchScreen(app: AppState, entry: StackEntry) {
@@ -46,6 +53,9 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
     val query by model.query.collectAsState()
     val results by model.results.collectAsState()
     val recent by model.recent.collectAsState()
+    val shelves by model.shelves.collectAsState()
+    val startingShelf by model.startingShelf.collectAsState()
+    val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     val now by app.graph.playback.state.collectAsState()
     val ratings by app.graph.playback.ratings.collectAsState()
     val focus = remember { FocusRequester() }
@@ -68,11 +78,23 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
         )
         LoadContent(results, model::retry) { found ->
             when {
-                found == null -> if (recent.isEmpty()) {
+                found == null -> if (recent.isEmpty() && shelves.isEmpty()) {
                     Message(strings.searchStart)
                 } else {
-                    LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
-                        item { TileRow(strings.searchRecent, recent, round = false) { app.open(Screen.Album(it.key)) } }
+                    LazyColumn(contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (recent.isNotEmpty()) {
+                            item(key = "recent") { TileRow(strings.searchRecent, recent, round = false, wear = wear) { app.open(Screen.Album(it.key)) } }
+                        }
+                        items(shelves, key = { it.shelf.id }) { row ->
+                            TileRow(
+                                title = strings.shelfTitle(row.shelf.kind, row.shelf.label),
+                                tiles = row.tiles,
+                                round = false,
+                                wear = wear,
+                                onShuffle = { model.playShelf(row.shelf) },
+                                shuffling = startingShelf == row.shelf.id,
+                            ) { app.open(Screen.Album(it.key)) }
+                        }
                     }
                 }
                 found.isEmpty -> Message(strings.searchNoResults(found.query))
@@ -104,11 +126,31 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
 }
 
 @Composable
-private fun TileRow(title: String, tiles: List<TileUi>, round: Boolean, onClick: (TileUi) -> Unit) {
+private fun TileRow(
+    title: String,
+    tiles: List<TileUi>,
+    round: Boolean,
+    wear: Map<String, Int> = emptyMap(),
+    onShuffle: (() -> Unit)? = null,
+    shuffling: Boolean = false,
+    onClick: (TileUi) -> Unit,
+) {
+    val strings = LocalStrings.current
     Column {
-        Text(title, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge)
+        Row(Modifier.padding(start = 24.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (onShuffle != null) {
+                IconButton(onClick = onShuffle, enabled = !shuffling) {
+                    if (shuffling) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Filled.Shuffle, strings.shuffle)
+                    }
+                }
+            }
+        }
         LazyRow(contentPadding = PaddingValues(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(tiles, key = { it.key }) { tile -> Tile(tile, round, Modifier.width(160.dp)) { onClick(tile) } }
+            items(tiles, key = { it.key }) { tile -> Tile(tile, round, Modifier.width(160.dp), wear = Wear.of(wear, tile.key)) { onClick(tile) } }
         }
     }
 }

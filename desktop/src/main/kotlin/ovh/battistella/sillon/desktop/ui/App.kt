@@ -129,7 +129,7 @@ private fun Shell(app: AppState) {
 @Composable
 private fun Sidebar(app: AppState) {
     val strings = LocalStrings.current
-    Column(Modifier.width(232.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerLow).padding(12.dp)) {
+    Column(Modifier.width(232.dp).fillMaxHeight().background(MaterialTheme.colorScheme.background).padding(12.dp)) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SillonMark(Modifier.size(40.dp), groove = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.width(8.dp))

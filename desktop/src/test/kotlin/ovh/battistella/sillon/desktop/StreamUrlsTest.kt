@@ -7,6 +7,7 @@ import org.junit.Test
 import ovh.battistella.sillon.desktop.i18n.EnglishStrings
 import ovh.battistella.sillon.desktop.i18n.FrenchStrings
 import ovh.battistella.sillon.desktop.i18n.stringsFor
+import ovh.battistella.sillon.desktop.platform.WindowChrome
 import ovh.battistella.sillon.desktop.player.RadioRefill
 import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.StreamUrls
@@ -49,6 +50,13 @@ class StreamUrlsTest {
         val queue = listOf(track("a"), track("b"))
         assertEquals(listOf("c", "d"), RadioRefill.fresh(queue, listOf(track("b"), track("c"), track("a"), track("d"), track("c"))).map { it.ratingKey })
         assertEquals(emptyList<PlayableTrack>(), RadioRefill.fresh(queue, listOf(track("a"))))
+    }
+
+    @Test
+    fun `window colours are handed to Windows as blue-green-red`() {
+        assertEquals(0x000F1215, WindowChrome.colorRef(0xFF15120F.toInt()))
+        assertEquals(0x00EEF6FB, WindowChrome.colorRef(0xFFFBF6EE.toInt()))
+        WindowChrome.blend(0, 0xFF15120F.toInt(), dark = true)
     }
 
     @Test
