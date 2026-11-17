@@ -149,7 +149,6 @@ data class PlexPart(
 
 @Serializable
 data class PlexStream(
-    val id: Long? = null,
     val streamType: Int = 0,
     val key: String? = null,
     val format: String? = null,
@@ -161,6 +160,7 @@ data class PlexStream(
     val samplingRate: Int? = null,
     val bitDepth: Int? = null,
     val bitrate: Int? = null,
+    val id: Long? = null,
 )
 
 @Serializable
