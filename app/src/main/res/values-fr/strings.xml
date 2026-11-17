@@ -364,4 +364,20 @@
     <string name="output_notice_plex_token">Ton serveur Plex n\'a pas fourni de jeton temporaire pour l\'enceinte, et Sillon ne lui confie pas celui de ton compte. La musique reste sur ce téléphone.</string>
     <string name="output_notice_jellyfin_token">Ton serveur Jellyfin n\'a pas fourni de jeton pour l\'enceinte : Sonos a besoin de Quick Connect, à activer dans le tableau de bord du serveur. La musique reste sur ce téléphone.</string>
     <string name="output_notice_mystery_not_added">La pochette surprise n\'a pas été ajoutée à la file Sonos : l\'app Sonos montrerait l\'album. De retour sur ce téléphone, elle peut se jouer.</string>
+    <string name="activity_open">Activité du serveur</string>
+    <string name="activity_title">Activité</string>
+    <string name="activity_notify">Me prévenir quand quelqu\'un écoute</string>
+    <string name="activity_notify_hint">Une notification quand quelqu\'un lance une lecture depuis ton serveur. Sillon fermé, la vérification se fait toutes les 15 minutes environ.</string>
+    <string name="activity_now">En ce moment</string>
+    <string name="activity_empty">Personne n\'écoute pour l\'instant.</string>
+    <string name="activity_offline">Ton serveur est injoignable pour le moment.</string>
+    <string name="activity_not_allowed_title">Réservé au propriétaire du serveur</string>
+    <string name="activity_not_allowed_body">Un serveur ne montre ce que jouent les autres qu\'à son propriétaire (Plex) ou à un administrateur (Jellyfin).</string>
+    <string name="activity_you">%1$s (toi)</string>
+    <string name="activity_paused">En pause</string>
+    <string name="activity_transcoding">Converti par le serveur</string>
+    <string name="activity_user_unknown">Quelqu\'un</string>
+    <string name="activity_channel">Activité du serveur</string>
+    <string name="activity_notification_listening">%1$s écoute</string>
+    <string name="activity_notification_watching">%1$s regarde</string>
 </resources>

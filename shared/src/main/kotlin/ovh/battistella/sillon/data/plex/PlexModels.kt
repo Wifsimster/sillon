@@ -2,6 +2,8 @@ package ovh.battistella.sillon.data.plex
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class PlexPin(
@@ -104,6 +106,12 @@ data class PlexMetadata(
     val composite: String? = null,
     @SerialName("Media") val media: List<PlexMedia> = emptyList(),
     @SerialName("Genre") val genres: List<PlexTag> = emptyList(),
+    val viewOffset: Long? = null,
+    val sessionKey: String? = null,
+    @SerialName("User") val user: PlexSessionUser? = null,
+    @SerialName("Player") val player: PlexPlayer? = null,
+    @SerialName("Session") val session: PlexPlaySession? = null,
+    @SerialName("TranscodeSession") val transcodeSession: JsonElement? = null,
 ) {
     val artwork: String? get() = thumb ?: composite ?: parentThumb ?: grandparentThumb
 
@@ -131,6 +139,27 @@ data class PlexMetadata(
         const val STREAM_LYRICS = 4
     }
 }
+
+@Serializable
+data class PlexSessionUser(
+    val id: JsonPrimitive? = null,
+    val title: String = "",
+    val thumb: String? = null,
+)
+
+@Serializable
+data class PlexPlayer(
+    val machineIdentifier: String = "",
+    val title: String = "",
+    val product: String = "",
+    val platform: String = "",
+    val state: String = "",
+)
+
+@Serializable
+data class PlexPlaySession(
+    val id: String = "",
+)
 
 @Serializable
 data class PlexMedia(

@@ -57,6 +57,24 @@ class JellyfinApi(
         )
     }
 
+    suspend fun isAdministrator(server: ServerEndpoint, deviceId: String): Boolean =
+        PlexJson.decodeFromString(
+            JellyfinMe.serializer(),
+            get(serverUrl(server, "Users/Me"), deviceId, server.token),
+        ).policy.isAdministrator
+
+    suspend fun sessions(server: ServerEndpoint, deviceId: String): List<JellyfinSession> =
+        PlexJson.decodeFromString(
+            kotlinx.serialization.builtins.ListSerializer(JellyfinSession.serializer()),
+            get(
+                serverUrl(server, "Sessions").newBuilder()
+                    .addQueryParameter("activeWithinSeconds", ACTIVE_WITHIN_S.toString())
+                    .build(),
+                deviceId,
+                server.token,
+            ),
+        )
+
     suspend fun sections(server: ServerEndpoint, deviceId: String): List<PlexDirectory> =
         items(server, deviceId, "Users/${server.userId}/Views").map { it.toDirectory() }
 
@@ -375,6 +393,7 @@ class JellyfinApi(
         const val BATCH_SIZE = 100
         const val PAGE_SIZE = 2_000
         const val HTTP_NOT_FOUND = 404
+        const val ACTIVE_WITHIN_S = 120
     }
 }
 

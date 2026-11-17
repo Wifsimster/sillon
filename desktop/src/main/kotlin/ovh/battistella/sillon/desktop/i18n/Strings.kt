@@ -75,6 +75,14 @@ interface Strings {
     val searchStart: String
     fun shelfTitle(kind: ShelfKind, label: String?): String
 
+    val activity: String
+    val activityEmpty: String
+    val activityOffline: String
+    val activityNotAllowed: String
+    fun activityYou(name: String): String
+    val activityPaused: String
+    val activityTranscoding: String
+    val activityUnknownUser: String
     val downloadsEmpty: String
     val download: String
     val downloadRemove: String
@@ -272,6 +280,14 @@ object EnglishStrings : Strings {
         ShelfKind.REDISCOVER -> "To rediscover"
     }
 
+    override val activity = "Activity"
+    override val activityEmpty = "Nobody is listening right now."
+    override val activityOffline = "Your server can't be reached right now."
+    override val activityNotAllowed = "A server shows what the others play to its owner only (Plex), or to an administrator (Jellyfin)."
+    override fun activityYou(name: String) = "$name (you)"
+    override val activityPaused = "Paused"
+    override val activityTranscoding = "Converted by the server"
+    override val activityUnknownUser = "Someone"
     override val downloadsEmpty = "Nothing downloaded yet. Open an album or a playlist and choose Download to listen without a connection."
     override val download = "Download"
     override val downloadRemove = "Remove download"
@@ -469,6 +485,14 @@ object FrenchStrings : Strings {
         ShelfKind.REDISCOVER -> "À redécouvrir"
     }
 
+    override val activity = "Activité"
+    override val activityEmpty = "Personne n'écoute pour l'instant."
+    override val activityOffline = "Ton serveur est injoignable pour le moment."
+    override val activityNotAllowed = "Un serveur ne montre ce que jouent les autres qu'à son propriétaire (Plex) ou à un administrateur (Jellyfin)."
+    override fun activityYou(name: String) = "$name (toi)"
+    override val activityPaused = "En pause"
+    override val activityTranscoding = "Converti par le serveur"
+    override val activityUnknownUser = "Quelqu'un"
     override val downloadsEmpty = "Rien de téléchargé pour l'instant. Ouvre un album ou une playlist et choisis Télécharger pour écouter sans connexion."
     override val download = "Télécharger"
     override val downloadRemove = "Supprimer le téléchargement"

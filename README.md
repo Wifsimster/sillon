@@ -116,7 +116,8 @@ The desktop app signs in the same way, and plays the same library: artists,
 albums, playlists, search as you type, gapless playback, the queue (play next,
 add, reorder, remove), radios, star ratings and *My 5 stars*, skipping 1-star
 tracks, loudness levelling, streaming quality, lyrics, genres, sleeve wear,
-downloads for offline listening, and play reports to your server. It resumes
+downloads for offline listening, the server's activity (who is playing what),
+and play reports to your server. It resumes
 the queue where you stopped, and speaks English and French.
 
 It keeps itself up to date, without asking: now and then it asks GitHub
@@ -145,6 +146,7 @@ cards, listening by side and the listening cache.
 | **Surprise** | Mystery sleeve: a whole album drawn at random (rarely played first, or any album), hidden in the app, the notification, the lock screen and the car until the third track or *Reveal*; *Keep* adds it to a *Surprises* playlist; offline, drawn from your downloads |
 | **Covers** | Sleeve wear: covers age with your plays (yellowed edges, worn corners, ring wear, a crease) on the album grids, the album page and the player; on by default, off in Settings → Appearance |
 | **Together** | Listen together on Jellyfin (SyncPlay): shared play, pause, skip and seek; the notification, headset buttons and Android Auto control the group. Not available on Plex |
+| **Activity** | *Server activity*: who is playing what on your server right now (user, device, track, progress), updated as it happens; optionally a notification when someone starts listening. For the server's owner (Plex) or an administrator (Jellyfin); on Android and Windows (notifications on Android only) |
 | **Sonos** | *Play on…* sends the queue to a Sonos speaker or group on your Wi-Fi, over the local network (no Sonos account, no cloud); the player, the notification, the lock screen and the volume keys drive it, and the music comes back to the phone where it stood. Plex and Jellyfin |
 | **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |
 | **Resume** | The queue and position are remembered: *play* on a headset, Bluetooth or in the car resumes where the music stopped, even after the app was closed |
@@ -206,6 +208,7 @@ shared/src/main/kotlin/ovh/battistella/sillon/     Kotlin/JVM, no Android: used 
 ├─ data/local/       Downloaded tracks: the table and its queries
 ├─ data/rating/      Star ratings: the book, the store, sending them
 ├─ data/wear/        Sleeve wear: play counts per album, levels, cache
+├─ data/activity/    Server activity: who plays what, the live feed, who was already announced
 ├─ data/repository/  PlexRepository: what the UI asks for, from Plex or Jellyfin
 └─ data/storage/, data/network/, playback/cache/   What each platform provides
 
@@ -214,6 +217,7 @@ app/src/main/java/ovh/battistella/sillon/          Android
 ├─ download/         Download queue and WorkManager worker
 ├─ playback/         Media3 service, Android Auto tree, radios, play reports
 ├─ together/         Listen together: clock sync, session, drift correction
+├─ activity/         Server activity: the live watch, notifications, the periodic check
 ├─ sonos/            Play on Sonos: SSDP discovery, UPnP/SOAP control, the Sonos player
 ├─ ui/               Compose screens, navigation, theme, components
 └─ di/               Hilt modules
@@ -271,6 +275,15 @@ in GitHub Actions; pushes to `main` are released with semantic-release
 - *Listen together* uses Jellyfin's SyncPlay: your Jellyfin account must be
   allowed to use it, and gapless playback is off during a session. How it works
   and its limits: [docs/listen-together.md](docs/listen-together.md).
+- *Server activity* reads the server's own list of sessions (`/status/sessions`
+  on Plex, `/Sessions` on Jellyfin), which a server only gives to its owner or
+  an administrator: on a server shared with you, the entry isn't offered. On
+  Plex the list refreshes on the server's own play events (a WebSocket), and
+  every 15 seconds or so otherwise; it shows films and series too. Notifications are
+  off until you turn them on: while Sillon is open or playing they arrive as
+  it happens; with Sillon closed, Android wakes it about every 15 minutes to
+  look, so a short listen can be missed. Someone is announced once when they
+  start, not at every track, and your own listens never are.
 - A *Mystery sleeve* can't stay hidden from a listen together session, which
   shares the queue with every phone: it reveals itself when you join one, and
   can't be drawn during one.

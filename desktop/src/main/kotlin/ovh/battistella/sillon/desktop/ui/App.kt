@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
@@ -52,6 +54,7 @@ import ovh.battistella.sillon.desktop.ui.player.QueuePanel
 import ovh.battistella.sillon.desktop.ui.screens.ArtistScreen
 import ovh.battistella.sillon.desktop.ui.screens.CollectionKind
 import ovh.battistella.sillon.desktop.ui.screens.CollectionScreen
+import ovh.battistella.sillon.desktop.ui.screens.ActivityScreen
 import ovh.battistella.sillon.desktop.ui.screens.DownloadsScreen
 import ovh.battistella.sillon.desktop.ui.screens.GenreScreen
 import ovh.battistella.sillon.desktop.ui.screens.GenresScreen
@@ -155,6 +158,8 @@ private fun Sidebar(app: AppState) {
         NavItem(app, Screen.Playlists, Icons.AutoMirrored.Filled.QueueMusic, strings.playlists)
         NavItem(app, Screen.Genres, Icons.Filled.Category, strings.genres)
         NavItem(app, Screen.Downloads, Icons.Filled.Download, strings.downloads)
+        val activity by produceState(false) { value = runCatching { app.graph.repository.activityAllowed() }.getOrDefault(false) }
+        if (activity) NavItem(app, Screen.Activity, Icons.Filled.Sensors, strings.activity)
         Spacer(Modifier.weight(1f))
         NavItem(app, Screen.Settings, Icons.Filled.Settings, strings.settings)
     }
@@ -199,6 +204,7 @@ private fun Content(app: AppState) {
                     Screen.Playlists -> strings.playlists
                     Screen.Genres -> strings.genres
                     Screen.Downloads -> strings.downloads
+                    Screen.Activity -> strings.activity
                     Screen.Settings -> strings.settings
                     else -> ""
                 },
@@ -216,6 +222,7 @@ private fun Content(app: AppState) {
                     Screen.Genres -> GenresScreen(app, entry)
                     is Screen.Genre -> GenreScreen(app, entry, screen.key)
                     Screen.Downloads -> DownloadsScreen(app, entry)
+                    Screen.Activity -> ActivityScreen(app, entry)
                     Screen.Settings -> SettingsScreen(app)
                     Screen.FiveStars -> CollectionScreen(app, entry, CollectionKind.FIVE_STARS, "")
                     is Screen.Artist -> ArtistScreen(app, entry, screen.key)

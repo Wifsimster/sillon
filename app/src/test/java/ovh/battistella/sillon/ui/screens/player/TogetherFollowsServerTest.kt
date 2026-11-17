@@ -48,7 +48,7 @@ class TogetherFollowsServerTest {
     )
 
     @Test
-    fun `the menu entry follows the server`() = follows(LibraryMenuViewModel(repository).together)
+    fun `the menu entry follows the server`() = follows(LibraryMenuViewModel(repository, mockk(relaxed = true)).together)
 
     private fun follows(together: StateFlow<Boolean>) = runTest(UnconfinedTestDispatcher()) {
         backgroundScope.launch { together.collect {} }
