@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import ovh.battistella.sillon.data.activity.ActivityFeed
 import ovh.battistella.sillon.data.jellyfin.JellyfinApi
 import ovh.battistella.sillon.data.plex.PlexApi
 import ovh.battistella.sillon.data.plex.PlexDevice
@@ -83,6 +84,8 @@ class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
         listeningCache = NoTrackCache(),
         ratings = ratings,
     )
+
+    val activity = ActivityFeed(repository)
 
     private val rater = Rater(repository, ratings, fiveStars, network)
 

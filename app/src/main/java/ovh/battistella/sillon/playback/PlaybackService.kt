@@ -33,6 +33,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
+import ovh.battistella.sillon.activity.ServerActivityWatch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,6 +85,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var rater: Rater
     @Inject lateinit var settings: SettingsStore
     @Inject lateinit var sonosOutput: SonosOutput
+    @Inject lateinit var activityWatch: ServerActivityWatch
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var mediaSession: MediaLibrarySession? = null
@@ -108,6 +110,7 @@ class PlaybackService : MediaLibraryService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+        activityWatch.playbackRunning(true)
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -408,6 +411,7 @@ class PlaybackService : MediaLibraryService() {
 
     @OptIn(UnstableApi::class)
     override fun onDestroy() {
+        activityWatch.playbackRunning(false)
         mediaSession?.player?.let { player ->
             snapshot(player)?.let { queue -> runBlocking { runCatching { playbackState.save(queue) } } }
         }

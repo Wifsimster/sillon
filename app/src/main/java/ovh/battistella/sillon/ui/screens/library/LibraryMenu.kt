@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.activity.ServerActivityWatch
 import ovh.battistella.sillon.data.plex.PlexDirectory
 import ovh.battistella.sillon.data.repository.PlexRepository
 import javax.inject.Inject
@@ -36,12 +37,15 @@ data class LibraryMenuUi(val sections: List<PlexDirectory> = emptyList(), val cu
 @HiltViewModel
 class LibraryMenuViewModel @Inject constructor(
     private val repository: PlexRepository,
+    activityWatch: ServerActivityWatch,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LibraryMenuUi())
     val state = _state.asStateFlow()
 
     /** Listen together runs on Jellyfin SyncPlay; Plex has no equivalent, so the entry is not offered there. */
     val together = repository.isJellyfin.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val activity = activityWatch.allowed
 
     init {
         viewModelScope.launch {
@@ -68,14 +72,17 @@ class LibraryMenuViewModel @Inject constructor(
 
 val LocalOpenSettings = staticCompositionLocalOf<() -> Unit> { {} }
 val LocalOpenTogether = staticCompositionLocalOf<() -> Unit> { {} }
+val LocalOpenActivity = staticCompositionLocalOf<() -> Unit> { {} }
 
 @Composable
 fun LibraryMenu(viewModel: LibraryMenuViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val together by viewModel.together.collectAsStateWithLifecycle()
+    val activity by viewModel.activity.collectAsStateWithLifecycle()
     LibraryMenu(
         state = state,
         together = together,
+        activity = activity,
         onSelect = viewModel::select,
         onChangeServer = viewModel::changeServer,
         onSignOut = viewModel::signOut,
@@ -89,6 +96,7 @@ fun LibraryMenu(
     onSelect: (String) -> Unit,
     onChangeServer: () -> Unit,
     onSignOut: () -> Unit,
+    activity: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
 
@@ -118,6 +126,16 @@ fun LibraryMenu(
                 onClick = {
                     open = false
                     openTogether()
+                },
+            )
+        }
+        if (activity) {
+            val openActivity = LocalOpenActivity.current
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.activity_open)) },
+                onClick = {
+                    open = false
+                    openActivity()
                 },
             )
         }

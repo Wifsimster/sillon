@@ -361,4 +361,20 @@
     <string name="output_notice_plex_token">Your Plex server gave no temporary token for the speaker, and Sillon won\'t hand it your account\'s. The music stays on this phone.</string>
     <string name="output_notice_jellyfin_token">Your Jellyfin server gave no token for the speaker: Sonos needs Quick Connect, turned on in the server\'s dashboard. The music stays on this phone.</string>
     <string name="output_notice_mystery_not_added">The mystery sleeve wasn\'t added to the Sonos queue: the Sonos app would show the album. Back on this phone, it can play.</string>
+    <string name="activity_open">Server activity</string>
+    <string name="activity_title">Activity</string>
+    <string name="activity_notify">Tell me when someone listens</string>
+    <string name="activity_notify_hint">A notification when someone starts playing something from your server. With Sillon closed, it checks about every 15 minutes.</string>
+    <string name="activity_now">Right now</string>
+    <string name="activity_empty">Nobody is listening right now.</string>
+    <string name="activity_offline">Your server can\'t be reached right now.</string>
+    <string name="activity_not_allowed_title">Only the server\'s owner sees this</string>
+    <string name="activity_not_allowed_body">A server shows what the others play to its owner only (Plex), or to an administrator (Jellyfin).</string>
+    <string name="activity_you">%1$s (you)</string>
+    <string name="activity_paused">Paused</string>
+    <string name="activity_transcoding">Converted by the server</string>
+    <string name="activity_user_unknown">Someone</string>
+    <string name="activity_channel">Server activity</string>
+    <string name="activity_notification_listening">%1$s is listening</string>
+    <string name="activity_notification_watching">%1$s is watching</string>
 </resources>

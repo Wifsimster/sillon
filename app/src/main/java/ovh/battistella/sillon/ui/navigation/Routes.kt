@@ -17,6 +17,7 @@ object Routes {
     const val PLAYER = "player"
     const val SETTINGS = "settings"
     const val TOGETHER = "together"
+    const val ACTIVITY = "activity"
     const val GENRES = "genres"
     const val GENRE = "genre/{$ARG_KEY}"
 

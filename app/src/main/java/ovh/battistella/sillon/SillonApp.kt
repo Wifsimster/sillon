@@ -9,12 +9,19 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
+import ovh.battistella.sillon.activity.ServerActivityWatch
 import javax.inject.Inject
 
 @HiltAndroidApp
 class SillonApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject lateinit var okHttpClient: OkHttpClient
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var activityWatch: ServerActivityWatch
+
+    override fun onCreate() {
+        super.onCreate()
+        activityWatch.start(this)
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()

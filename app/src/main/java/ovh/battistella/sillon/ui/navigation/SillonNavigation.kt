@@ -18,10 +18,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.ui.screens.activity.ActivityEntryViewModel
+import ovh.battistella.sillon.ui.screens.activity.ActivityScreen
 import ovh.battistella.sillon.ui.screens.downloads.DownloadedAlbumScreen
 import ovh.battistella.sillon.ui.screens.downloads.DownloadsScreen
 import ovh.battistella.sillon.ui.screens.library.AlbumsScreen
 import ovh.battistella.sillon.ui.screens.library.FiveStarsScreen
+import ovh.battistella.sillon.ui.screens.library.LocalOpenActivity
 import ovh.battistella.sillon.ui.screens.library.LocalOpenSettings
 import ovh.battistella.sillon.ui.screens.library.LocalOpenTogether
 import ovh.battistella.sillon.ui.screens.library.PlaylistScreen
@@ -127,6 +130,14 @@ private fun LibraryNavHost() {
     LaunchedEffect(destination?.route) {
         destination?.route?.takeIf { route -> tabs.any { it.route == route } }?.let { currentTab = it }
     }
+    val activityEntry: ActivityEntryViewModel = hiltViewModel()
+    val activityRequested by activityEntry.openRequested.collectAsStateWithLifecycle()
+    LaunchedEffect(activityRequested) {
+        if (activityRequested) {
+            navController.navigate(Routes.ACTIVITY) { launchSingleTop = true }
+            activityEntry.opened()
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -172,6 +183,7 @@ private fun LibraryNavHost() {
                 LocalOpenDownloads provides openDownloads,
                 LocalOpenSettings provides { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                 LocalOpenTogether provides openTogether,
+                LocalOpenActivity provides { navController.navigate(Routes.ACTIVITY) { launchSingleTop = true } },
             ) {
                 NavHost(navController = navController, startDestination = START_DESTINATION) {
                     composable(Routes.LISTEN) {
@@ -241,6 +253,9 @@ private fun LibraryNavHost() {
                     }
                     composable(Routes.TOGETHER) {
                         TogetherScreen(onBack = back, contentPadding = bottom)
+                    }
+                    composable(Routes.ACTIVITY) {
+                        ActivityScreen(onBack = back, contentPadding = bottom)
                     }
                     composable(Routes.PLAYER) {
                         PlayerScreen(onClose = back, onTogether = openTogether)

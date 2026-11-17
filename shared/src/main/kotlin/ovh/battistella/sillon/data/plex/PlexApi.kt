@@ -11,6 +11,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -59,6 +61,19 @@ class PlexApi(
         .callTimeout(PROBE_TIMEOUT_S, TimeUnit.SECONDS)
         .connectTimeout(PROBE_TIMEOUT_S, TimeUnit.SECONDS)
         .build()
+
+    private val socketClient: OkHttpClient = client.newBuilder()
+        .readTimeout(0, TimeUnit.SECONDS)
+        .pingInterval(SOCKET_PING_S, TimeUnit.SECONDS)
+        .build()
+
+    suspend fun sessions(clientId: String, server: ServerEndpoint): List<PlexMetadata> =
+        get(clientId, server, "status/sessions").metadata
+
+    fun openNotifications(clientId: String, server: ServerEndpoint, listener: WebSocketListener): WebSocket {
+        val url = server.uri.toHttpUrl().newBuilder().addPathSegments(":/websockets/notifications").build()
+        return socketClient.newWebSocket(Request.Builder().url(url).headers(clientId, server.token).build(), listener)
+    }
 
     suspend fun createPin(clientId: String, strong: Boolean): PlexPin {
         val request = Request.Builder()
@@ -423,6 +438,7 @@ class PlexApi(
         const val RADIO_TRACKS = 100
         private const val SONIC_MAX_DISTANCE = "0.25"
         private const val PROBE_TIMEOUT_S = 4L
+        private const val SOCKET_PING_S = 30L
     }
 }
 

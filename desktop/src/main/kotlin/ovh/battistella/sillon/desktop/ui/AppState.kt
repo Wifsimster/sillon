@@ -28,6 +28,7 @@ sealed interface Screen {
     data object Genres : Screen
     data class Genre(val key: String) : Screen
     data object Downloads : Screen
+    data object Activity : Screen
     data object Settings : Screen
     data object FiveStars : Screen
     data class Artist(val key: String) : Screen

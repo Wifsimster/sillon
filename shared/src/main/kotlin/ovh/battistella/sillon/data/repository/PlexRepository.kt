@@ -3,11 +3,18 @@ package ovh.battistella.sillon.data.repository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import ovh.battistella.sillon.data.activity.ActiveListen
+import ovh.battistella.sillon.data.activity.ServerActivity
 import ovh.battistella.sillon.data.genres.GenreAlbum
 import ovh.battistella.sillon.data.genres.Genres
 import ovh.battistella.sillon.data.home.HomeAlbum
@@ -101,6 +108,10 @@ const val LIBRARY_SHUFFLE_STATION = "jellyfin:library-shuffle"
 const val PLAYER_ART_PX = 900
 
 private const val SONOS_ART_PX = 600
+
+private const val ACTIVITY_ART_PX = 300
+
+private val PLAYING_NOTIFICATION = Regex(""""type"\s*:\s*"playing"""")
 
 /** The transcode qualities the listening cache may hold, best first. */
 private val TRANSCODE_KBPS = StreamQuality.entries.mapNotNull { it.kbps }.sortedDescending()
@@ -502,6 +513,56 @@ class PlexRepository @Inject constructor(
         plex = { clientId, server -> api.search(clientId, server, sectionKey, query) },
         jellyfin = { deviceId, server -> jellyfin.search(server, deviceId, sectionKey, query) },
     )
+
+    suspend fun activityAllowed(): Boolean = onServer(
+        plex = { clientId, server ->
+            try {
+                api.sessions(clientId, server)
+                true
+            } catch (e: PlexHttpException) {
+                if (e.code != 401 && e.code != 403) throw e
+                false
+            }
+        },
+        jellyfin = { deviceId, server -> jellyfin.isAdministrator(server, deviceId) },
+    )
+
+    suspend fun activeListens(): List<ActiveListen> {
+        val listens = onServer(
+            plex = { clientId, server -> ServerActivity.fromPlex(api.sessions(clientId, server), clientId) },
+            jellyfin = { deviceId, server ->
+                ServerActivity.fromJellyfin(jellyfin.sessions(server, deviceId), server.userId, deviceId)
+            },
+        )
+        val server = currentServer().endpoint
+        return listens.map { it.copy(artwork = artworkUrl(server, it.artwork, ACTIVITY_ART_PX)) }
+    }
+
+    fun activityEvents(): Flow<Unit> = callbackFlow {
+        val server = currentServer().endpoint
+        if (server.kind != ServerKind.PLEX) {
+            awaitClose()
+            return@callbackFlow
+        }
+        val socket = api.openNotifications(
+            sessionStore.clientId(),
+            server,
+            object : WebSocketListener() {
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    if (PLAYING_NOTIFICATION.containsMatchIn(text)) trySend(Unit)
+                }
+
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    close()
+                }
+
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    close(t)
+                }
+            },
+        )
+        awaitClose { socket.cancel() }
+    }
 
     val isJellyfin: Flow<Boolean> = sessionStore.session.map {
         (it as? Session.Ready)?.server?.endpoint?.kind == ServerKind.JELLYFIN

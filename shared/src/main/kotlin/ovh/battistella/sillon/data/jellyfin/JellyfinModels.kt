@@ -30,6 +30,35 @@ data class JellyfinUser(
 )
 
 @Serializable
+data class JellyfinMe(
+    @SerialName("Policy") val policy: JellyfinPolicy = JellyfinPolicy(),
+)
+
+@Serializable
+data class JellyfinPolicy(
+    @SerialName("IsAdministrator") val isAdministrator: Boolean = false,
+)
+
+@Serializable
+data class JellyfinSession(
+    @SerialName("Id") val id: String = "",
+    @SerialName("UserId") val userId: String? = null,
+    @SerialName("UserName") val userName: String? = null,
+    @SerialName("Client") val client: String? = null,
+    @SerialName("DeviceName") val deviceName: String? = null,
+    @SerialName("DeviceId") val deviceId: String? = null,
+    @SerialName("NowPlayingItem") val nowPlaying: JellyfinItem? = null,
+    @SerialName("PlayState") val playState: JellyfinPlayState = JellyfinPlayState(),
+    @SerialName("TranscodingInfo") val transcoding: kotlinx.serialization.json.JsonElement? = null,
+)
+
+@Serializable
+data class JellyfinPlayState(
+    @SerialName("PositionTicks") val positionTicks: Long? = null,
+    @SerialName("IsPaused") val isPaused: Boolean = false,
+)
+
+@Serializable
 data class JellyfinQuickConnect(
     @SerialName("Secret") val secret: String,
     @SerialName("Code") val code: String = "",
