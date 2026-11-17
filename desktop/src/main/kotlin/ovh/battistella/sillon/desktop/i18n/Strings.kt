@@ -106,6 +106,7 @@ interface Strings {
     val queueNowPlaying: String
     val queueUpNext: String
     val queueNothingNext: String
+    val queueRadioContinues: String
     val queueRemove: String
     val queueMoveUp: String
     val queueMoveDown: String
@@ -138,7 +139,36 @@ interface Strings {
     val settingsLoudnessAlbum: String
     val settingsSkipOneStar: String
     val settingsSkipOneStarHint: String
+    val settingsAppearance: String
+    val settingsSleeveWear: String
+    val settingsSleeveWearHint: String
+    val genres: String
+    val genresEmpty: String
+    val genreShuffle: String
+    val genreNothing: String
     val settingsLibrary: String
+    val settingsUpdates: String
+    val settingsAutoUpdate: String
+    val settingsAutoUpdateHint: String
+    val updateCheckNow: String
+    val updateChecking: String
+    val updateUpToDate: String
+    val updateCheckFailed: String
+    fun updateReady(version: String): String
+    fun updateAvailable(version: String): String
+    fun updateDownloading(version: String, percent: Int): String
+    fun updateFailed(version: String): String
+    val updateInstall: String
+    val updateLater: String
+    val updateSkip: String
+    val updateWhatsNew: String
+    val updateOpenPage: String
+    fun updateNotesTitle(version: String): String
+    fun updateInstalledTitle(version: String): String
+    val updateNoNotes: String
+    val updateInstallFailed: String
+    val close: String
+    fun changelogTitle(title: String): String
     val settingsAccount: String
     fun settingsServer(name: String): String
     val changeServer: String
@@ -250,6 +280,7 @@ object EnglishStrings : Strings {
     override val queueNowPlaying = "Now playing"
     override val queueUpNext = "Up next"
     override val queueNothingNext = "Nothing after this track."
+    override val queueRadioContinues = "The radio continues…"
     override val queueRemove = "Remove"
     override val queueMoveUp = "Move up"
     override val queueMoveDown = "Move down"
@@ -282,7 +313,36 @@ object EnglishStrings : Strings {
     override val settingsLoudnessAlbum = "Per album: keeps each album's own dynamics"
     override val settingsSkipOneStar = "Skip 1-star tracks"
     override val settingsSkipOneStarHint = "In albums and playlists. Double-click one to hear it anyway. Shuffle and radios never play them."
+    override val settingsAppearance = "Appearance"
+    override val settingsSleeveWear = "Sleeve wear"
+    override val settingsSleeveWearHint = "Covers age as you play them, like a real record"
+    override val genres = "Genres"
+    override val genresEmpty = "None of your albums has a genre on this server."
+    override val genreShuffle = "Shuffle the genre"
+    override val genreNothing = "Nothing to play in this genre right now."
     override val settingsLibrary = "Music library"
+    override val settingsUpdates = "Updates"
+    override val settingsAutoUpdate = "Update automatically"
+    override val settingsAutoUpdateHint = "Sillon asks GitHub now and then whether a new version is out, downloads it, and tells you when it's ready to install."
+    override val updateCheckNow = "Check now"
+    override val updateChecking = "Checking…"
+    override val updateUpToDate = "Sillon is up to date."
+    override val updateCheckFailed = "Couldn't check for updates. Try again later."
+    override fun updateReady(version: String) = "Sillon $version is ready to install."
+    override fun updateAvailable(version: String) = "Sillon $version is out."
+    override fun updateDownloading(version: String, percent: Int) = "Downloading Sillon $version… $percent%"
+    override fun updateFailed(version: String) = "Sillon $version couldn't be downloaded."
+    override val updateInstall = "Install and restart"
+    override val updateLater = "Later"
+    override val updateSkip = "Skip this version"
+    override val updateWhatsNew = "What's new"
+    override val updateOpenPage = "Download page"
+    override fun updateNotesTitle(version: String) = "What's new in Sillon $version"
+    override fun updateInstalledTitle(version: String) = "Sillon $version is installed"
+    override val updateNoNotes = "No notes for this version."
+    override val updateInstallFailed = "The installer couldn't be started. Use the download page instead."
+    override val close = "Close"
+    override fun changelogTitle(title: String) = title
     override val settingsAccount = "Server"
     override fun settingsServer(name: String) = "Connected to $name"
     override val changeServer = "Change server"
@@ -394,6 +454,7 @@ object FrenchStrings : Strings {
     override val queueNowPlaying = "En cours"
     override val queueUpNext = "À suivre"
     override val queueNothingNext = "Rien après ce titre."
+    override val queueRadioContinues = "La radio continue…"
     override val queueRemove = "Retirer"
     override val queueMoveUp = "Monter"
     override val queueMoveDown = "Descendre"
@@ -426,7 +487,42 @@ object FrenchStrings : Strings {
     override val settingsLoudnessAlbum = "Par album : garde la dynamique propre à chaque album"
     override val settingsSkipOneStar = "Passer les titres 1 étoile"
     override val settingsSkipOneStarHint = "Dans les albums et les playlists. Double-clique sur l'un d'eux pour l'écouter quand même. L'aléatoire et les radios ne les jouent jamais."
+    override val settingsAppearance = "Apparence"
+    override val settingsSleeveWear = "Usure des pochettes"
+    override val settingsSleeveWearHint = "Les pochettes vieillissent à force d'être écoutées, comme un vrai disque"
+    override val genres = "Genres"
+    override val genresEmpty = "Aucun de tes albums n'a de genre sur ce serveur."
+    override val genreShuffle = "Lecture aléatoire du genre"
+    override val genreNothing = "Rien à lire dans ce genre pour l'instant."
     override val settingsLibrary = "Bibliothèque musicale"
+    override val settingsUpdates = "Mises à jour"
+    override val settingsAutoUpdate = "Mettre à jour automatiquement"
+    override val settingsAutoUpdateHint = "Sillon demande de temps en temps à GitHub si une nouvelle version est sortie, la télécharge, et te prévient quand elle est prête à installer."
+    override val updateCheckNow = "Vérifier maintenant"
+    override val updateChecking = "Vérification…"
+    override val updateUpToDate = "Sillon est à jour."
+    override val updateCheckFailed = "Impossible de vérifier les mises à jour. Réessaie plus tard."
+    override fun updateReady(version: String) = "Sillon $version est prête à installer."
+    override fun updateAvailable(version: String) = "Sillon $version est sortie."
+    override fun updateDownloading(version: String, percent: Int) = "Téléchargement de Sillon $version… $percent %"
+    override fun updateFailed(version: String) = "Sillon $version n'a pas pu être téléchargée."
+    override val updateInstall = "Installer et redémarrer"
+    override val updateLater = "Plus tard"
+    override val updateSkip = "Ignorer cette version"
+    override val updateWhatsNew = "Nouveautés"
+    override val updateOpenPage = "Page de téléchargement"
+    override fun updateNotesTitle(version: String) = "Nouveautés de Sillon $version"
+    override fun updateInstalledTitle(version: String) = "Sillon $version est installée"
+    override val updateNoNotes = "Pas de notes pour cette version."
+    override val updateInstallFailed = "L'installateur n'a pas pu être lancé. Passe par la page de téléchargement."
+    override val close = "Fermer"
+    override fun changelogTitle(title: String) = when (title.lowercase()) {
+        "features" -> "Nouveautés"
+        "bug fixes" -> "Corrections"
+        "performance improvements" -> "Performances"
+        "reverts" -> "Retours en arrière"
+        else -> title
+    }
     override val settingsAccount = "Serveur"
     override fun settingsServer(name: String) = "Connecté à $name"
     override val changeServer = "Changer de serveur"

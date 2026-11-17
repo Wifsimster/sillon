@@ -56,6 +56,8 @@ import ovh.battistella.sillon.data.rating.RatingSend
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.components.Cover
+import ovh.battistella.sillon.desktop.ui.components.Wear
+import ovh.battistella.sillon.playback.PlayableTrack
 
 @Composable
 fun NowPlaying(app: AppState) {
@@ -65,6 +67,7 @@ fun NowPlaying(app: AppState) {
     val state by playback.state.collectAsState()
     val ratings by playback.ratings.collectAsState()
     val jellyfin by repository.isJellyfin.collectAsState(false)
+    val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     val scope = rememberCoroutineScope()
     val track = state.current
     val context = LocalPlatformContext.current
@@ -119,6 +122,7 @@ fun NowPlaying(app: AppState) {
                         track.artworkUrl,
                         Modifier.weight(1f, fill = false).widthIn(max = 440.dp).aspectRatio(1f, matchHeightConstraintsFirst = true),
                         shape = RoundedCornerShape(16.dp),
+                        wear = Wear.of(wear, track.albumKey, intensity = 0.6f),
                     )
                     Spacer(Modifier.height(24.dp))
                     Text(track.title, style = MaterialTheme.typography.headlineMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -146,8 +150,8 @@ fun NowPlaying(app: AppState) {
                         onClick = {
                             startingRadio = true
                             scope.launch {
-                                runCatching { repository.playable(repository.trackRadioTracks(track.ratingKey)) }
-                                    .onSuccess { playback.replaceUpcoming(it) }
+                                val draw: suspend () -> List<PlayableTrack> = { repository.playable(repository.trackRadioTracks(track.ratingKey)) }
+                                runCatching { draw() }.onSuccess { playback.replaceUpcoming(it, more = draw) }
                                 startingRadio = false
                             }
                         },

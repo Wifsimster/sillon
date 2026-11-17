@@ -25,6 +25,8 @@ sealed interface Screen {
     data object Artists : Screen
     data object Albums : Screen
     data object Playlists : Screen
+    data object Genres : Screen
+    data class Genre(val key: String) : Screen
     data object Downloads : Screen
     data object Settings : Screen
     data object FiveStars : Screen
@@ -45,6 +47,7 @@ class AppState(val graph: AppGraph) {
     var playerOpen by mutableStateOf(false)
     var queueOpen by mutableStateOf(false)
     var typing by mutableStateOf(false)
+    var exit: () -> Unit = {}
     private var nextId = 0
 
     val current: StackEntry? get() = stack.lastOrNull()

@@ -7,6 +7,8 @@ import org.junit.Test
 import ovh.battistella.sillon.desktop.i18n.EnglishStrings
 import ovh.battistella.sillon.desktop.i18n.FrenchStrings
 import ovh.battistella.sillon.desktop.i18n.stringsFor
+import ovh.battistella.sillon.desktop.player.RadioRefill
+import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.StreamUrls
 import ovh.battistella.sillon.playback.TrackGain
 import java.io.File
@@ -39,6 +41,14 @@ class StreamUrlsTest {
         assertEquals(1f, TrackGain.volumeFor(4f))
         assertEquals(0.5f, TrackGain.volumeFor(-6.0206f), 0.001f)
         assertEquals(0.1f, TrackGain.volumeFor(-40f))
+    }
+
+    @Test
+    fun `a radio refill only brings tracks the queue does not have yet`() {
+        fun track(key: String) = PlayableTrack(key, "http://host/$key", key, null, null, null, null, null)
+        val queue = listOf(track("a"), track("b"))
+        assertEquals(listOf("c", "d"), RadioRefill.fresh(queue, listOf(track("b"), track("c"), track("a"), track("d"), track("c"))).map { it.ratingKey })
+        assertEquals(emptyList<PlayableTrack>(), RadioRefill.fresh(queue, listOf(track("a"))))
     }
 
     @Test
