@@ -252,6 +252,11 @@ class PlexApi(
         get(clientId, server, "library/metadata/$ratingKey").metadata.firstOrNull()
 
     /** The raw lyrics of a track (LRC, plain text or Plex's lines), or null when the server has none. */
+    suspend fun loudnessLevels(clientId: String, server: ServerEndpoint, trackKey: String, samples: Int): List<Float> {
+        val stream = get(clientId, server, "library/metadata/$trackKey").metadata.firstOrNull()?.audioStreamId ?: return emptyList()
+        return get(clientId, server, "library/streams/$stream/levels", "subsample" to samples.toString()).levels.map { it.v }
+    }
+
     suspend fun lyrics(clientId: String, server: ServerEndpoint, trackKey: String): String? {
         val track = get(clientId, server, "library/metadata/$trackKey", "includeLyrics" to "1").metadata.firstOrNull()
         val key = track?.lyricsKey ?: return null

@@ -71,6 +71,7 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
     systemProperty("sillon.mpv.dir", rootProject.file("desktop/resources/windows-x64").absolutePath)
+    System.getProperty("sillon.render.dir")?.let { systemProperty("sillon.render.dir", it) }
 }
 
 compose.desktop {

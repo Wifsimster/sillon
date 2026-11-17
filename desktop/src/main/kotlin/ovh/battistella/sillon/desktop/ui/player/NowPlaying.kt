@@ -74,6 +74,7 @@ fun NowPlaying(app: AppState) {
     var tint by remember { mutableStateOf<Color?>(null) }
     var lyrics by remember { mutableStateOf<List<String>?>(null) }
     var startingRadio by remember { mutableStateOf(false) }
+    var waveform by remember { mutableStateOf<List<Float>>(emptyList()) }
     LaunchedEffect(track?.artworkUrl) {
         tint = track?.artworkUrl?.let { url ->
             runCatching {
@@ -99,6 +100,11 @@ fun NowPlaying(app: AppState) {
                 }
             }.getOrNull()
         }
+    }
+    LaunchedEffect(track?.ratingKey) {
+        waveform = emptyList()
+        val key = track?.ratingKey ?: return@LaunchedEffect
+        waveform = app.graph.waveforms.of(key)
     }
     LaunchedEffect(track?.ratingKey) {
         lyrics = null
@@ -144,7 +150,11 @@ fun NowPlaying(app: AppState) {
                     if (notice != null) Text(notice, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
                     Transport(playback, state, large = true)
-                    SeekBar(playback, state, Modifier.widthIn(max = 520.dp))
+                    if (waveform.isEmpty()) {
+                        SeekBar(playback, state, Modifier.widthIn(max = 520.dp))
+                    } else {
+                        WaveformSeekBar(playback, state, waveform, Modifier.widthIn(max = 520.dp))
+                    }
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = {
