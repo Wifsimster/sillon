@@ -91,8 +91,6 @@ fun PlayerBar(app: AppState) {
                 SeekBar(playback, state)
             }
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                RatingStars(app, 18.dp)
-                Spacer(Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.VolumeUp, strings.volume, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 SlimSlider(value = state.volume, onValueChange = { playback.setVolume(it) }, modifier = Modifier.width(120.dp).padding(horizontal = 8.dp))
                 IconButton(onClick = { app.queueOpen = !app.queueOpen }) {
