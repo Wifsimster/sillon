@@ -222,6 +222,22 @@ jobs:
           cat self-test.txt
           test "$(grep -c '^ok' self-test.txt)" = "5"
 
+      - name: Take a picture of the app on Windows
+        run: |
+          export JAVA_TOOL_OPTIONS="-Dsillon.data.dir=$(cygpath -w "$PWD/picture-data") -Dsillon.window.start=maximized"
+          desktop/build/compose/binaries/main-release/app/Sillon/Sillon.exe &
+          sleep 25
+          pwsh -Command "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; \$b=[System.Windows.Forms.SystemInformation]::VirtualScreen; \$bmp=New-Object System.Drawing.Bitmap \$b.Width,\$b.Height; \$g=[System.Drawing.Graphics]::FromImage(\$bmp); \$g.CopyFromScreen(\$b.Left,\$b.Top,0,0,\$bmp.Size); \$bmp.Save('sillon-windows.png')"
+          taskkill //F //IM Sillon.exe || true
+
+      - name: Upload the picture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sillon-windows-picture
+          path: sillon-windows.png
+          if-no-files-found: ignore
+
       - name: Build the Windows installer
         run: ./gradlew :desktop:packageReleaseMsi --stacktrace
 

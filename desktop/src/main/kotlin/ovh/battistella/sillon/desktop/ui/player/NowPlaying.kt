@@ -21,7 +21,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -68,6 +70,7 @@ fun NowPlaying(app: AppState) {
     val ratings by playback.ratings.collectAsState()
     val jellyfin by repository.isJellyfin.collectAsState(false)
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
+    val lyricsShown by app.graph.prefs.lyricsShown.collectAsState(true)
     val scope = rememberCoroutineScope()
     val track = state.current
     val context = LocalPlatformContext.current
@@ -121,6 +124,11 @@ fun NowPlaying(app: AppState) {
             if (track == null) {
                 Text(strings.playerNothing, Modifier.align(Alignment.Center), style = MaterialTheme.typography.bodyLarge)
                 return@Box
+            }
+            if (!lyricsShown && !lyrics.isNullOrEmpty()) {
+                IconButton(onClick = { scope.launch { app.graph.prefs.setLyricsShown(true) } }, Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                    Icon(Icons.Filled.Lyrics, strings.lyricsShow)
+                }
             }
             Row(Modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 56.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -176,14 +184,17 @@ fun NowPlaying(app: AppState) {
                         Text(strings.trackRadio, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Column(Modifier.weight(1f).fillMaxHeight()) {
-                    Text(strings.lyrics, style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(12.dp))
-                    val lines = lyrics
-                    when {
-                        lines == null -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                        lines.isEmpty() -> Text(strings.lyricsNone, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        else -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val lines = lyrics
+                if (lyricsShown && !lines.isNullOrEmpty()) {
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(strings.lyrics, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                            IconButton(onClick = { scope.launch { app.graph.prefs.setLyricsShown(false) } }) {
+                                Icon(Icons.Filled.Close, strings.lyricsHide)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             lines.forEach { Text(it, style = MaterialTheme.typography.bodyLarge) }
                         }
                     }

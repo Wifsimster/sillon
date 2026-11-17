@@ -4,12 +4,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
@@ -30,7 +32,9 @@ import ovh.battistella.sillon.desktop.platform.DesktopStorage
 import ovh.battistella.sillon.desktop.platform.SingleInstance
 import ovh.battistella.sillon.desktop.platform.WindowChrome
 import ovh.battistella.sillon.desktop.platform.WindowPlacement as SavedPlacement
+import ovh.battistella.sillon.desktop.ui.LocalWindowFrame
 import ovh.battistella.sillon.desktop.ui.SillonApp
+import ovh.battistella.sillon.desktop.ui.WindowFrame
 import ovh.battistella.sillon.desktop.ui.handleShortcut
 import ovh.battistella.sillon.desktop.ui.rememberAppState
 import ovh.battistella.sillon.desktop.ui.theme.SillonTheme
@@ -53,6 +57,7 @@ fun main(args: Array<String>) {
         exitProcess(0)
     }
     val graph = AppGraph(storage)
+    val startMaximized = System.getProperty("sillon.window.start") == "maximized"
     val saved = runBlocking { runCatching { graph.prefs.window() }.getOrNull() }
     SingletonImageLoader.setSafe { context ->
         ImageLoader.Builder(context)
@@ -72,11 +77,12 @@ fun main(args: Array<String>) {
     val strings = stringsFor()
     application {
         val windowState = rememberWindowState(
-            placement = if (saved?.maximized == true) WindowPlacement.Maximized else WindowPlacement.Floating,
+            placement = if (saved?.maximized == true || startMaximized) WindowPlacement.Maximized else WindowPlacement.Floating,
             position = visiblePosition(saved),
             size = DpSize((saved?.width ?: 1280).coerceAtLeast(MIN_WIDTH).dp, (saved?.height ?: 820).coerceAtLeast(MIN_HEIGHT).dp),
         )
         val app = rememberAppState(graph)
+        val customFrame = remember { WindowChrome.customFrame() }
         val close = {
             runBlocking { runCatching { graph.prefs.setWindow(placementOf(windowState)) } }
             graph.close()
@@ -89,14 +95,40 @@ fun main(args: Array<String>) {
             state = windowState,
             title = "Sillon",
             icon = icon,
+            undecorated = customFrame,
             onPreviewKeyEvent = { handleShortcut(it, app) },
         ) {
             window.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT)
-            CompositionLocalProvider(LocalStrings provides strings) {
+            val frame = remember(window) {
+                WindowFrame(
+                    custom = customFrame,
+                    isMaximized = { windowState.placement == WindowPlacement.Maximized },
+                    minimize = { windowState.isMinimized = true },
+                    toggleMaximize = {
+                        if (windowState.placement == WindowPlacement.Maximized) {
+                            windowState.placement = WindowPlacement.Floating
+                        } else {
+                            window.maximizedBounds = WindowChrome.workArea(window)
+                            windowState.placement = WindowPlacement.Maximized
+                        }
+                    },
+                    close = close,
+                    draggable = { modifier, content -> WindowDraggableArea(modifier) { content() } },
+                )
+            }
+            if (customFrame) window.maximizedBounds = WindowChrome.workArea(window)
+            CompositionLocalProvider(LocalStrings provides strings, LocalWindowFrame provides frame) {
                 SillonTheme {
                     val background = MaterialTheme.colorScheme.background
+                    val outline = MaterialTheme.colorScheme.outlineVariant
                     val dark = isSystemInDarkTheme()
-                    LaunchedEffect(background, dark) { WindowChrome.blend(window.windowHandle, background.toArgb(), dark) }
+                    LaunchedEffect(background, dark) {
+                        if (customFrame) {
+                            WindowChrome.round(window.windowHandle, outline.toArgb())
+                        } else {
+                            WindowChrome.blend(window.windowHandle, background.toArgb(), dark)
+                        }
+                    }
                     SillonApp(app)
                 }
             }

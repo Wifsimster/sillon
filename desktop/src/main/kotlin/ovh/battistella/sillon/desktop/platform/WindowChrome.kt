@@ -14,6 +14,8 @@ object WindowChrome {
     private const val BORDER_COLOR = 34
     private const val CAPTION_COLOR = 35
     private const val TEXT_COLOR = 36
+    private const val CORNER_PREFERENCE = 33
+    private const val CORNER_ROUND = 2
 
     private val isWindows = System.getProperty("os.name").orEmpty().lowercase().contains("win")
 
@@ -26,6 +28,39 @@ object WindowChrome {
         val green = (argb shr 8) and 0xFF
         val blue = argb and 0xFF
         return (blue shl 16) or (green shl 8) or red
+    }
+
+    fun customFrame(): Boolean {
+        val os = System.getProperty("os.name").orEmpty().lowercase()
+        val wanted = System.getProperty("sillon.window.frame")
+        return when (wanted) {
+            "native" -> false
+            "custom" -> true
+            else -> !os.contains("mac")
+        }
+    }
+
+    fun workArea(window: java.awt.Window): java.awt.Rectangle {
+        val configuration = window.graphicsConfiguration
+        val bounds = configuration.bounds
+        val insets = java.awt.Toolkit.getDefaultToolkit().getScreenInsets(configuration)
+        val onWindows = isWindows
+        return java.awt.Rectangle(
+            (if (onWindows) 0 else bounds.x) + insets.left,
+            (if (onWindows) 0 else bounds.y) + insets.top,
+            bounds.width - insets.left - insets.right,
+            bounds.height - insets.top - insets.bottom,
+        )
+    }
+
+    fun round(windowHandle: Long, borderArgb: Int) {
+        val api = dwm ?: return
+        if (windowHandle == 0L) return
+        val window = Pointer(windowHandle)
+        runCatching {
+            api.DwmSetWindowAttribute(window, CORNER_PREFERENCE, IntByReference(CORNER_ROUND), Int.SIZE_BYTES)
+            api.DwmSetWindowAttribute(window, BORDER_COLOR, IntByReference(colorRef(borderArgb)), Int.SIZE_BYTES)
+        }
     }
 
     fun blend(windowHandle: Long, backgroundArgb: Int, dark: Boolean) {

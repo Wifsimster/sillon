@@ -22,6 +22,12 @@ class DesktopPrefs(storage: AppStorage) {
         prefs.edit { it[AUTO_UPDATE] = value }
     }
 
+    val lyricsShown: Flow<Boolean> = prefs.data.map { it[LYRICS_SHOWN] ?: true }
+
+    suspend fun setLyricsShown(value: Boolean) {
+        prefs.edit { it[LYRICS_SHOWN] = value }
+    }
+
     suspend fun volume(): Float = (prefs.data.first()[VOLUME] ?: 1f).coerceIn(0f, 1f)
 
     suspend fun setVolume(value: Float) {
@@ -70,6 +76,7 @@ class DesktopPrefs(storage: AppStorage) {
     private companion object {
         val AUTO_UPDATE = booleanPreferencesKey("auto_update")
         val VOLUME = floatPreferencesKey("volume")
+        val LYRICS_SHOWN = booleanPreferencesKey("lyrics_shown")
         val WINDOW_WIDTH = intPreferencesKey("window_width")
         val WINDOW_HEIGHT = intPreferencesKey("window_height")
         val WINDOW_X = intPreferencesKey("window_x")

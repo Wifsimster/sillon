@@ -173,6 +173,11 @@ interface Strings {
     val updateNoNotes: String
     val updateInstallFailed: String
     val close: String
+    val windowMinimize: String
+    val windowMaximize: String
+    val windowRestore: String
+    val lyricsShow: String
+    val lyricsHide: String
     fun changelogTitle(title: String): String
     val settingsAccount: String
     fun settingsServer(name: String): String
@@ -365,6 +370,11 @@ object EnglishStrings : Strings {
     override val updateNoNotes = "No notes for this version."
     override val updateInstallFailed = "The installer couldn't be started. Use the download page instead."
     override val close = "Close"
+    override val windowMinimize = "Minimize"
+    override val windowMaximize = "Maximize"
+    override val windowRestore = "Restore"
+    override val lyricsShow = "Show the lyrics"
+    override val lyricsHide = "Hide the lyrics"
     override fun changelogTitle(title: String) = title
     override val settingsAccount = "Server"
     override fun settingsServer(name: String) = "Connected to $name"
@@ -557,6 +567,11 @@ object FrenchStrings : Strings {
     override val updateNoNotes = "Pas de notes pour cette version."
     override val updateInstallFailed = "L'installateur n'a pas pu être lancé. Passe par la page de téléchargement."
     override val close = "Fermer"
+    override val windowMinimize = "Réduire"
+    override val windowMaximize = "Agrandir"
+    override val windowRestore = "Restaurer"
+    override val lyricsShow = "Afficher les paroles"
+    override val lyricsHide = "Masquer les paroles"
     override fun changelogTitle(title: String) = when (title.lowercase()) {
         "features" -> "Nouveautés"
         "bug fixes" -> "Corrections"
