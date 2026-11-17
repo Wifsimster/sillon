@@ -66,8 +66,10 @@ import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.PopularityBars
 import ovh.battistella.sillon.ui.components.RatingStars
+import ovh.battistella.sillon.ui.components.SleevedRecord
 import ovh.battistella.sillon.ui.components.Wear
 import ovh.battistella.sillon.ui.components.formatDuration
+import ovh.battistella.sillon.ui.screens.player.rememberReducedMotion
 import ovh.battistella.sillon.ui.share.ShareCardSheet
 import ovh.battistella.sillon.ui.share.ShareSource
 
@@ -80,9 +82,16 @@ fun AlbumScreen(
     val wear by viewModel.wear.collectAsStateWithLifecycle()
     val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
     var shareSource by remember { mutableStateOf<ShareSource?>(null) }
-    TrackCollectionRoute(viewModel, onBack, contentPadding, wear, listenBySide, viewModel::setListenBySide) { album ->
-        shareSource = album.shareSource(viewModel.key)
-    }
+    TrackCollectionRoute(
+        viewModel,
+        onBack,
+        contentPadding,
+        wear,
+        listenBySide,
+        viewModel::setListenBySide,
+        onShareCard = { album -> shareSource = album.shareSource(viewModel.key) },
+        record = true,
+    )
     shareSource?.let { ShareCardSheet(it, onDismiss = { shareSource = null }) }
 }
 
@@ -111,6 +120,7 @@ fun TrackCollectionRoute(
     listenBySide: Boolean = false,
     onListenBySideChange: ((Boolean) -> Unit)? = null,
     onShareCard: ((AlbumUi) -> Unit)? = null,
+    record: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
@@ -131,6 +141,8 @@ fun TrackCollectionRoute(
         wear = wear,
         listenBySide = listenBySide,
         onListenBySideChange = onListenBySideChange,
+        record = record,
+        playing = nowPlaying.isPlaying,
         actions = {
             val ready = state as? Load.Ready
             if (ready != null && onShareCard != null) {
@@ -184,6 +196,8 @@ fun TrackCollectionScreen(
     ratings: RatingBook = RatingBook(),
     skipOneStar: Boolean = false,
     onQueueTrack: ((String, QueuePlace) -> Unit)? = null,
+    record: Boolean = false,
+    playing: Boolean = false,
 ) {
     Scaffold(
         topBar = {
@@ -205,7 +219,8 @@ fun TrackCollectionScreen(
             ) {
                 val sideToggle = onListenBySideChange?.takeIf { album.sides.isNotEmpty() }
                 item {
-                    AlbumHeader(album, wear, onPlay = { onPlay(null) }, onShuffle = onShuffle) {
+                    val spinning = record && playing && album.tracks.any { it.key == nowPlayingKey }
+                    AlbumHeader(album, wear, record, spinning, onPlay = { onPlay(null) }, onShuffle = onShuffle) {
                         if (sideToggle != null) ListenBySideChip(listenBySide, sideToggle)
                     }
                 }
@@ -326,13 +341,25 @@ private fun SideHeader(side: Side) {
 }
 
 @Composable
-private fun AlbumHeader(album: AlbumUi, wear: Wear?, onPlay: () -> Unit, onShuffle: () -> Unit, extra: @Composable () -> Unit = {}) {
+private fun AlbumHeader(
+    album: AlbumUi,
+    wear: Wear?,
+    record: Boolean,
+    spinning: Boolean,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+    extra: @Composable () -> Unit = {},
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Artwork(album.artworkUrl, Modifier.size(240.dp), cornerRadius = 12.dp, wear = wear)
+        if (record) {
+            SleevedRecord(album.artworkUrl, playing = spinning, reducedMotion = rememberReducedMotion(), wear = wear)
+        } else {
+            Artwork(album.artworkUrl, Modifier.size(240.dp), cornerRadius = 12.dp, wear = wear)
+        }
         Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
         val subtitle = listOfNotNull(album.artist, album.year?.toString()).joinToString(" · ")
         if (subtitle.isNotEmpty()) {

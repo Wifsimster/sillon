@@ -168,6 +168,8 @@ fun DownloadedAlbumScreen(
         wear = wear,
         listenBySide = listenBySide,
         onListenBySideChange = viewModel::setListenBySide,
+        record = true,
+        playing = nowPlaying.isPlaying,
         actions = {
             album?.let { ready -> ShareCardAction { shareSource = ready.shareSource(viewModel.albumKey) } }
             IconButton(onClick = {
