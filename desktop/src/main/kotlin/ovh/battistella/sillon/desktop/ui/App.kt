@@ -68,11 +68,15 @@ fun SillonApp(app: AppState) {
     val session by app.graph.repository.session.collectAsState(null)
     when (val s = session) {
         null -> Surface(Modifier.fillMaxSize()) {
-            Box(contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Column {
+                TitleStrip()
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            }
         }
         Session.SignedOut -> {
             LaunchedEffect(Unit) { app.clear() }
             Column {
+                TitleStrip()
                 UpdateBanner(app)
                 SignInScreen(app)
             }
@@ -80,6 +84,7 @@ fun SillonApp(app: AppState) {
         is Session.NeedsServer -> {
             LaunchedEffect(Unit) { app.clear() }
             Column {
+                TitleStrip()
                 UpdateBanner(app)
                 ServersScreen(app)
             }
@@ -100,25 +105,30 @@ private fun Shell(app: AppState) {
     val unavailable by app.graph.playback.unavailable.collectAsState()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column {
-            UpdateBanner(app)
-            unavailable?.let { reason ->
-                Text(
-                    strings.audioUnavailable(reason),
-                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(12.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
             Row(Modifier.weight(1f)) {
                 Sidebar(app)
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Box(Modifier.weight(1f).fillMaxHeight()) {
-                    Content(app)
-                    if (app.playerOpen) NowPlaying(app)
-                }
-                if (app.queueOpen) {
-                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    QueuePanel(app, Modifier.width(360.dp).fillMaxHeight())
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    TitleStrip()
+                    UpdateBanner(app)
+                    unavailable?.let { reason ->
+                        Text(
+                            strings.audioUnavailable(reason),
+                            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(12.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    Row(Modifier.weight(1f)) {
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
+                            Content(app)
+                            if (app.playerOpen) NowPlaying(app)
+                        }
+                        if (app.queueOpen) {
+                            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            QueuePanel(app, Modifier.width(360.dp).fillMaxHeight())
+                        }
+                    }
                 }
             }
             PlayerBar(app)
@@ -130,10 +140,12 @@ private fun Shell(app: AppState) {
 private fun Sidebar(app: AppState) {
     val strings = LocalStrings.current
     Column(Modifier.width(232.dp).fillMaxHeight().background(MaterialTheme.colorScheme.background).padding(12.dp)) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            SillonMark(Modifier.size(40.dp), groove = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.width(8.dp))
-            Text("Sillon", style = MaterialTheme.typography.headlineSmall)
+        DragArea(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                SillonMark(Modifier.size(40.dp), groove = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.width(8.dp))
+                Text("Sillon", style = MaterialTheme.typography.headlineSmall)
+            }
         }
         Spacer(Modifier.height(8.dp))
         NavItem(app, Screen.Listen, Icons.Filled.Headphones, strings.listen)

@@ -28,16 +28,20 @@ import kotlin.math.pow
 
 object Waveform {
     const val SAMPLES = 240
-    private const val FLOOR_DB = -45f
-    private const val MIN_HEIGHT = 0.06f
+    private const val WIDEST_RANGE_DB = 30f
+    private const val NARROWEST_RANGE_DB = 6f
+    private const val MIN_HEIGHT = 0.08f
 
     fun heights(levels: List<Float>, count: Int = SAMPLES): List<Float> {
         if (levels.size < 2 || count < 1) return emptyList()
-        val loudest = levels.max()
-        if (!loudest.isFinite()) return emptyList()
+        val finite = levels.filter { it.isFinite() }.sorted()
+        if (finite.isEmpty()) return emptyList()
+        val loudest = finite.last()
+        val quiet = finite[(finite.size * 0.1f).toInt().coerceAtMost(finite.lastIndex)]
+        val range = (loudest - quiet).coerceIn(NARROWEST_RANGE_DB, WIDEST_RANGE_DB)
         val scaled = levels.map { level ->
-            val relative = ((if (level.isFinite()) level else FLOOR_DB + loudest) - loudest).coerceIn(FLOOR_DB, 0f)
-            (1f + relative / -FLOOR_DB).pow(1.6f).coerceIn(MIN_HEIGHT, 1f)
+            val above = ((if (level.isFinite()) level else loudest - range) - (loudest - range)).coerceIn(0f, range)
+            (above / range).pow(1.4f).coerceIn(MIN_HEIGHT, 1f)
         }
         return List(count) { i ->
             val from = i * scaled.size / count
