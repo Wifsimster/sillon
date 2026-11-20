@@ -31,6 +31,7 @@ import ovh.battistella.sillon.desktop.platform.DesktopPrefs
 import ovh.battistella.sillon.desktop.platform.DesktopStorage
 import ovh.battistella.sillon.desktop.platform.SingleInstance
 import ovh.battistella.sillon.desktop.platform.WindowChrome
+import ovh.battistella.sillon.desktop.platform.WindowsFrame
 import ovh.battistella.sillon.desktop.platform.WindowPlacement as SavedPlacement
 import ovh.battistella.sillon.desktop.ui.LocalWindowFrame
 import ovh.battistella.sillon.desktop.ui.SillonApp
@@ -117,6 +118,9 @@ fun main(args: Array<String>) {
                 )
             }
             if (customFrame) window.maximizedBounds = WindowChrome.workArea(window)
+            LaunchedEffect(window) {
+                if (customFrame) WindowsFrame.install(window.windowHandle)
+            }
             CompositionLocalProvider(LocalStrings provides strings, LocalWindowFrame provides frame) {
                 SillonTheme {
                     val background = MaterialTheme.colorScheme.background
