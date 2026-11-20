@@ -22,6 +22,18 @@ class DesktopPrefs(storage: AppStorage) {
         prefs.edit { it[AUTO_UPDATE] = value }
     }
 
+    val discordPresence: Flow<Boolean> = prefs.data.map { it[DISCORD_PRESENCE] ?: false }
+
+    suspend fun setDiscordPresence(value: Boolean) {
+        prefs.edit { it[DISCORD_PRESENCE] = value }
+    }
+
+    val discordCovers: Flow<Boolean> = prefs.data.map { it[DISCORD_COVERS] ?: false }
+
+    suspend fun setDiscordCovers(value: Boolean) {
+        prefs.edit { it[DISCORD_COVERS] = value }
+    }
+
     val lyricsShown: Flow<Boolean> = prefs.data.map { it[LYRICS_SHOWN] ?: true }
 
     suspend fun setLyricsShown(value: Boolean) {
@@ -76,6 +88,8 @@ class DesktopPrefs(storage: AppStorage) {
     private companion object {
         val AUTO_UPDATE = booleanPreferencesKey("auto_update")
         val VOLUME = floatPreferencesKey("volume")
+        val DISCORD_PRESENCE = booleanPreferencesKey("discord_presence")
+        val DISCORD_COVERS = booleanPreferencesKey("discord_covers")
         val LYRICS_SHOWN = booleanPreferencesKey("lyrics_shown")
         val WINDOW_WIDTH = intPreferencesKey("window_width")
         val WINDOW_HEIGHT = intPreferencesKey("window_height")
