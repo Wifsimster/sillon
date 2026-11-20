@@ -147,6 +147,18 @@ enum class TrackSort(val descendingFirst: Boolean) {
 
 data class TrackOrder(val by: TrackSort, val descending: Boolean)
 
+fun TrackOrder.encode(): String = "${by.name}:${if (descending) "desc" else "asc"}"
+
+fun decodeTrackOrder(value: String?): TrackOrder? {
+    val (column, direction) = value?.split(':')?.takeIf { it.size == 2 } ?: return null
+    val by = TrackSort.entries.firstOrNull { it.name == column } ?: return null
+    return when (direction) {
+        "desc" -> TrackOrder(by, descending = true)
+        "asc" -> TrackOrder(by, descending = false)
+        else -> null
+    }
+}
+
 /** Next state when a column header is clicked: natural direction, then reversed, then back to the original order. */
 fun TrackOrder?.next(column: TrackSort): TrackOrder? = when {
     this == null || by != column -> TrackOrder(column, column.descendingFirst)

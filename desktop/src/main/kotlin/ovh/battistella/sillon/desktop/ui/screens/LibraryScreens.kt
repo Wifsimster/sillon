@@ -31,13 +31,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.Screen
@@ -47,12 +48,13 @@ import ovh.battistella.sillon.desktop.ui.components.LoadContent
 import ovh.battistella.sillon.desktop.ui.components.Message
 import ovh.battistella.sillon.desktop.ui.components.TileGrid
 import ovh.battistella.sillon.desktop.ui.components.TrackListHeader
-import ovh.battistella.sillon.desktop.ui.components.TrackOrder
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
 import ovh.battistella.sillon.desktop.ui.components.TrackUi
-import ovh.battistella.sillon.desktop.ui.components.sortedBy
 import ovh.battistella.sillon.desktop.ui.components.Wear
+import ovh.battistella.sillon.desktop.ui.components.decodeTrackOrder
+import ovh.battistella.sillon.desktop.ui.components.encode
 import ovh.battistella.sillon.desktop.ui.components.formatDuration
+import ovh.battistella.sillon.desktop.ui.components.sortedBy
 
 @Composable
 fun SectionGridScreen(app: AppState, entry: StackEntry, artists: Boolean) {
@@ -147,7 +149,10 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
     val ratings by app.graph.playback.ratings.collectAsState()
     val skipOneStar by app.graph.settings.skipOneStar.collectAsState(true)
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
-    var order by remember(key) { mutableStateOf<TrackOrder?>(null) }
+    val prefs = app.graph.prefs
+    val listId = "${kind.name.lowercase()}_$key"
+    val order by remember(listId) { prefs.trackSort(listId).map(::decodeTrackOrder) }.collectAsState(null)
+    val saving = rememberCoroutineScope()
     LoadContent(state, model::load) { ui ->
         val rated = ui.tracks.map { it.copy(stars = ratings.book.starsOf(it.key, it.rating)) }
         val shown = remember(rated, order) { rated.sortedBy(order) }
@@ -199,7 +204,7 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
                 item {
                     TrackListHeader(
                         order = order,
-                        onOrder = { order = it },
+                        onOrder = { next -> saving.launch { prefs.setTrackSort(listId, next?.encode()) } },
                         showPopularity = showPopularity,
                         showPlays = showPlays,
                         modifier = Modifier.padding(bottom = 4.dp),

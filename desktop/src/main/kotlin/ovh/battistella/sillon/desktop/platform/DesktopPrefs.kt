@@ -69,6 +69,15 @@ class DesktopPrefs(storage: AppStorage) {
         prefs.edit { it.setOrRemove(ATTEMPTED_VERSION, version) }
     }
 
+    /** Sort chosen on a track list ([list] identifies the album or playlist), as written by `TrackOrder.encode`. */
+    fun trackSort(list: String): Flow<String?> = prefs.data.map { it[trackSortKey(list)] }
+
+    suspend fun setTrackSort(list: String, value: String?) {
+        prefs.edit { it.setOrRemove(trackSortKey(list), value) }
+    }
+
+    private fun trackSortKey(list: String) = stringPreferencesKey("track_sort_$list")
+
     private fun <T> androidx.datastore.preferences.core.MutablePreferences.setOrRemove(key: Preferences.Key<T>, value: T?) {
         if (value != null) this[key] = value else remove(key)
     }

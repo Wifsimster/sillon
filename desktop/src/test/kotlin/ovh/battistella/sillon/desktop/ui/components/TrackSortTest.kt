@@ -53,4 +53,18 @@ class TrackSortTest {
         assertNull(second.next(TrackSort.STARS))
         assertEquals(TrackOrder(TrackSort.TITLE, descending = false), second.next(TrackSort.TITLE))
     }
+
+    @Test
+    fun `saved order round-trips and bad values are ignored`() {
+        TrackSort.entries.forEach { by ->
+            listOf(true, false).forEach { desc ->
+                val order = TrackOrder(by, desc)
+                assertEquals(order, decodeTrackOrder(order.encode()))
+            }
+        }
+        assertNull(decodeTrackOrder(null))
+        assertNull(decodeTrackOrder("STARS"))
+        assertNull(decodeTrackOrder("GONE:desc"))
+        assertNull(decodeTrackOrder("STARS:sideways"))
+    }
 }
