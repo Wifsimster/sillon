@@ -87,6 +87,14 @@ class SettingsStore @Inject constructor(
         prefs.edit { it[SLEEVE_WEAR] = value }
     }
 
+    /** Sort chosen on a track list ([list] names the album, playlist or search), as written by `TrackOrder.encode`. */
+    fun trackSort(list: String): Flow<String?> = prefs.data.map { it[stringPreferencesKey("track_sort_$list")] }
+
+    suspend fun setTrackSort(list: String, value: String?) {
+        val key = stringPreferencesKey("track_sort_$list")
+        prefs.edit { if (value != null) it[key] = value else it.remove(key) }
+    }
+
     val listenBySide: Flow<Boolean> = prefs.data.map { it[LISTEN_BY_SIDE] ?: false }
 
     suspend fun setListenBySide(value: Boolean) {

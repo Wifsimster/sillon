@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Search
@@ -36,8 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.ui.components.Artwork
 import ovh.battistella.sillon.ui.components.Message
+import ovh.battistella.sillon.ui.components.TrackSortAction
 import ovh.battistella.sillon.ui.screens.library.TileUi
 import ovh.battistella.sillon.ui.screens.library.TrackRow
 
@@ -55,6 +58,7 @@ fun SearchScreen(
     val home by viewModel.home.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
+    val order by viewModel.order.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         OutlinedTextField(
@@ -107,8 +111,21 @@ fun SearchScreen(
                         item { TileRow(s.results.albums, round = false, onClick = onAlbum) }
                     }
                     if (s.results.tracks.isNotEmpty()) {
-                        item { SectionTitle(stringResource(R.string.library_tracks)) }
-                        items(s.results.tracks, key = { "track-${it.key}" }) { track ->
+                        val tracks = s.results.tracks
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.weight(1f)) { SectionTitle(stringResource(R.string.library_tracks)) }
+                                if (tracks.size > 1) {
+                                    TrackSortAction(
+                                        order = order,
+                                        onOrder = viewModel::setOrder,
+                                        showPopularity = tracks.any { it.popularity != null },
+                                        showPlays = tracks.any { it.plays != null },
+                                    )
+                                }
+                            }
+                        }
+                        items(tracks.sortedBy(order), key = { "track-${it.key}" }) { track ->
                             TrackRow(
                                 track,
                                 playing = nowPlaying.currentKey == track.key,

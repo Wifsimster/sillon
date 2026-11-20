@@ -1,6 +1,9 @@
 package ovh.battistella.sillon.desktop.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +35,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
@@ -153,3 +158,33 @@ fun formatSize(bytes: Long): String = when {
 
 private const val MEGA = 1024L * 1024
 private const val GIGA = MEGA * 1024
+
+/** Shows [text] in a small bubble when the pointer rests on [content]. No-op when [text] is blank. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Tooltip(text: String?, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    if (text.isNullOrBlank()) {
+        Box(modifier) { content() }
+        return
+    }
+    TooltipArea(
+        tooltip = {
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = MaterialTheme.colorScheme.inverseSurface,
+                shadowElevation = 4.dp,
+            ) {
+                Text(
+                    text,
+                    Modifier.padding(horizontal = 8.dp, vertical = 4.dp).widthIn(max = 280.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+            }
+        },
+        modifier = modifier,
+        delayMillis = 500,
+        tooltipPlacement = TooltipPlacement.CursorPoint(offset = DpOffset(0.dp, 16.dp)),
+        content = content,
+    )
+}

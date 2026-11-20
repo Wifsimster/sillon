@@ -5,11 +5,16 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.local.DownloadEntity
 import ovh.battistella.sillon.data.local.DownloadState
 import ovh.battistella.sillon.data.plex.PlexMetadata
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.sort.TrackOrder
+import ovh.battistella.sillon.data.sort.decodeTrackOrder
+import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlayableTrack
 import ovh.battistella.sillon.playback.PlaybackConnection
@@ -42,6 +47,7 @@ abstract class TrackCollectionViewModel(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
     private val downloads: DownloadManager,
+    private val settings: SettingsStore? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow<Load<AlbumUi>>(Load.Loading)
     val state = _state.asStateFlow()
@@ -58,9 +64,45 @@ abstract class TrackCollectionViewModel(
 
     protected abstract suspend fun fetch(): TrackCollection
 
+    /** Names this list in the saved sorts; null turns sorting off (e.g. the downloads view). */
+    protected open val sortList: String? = null
+
+    private val _order = MutableStateFlow<TrackOrder?>(null)
+
+    /** The sort picked for this list, remembered between visits. */
+    val order = _order.asStateFlow()
+
+    fun setOrder(order: TrackOrder?) {
+        _order.value = order
+        val list = sortList ?: return
+        viewModelScope.launch { settings?.setTrackSort(list, order?.encode()) }
+    }
+
+    /** Track keys in the order shown, or null when the list is not sorted. */
+    private fun shownOrder(): List<String>? {
+        val order = _order.value ?: return null
+        val ui = (_state.value as? Load.Ready)?.value ?: return null
+        val book = playback.ratings.value.book
+        return ui.tracks
+            .map { it.copy(stars = book.ratingOf(it.key, it.stars?.times(2f))?.div(2f)) }
+            .sortedBy(order)
+            .map { it.key }
+    }
+
+    private fun List<PlayableTrack>.inOrder(keys: List<String>?): List<PlayableTrack> {
+        if (keys == null) return this
+        val rank = HashMap<String, Int>(keys.size)
+        keys.forEachIndexed { i, key -> rank.putIfAbsent(key, i) }
+        return sortedBy { rank[it.ratingKey] ?: Int.MAX_VALUE }
+    }
+
     protected open suspend fun sidesForPlayback(): List<Side> = emptyList()
 
     protected fun start() {
+        val list = sortList
+        if (list != null && settings != null) {
+            viewModelScope.launch { _order.value = decodeTrackOrder(settings.trackSort(list).first()) }
+        }
         load()
         viewModelScope.launch {
             val serverId = runCatching { repository.currentServerId() }.getOrNull() ?: return@launch
@@ -82,11 +124,16 @@ abstract class TrackCollectionViewModel(
         }
     }
 
+    /** Plays from [trackKey] (or the top), in the order shown on screen when the list is sorted. */
     fun play(trackKey: String?) {
-        val start = playable.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
+        val keys = shownOrder()
         viewModelScope.launch {
             val fresh = runCatching { repository.playable(tracks.value) }.getOrDefault(playable)
-            playback.play(fresh.ifEmpty { playable }, start, albumSides = sidesForPlayback(), pickStart = trackKey == null)
+            val list = fresh.ifEmpty { playable }.inOrder(keys)
+            val start = list.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
+            // Sides follow the album's own order, so they only apply while the list is not sorted.
+            val sides = if (keys == null) sidesForPlayback() else emptyList()
+            playback.play(list, start, albumSides = sides, pickStart = trackKey == null)
         }
     }
 

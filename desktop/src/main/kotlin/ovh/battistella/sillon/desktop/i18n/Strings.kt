@@ -139,6 +139,18 @@ interface Strings {
     val ratingFailed: String
     val ratingJellyfinOnly: String
     val trackSkipped: String
+    val nowPlaying: String
+    fun stars(count: Int): String
+    fun popularity(percent: Int): String
+    val columnTitle: String
+    val columnPopularity: String
+    val columnRating: String
+    val columnDuration: String
+    fun sortBy(column: String): String
+    val sortReverse: String
+    val sortReset: String
+    val columnPlays: String
+    fun plays(count: Int): String
 
     val settingsPlayback: String
     val settingsQuality: String
@@ -352,6 +364,22 @@ object EnglishStrings : Strings {
     override val ratingFailed = "Your rating did not reach the server. Click a star to try again."
     override val ratingJellyfinOnly = "Jellyfin keeps 1 star (dislike) and 5 stars (favourite) only."
     override val trackSkipped = "Skipped when played in order"
+    override val nowPlaying = "Now playing"
+    override fun stars(count: Int) = if (count == 1) "1 star" else "$count stars"
+    override fun popularity(percent: Int) = "Popularity: $percent%"
+    override val columnTitle = "Title"
+    override val columnPopularity = "Popularity"
+    override val columnRating = "Rating"
+    override val columnDuration = "Duration"
+    override fun sortBy(column: String) = "Sort by ${column.lowercase()}"
+    override val sortReverse = "Reverse the order"
+    override val sortReset = "Back to the original order"
+    override val columnPlays = "Plays"
+    override fun plays(count: Int) = when (count) {
+        0 -> "Never played"
+        1 -> "Played once"
+        else -> "Played $count times"
+    }
 
     override val settingsPlayback = "Playback"
     override val settingsQuality = "Streaming quality"
@@ -572,6 +600,22 @@ object FrenchStrings : Strings {
     override val ratingFailed = "Ta note n'est pas arrivée au serveur. Clique sur une étoile pour réessayer."
     override val ratingJellyfinOnly = "Jellyfin ne garde que 1 étoile (je n'aime pas) et 5 étoiles (favori)."
     override val trackSkipped = "Passé lors d'une lecture dans l'ordre"
+    override val nowPlaying = "En cours de lecture"
+    override fun stars(count: Int) = if (count <= 1) "$count étoile" else "$count étoiles"
+    override fun popularity(percent: Int) = "Popularité : $percent %"
+    override val columnTitle = "Titre"
+    override val columnPopularity = "Popularité"
+    override val columnRating = "Note"
+    override val columnDuration = "Durée"
+    override fun sortBy(column: String) = "Trier par ${column.lowercase()}"
+    override val sortReverse = "Inverser l'ordre"
+    override val sortReset = "Revenir à l'ordre d'origine"
+    override val columnPlays = "Écoutes"
+    override fun plays(count: Int) = when (count) {
+        0 -> "Jamais écouté"
+        1 -> "Écouté une fois"
+        else -> "Écouté $count fois"
+    }
 
     override val settingsPlayback = "Lecture"
     override val settingsQuality = "Qualité de streaming"

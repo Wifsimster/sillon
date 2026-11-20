@@ -49,7 +49,7 @@ fun popularityOf(tracks: List<PlexMetadata>): Map<String, Float> {
 }
 
 fun PlexMetadata.toTrackUi(number: Int?, artist: String?, popularity: Map<String, Float> = emptyMap()) =
-    TrackUi(ratingKey, number, title, artist, duration, popularity[ratingKey], userRating)
+    TrackUi(ratingKey, number, title, artist, duration, popularity[ratingKey], userRating, plays = viewCount)
 
 data class SectionGridUi(val sectionTitle: String?, val tiles: List<TileUi>?)
 
@@ -280,9 +280,10 @@ class CollectionModel(
     private suspend fun fresh(): List<PlayableTrack> =
         runCatching { repository.playable(tracks.value) }.getOrDefault(playable).ifEmpty { playable }
 
-    fun play(trackKey: String?) {
+    /** Plays the collection; [order] (track keys, as shown on screen) overrides the server order, e.g. when sorted by stars. */
+    fun play(trackKey: String?, order: List<String>? = null) {
         scope.launch {
-            val list = fresh()
+            val list = fresh().inOrder(order)
             val start = list.indexOfFirst { it.ratingKey == trackKey }.coerceAtLeast(0)
             playback.play(list, start, pickStart = trackKey == null)
         }
@@ -298,6 +299,13 @@ class CollectionModel(
 
     fun addToQueue(trackKey: String?) {
         scope.launch { playback.addToQueue(queueable(trackKey)) }
+    }
+
+    private fun List<PlayableTrack>.inOrder(order: List<String>?): List<PlayableTrack> {
+        if (order == null) return this
+        val rank = HashMap<String, Int>(order.size)
+        order.forEachIndexed { i, key -> rank.putIfAbsent(key, i) }
+        return sortedBy { rank[it.ratingKey] ?: Int.MAX_VALUE }
     }
 
     private suspend fun queueable(trackKey: String?): List<PlayableTrack> {

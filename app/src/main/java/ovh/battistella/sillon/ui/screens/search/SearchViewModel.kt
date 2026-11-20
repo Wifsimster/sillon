@@ -39,6 +39,9 @@ import ovh.battistella.sillon.data.repository.isPlayableOffline
 import ovh.battistella.sillon.data.repository.toPlayable
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.sort.TrackOrder
+import ovh.battistella.sillon.data.sort.decodeTrackOrder
+import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
@@ -102,6 +105,15 @@ class SearchViewModel @Inject constructor(
 
     private var trackResults: List<PlexMetadata> = emptyList()
 
+    /** Sort of the track results, shared by every search and remembered between visits. */
+    val order: StateFlow<TrackOrder?> = settings.trackSort(SEARCH_SORT)
+        .map(::decodeTrackOrder)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setOrder(order: TrackOrder?) {
+        viewModelScope.launch { settings.setTrackSort(SEARCH_SORT, order?.encode()) }
+    }
+
     val online: StateFlow<Boolean> = network.online.stateIn(viewModelScope, SharingStarted.Eagerly, network.isOnline())
 
     private val refreshing = MutableStateFlow(false)
@@ -155,8 +167,15 @@ class SearchViewModel @Inject constructor(
     }
 
     fun playTrack(key: String) {
+        // Plays the results in the order shown, so a list sorted by stars plays the best-rated first.
+        val rank = (_state.value as? SearchState.Ready)?.results?.tracks
+            ?.sortedBy(order.value)
+            ?.withIndex()
+            ?.associate { (i, track) -> track.key to i }
+            .orEmpty()
         viewModelScope.launch {
-            val tracks = runCatching { repository.playable(trackResults) }.getOrDefault(emptyList())
+            val results = trackResults.sortedBy { rank[it.ratingKey] ?: Int.MAX_VALUE }
+            val tracks = runCatching { repository.playable(results) }.getOrDefault(emptyList())
             val start = tracks.indexOfFirst { it.ratingKey == key }.coerceAtLeast(0)
             playback.play(tracks, start)
         }
@@ -261,3 +280,5 @@ internal fun downloadedAlbums(rows: List<DownloadEntity>): Map<String, String?> 
     rows.filter { it.albumKey != null && it.isPlayableOffline() }
         .groupBy { it.albumKey!! }
         .mapValues { (_, tracks) -> tracks.firstNotNullOfOrNull { it.artworkPath?.takeIf { p -> File(p).isFile } } }
+
+private const val SEARCH_SORT = "search"

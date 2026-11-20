@@ -28,6 +28,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,6 +38,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
+import ovh.battistella.sillon.data.sort.decodeTrackOrder
+import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.Screen
@@ -43,6 +48,7 @@ import ovh.battistella.sillon.desktop.ui.components.LoadContent
 import ovh.battistella.sillon.desktop.ui.components.Message
 import ovh.battistella.sillon.desktop.ui.components.Tile
 import ovh.battistella.sillon.desktop.ui.components.TileUi
+import ovh.battistella.sillon.desktop.ui.components.TrackListHeader
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
 import ovh.battistella.sillon.desktop.ui.components.Wear
 
@@ -58,6 +64,8 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     val now by app.graph.playback.state.collectAsState()
     val ratings by app.graph.playback.ratings.collectAsState()
+    val trackOrder by remember { app.graph.settings.trackSort(SEARCH_SORT).map(::decodeTrackOrder) }.collectAsState(null)
+    val saving = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     DisposableEffect(Unit) { onDispose { app.typing = false } }
@@ -107,15 +115,29 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
                     }
                     if (found.tracks.isNotEmpty()) {
                         item { Text(strings.tracks, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge) }
-                        items(found.tracks, key = { it.key }) { track ->
+                        val rated = found.tracks.map { it.copy(stars = ratings.book.starsOf(it.key, it.rating)) }
+                        val showPopularity = rated.any { it.popularity != null }
+                        val showPlays = rated.any { it.plays != null }
+                        item {
+                            TrackListHeader(
+                                order = trackOrder,
+                                onOrder = { next -> saving.launch { app.graph.settings.setTrackSort(SEARCH_SORT, next?.encode()) } },
+                                showPopularity = showPopularity,
+                                showPlays = showPlays,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        }
+                        items(rated.sortedBy(trackOrder), key = { it.key }) { track ->
                             TrackRow(
-                                track = track.copy(stars = ratings.book.starsOf(track.key, track.rating)),
+                                track = track,
                                 playing = now.current?.ratingKey == track.key,
                                 skipped = false,
                                 onPlay = { model.play(track.key) },
                                 onPlayNext = { model.playNext(track.key) },
                                 onAddToQueue = { model.addToQueue(track.key) },
                                 modifier = Modifier.padding(horizontal = 16.dp),
+                                showPopularity = showPopularity,
+                                showPlays = showPlays,
                             )
                         }
                     }
@@ -154,3 +176,6 @@ private fun TileRow(
         }
     }
 }
+
+/** Saved sort shared by every search's track results. */
+private const val SEARCH_SORT = "search"

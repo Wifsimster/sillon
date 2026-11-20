@@ -31,12 +31,15 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +56,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ovh.battistella.sillon.data.sort.SortableTrack
+import ovh.battistella.sillon.data.sort.TrackOrder
+import ovh.battistella.sillon.data.sort.TrackSort
+import ovh.battistella.sillon.data.sort.next
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
+import kotlin.math.roundToInt
 
 data class TileUi(
     val key: String,
@@ -64,14 +72,17 @@ data class TileUi(
 
 data class TrackUi(
     val key: String,
-    val number: Int?,
-    val title: String,
+    override val number: Int?,
+    override val title: String,
     val artist: String?,
-    val durationMs: Long?,
-    val popularity: Float? = null,
+    override val durationMs: Long?,
+    override val popularity: Float? = null,
     val rating: Float? = null,
     val stars: Int? = null,
-)
+    override val plays: Int? = null,
+) : SortableTrack {
+    override val sortStars: Float? get() = stars?.toFloat()
+}
 
 @Composable
 fun TileGrid(
@@ -130,6 +141,89 @@ fun Tile(tile: TileUi, round: Boolean, modifier: Modifier = Modifier, wear: Wear
     }
 }
 
+private val NumberWidth = 44.dp
+private val PopularityWidth = 64.dp
+private val PlaysWidth = 64.dp
+private val StarsWidth = 92.dp
+private val DurationWidth = 56.dp
+private val MenuWidth = 48.dp
+
+/** Column headers matching [TrackRow]; clicking one sorts the list by it. */
+@Composable
+fun TrackListHeader(
+    order: TrackOrder?,
+    onOrder: (TrackOrder?) -> Unit,
+    showPopularity: Boolean,
+    showPlays: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val strings = LocalStrings.current
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 8.dp).height(36.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HeaderCell("#", TrackSort.NUMBER, order, onOrder, Modifier.width(NumberWidth), Arrangement.Center)
+        HeaderCell(strings.columnTitle, TrackSort.TITLE, order, onOrder, Modifier.weight(1f).padding(horizontal = 8.dp), Arrangement.Start)
+        if (showPopularity) {
+            HeaderCell(strings.columnPopularity, TrackSort.POPULARITY, order, onOrder, Modifier.width(PopularityWidth), Arrangement.Start)
+        }
+        if (showPlays) {
+            HeaderCell(strings.columnPlays, TrackSort.PLAYS, order, onOrder, Modifier.width(PlaysWidth), Arrangement.End)
+        }
+        HeaderCell(strings.columnRating, TrackSort.STARS, order, onOrder, Modifier.width(StarsWidth).padding(start = 16.dp), Arrangement.Start)
+        HeaderCell(strings.columnDuration, TrackSort.DURATION, order, onOrder, Modifier.width(DurationWidth), Arrangement.End)
+        Spacer(Modifier.width(MenuWidth))
+    }
+    HorizontalDivider(Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+@Composable
+private fun HeaderCell(
+    label: String,
+    column: TrackSort,
+    order: TrackOrder?,
+    onOrder: (TrackOrder?) -> Unit,
+    modifier: Modifier,
+    arrangement: Arrangement.Horizontal,
+) {
+    val strings = LocalStrings.current
+    val active = order?.by == column
+    val hint = when {
+        !active -> strings.sortBy(if (column == TrackSort.NUMBER) strings.tracks else label)
+        order!!.descending == column.descendingFirst -> strings.sortReverse
+        else -> strings.sortReset
+    }
+    val color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Tooltip(hint, modifier) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
+                .clickable { onOrder(order.next(column)) }
+                .padding(vertical = 4.dp),
+            horizontalArrangement = arrangement,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (active) {
+                Icon(
+                    if (order!!.descending) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
+                    null,
+                    Modifier.padding(start = 2.dp).size(14.dp),
+                    tint = color,
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
@@ -140,6 +234,8 @@ fun TrackRow(
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
     modifier: Modifier = Modifier,
+    showPopularity: Boolean = track.popularity != null,
+    showPlays: Boolean = track.plays != null,
 ) {
     val strings = LocalStrings.current
     val interaction = remember { MutableInteractionSource() }
@@ -160,10 +256,14 @@ fun TrackRow(
                 .alpha(if (skipped && !playing) 0.5f else 1f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.width(44.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(NumberWidth).fillMaxHeight(), contentAlignment = Alignment.Center) {
                 when {
-                    hovered -> IconButton(onClick = onPlay) { Icon(Icons.Filled.PlayArrow, strings.play) }
-                    playing -> Icon(Icons.Filled.Equalizer, null, tint = MaterialTheme.colorScheme.primary)
+                    hovered -> Tooltip(strings.play) {
+                        IconButton(onClick = onPlay) { Icon(Icons.Filled.PlayArrow, strings.play) }
+                    }
+                    playing -> Tooltip(strings.nowPlaying) {
+                        Icon(Icons.Filled.Equalizer, strings.nowPlaying, tint = MaterialTheme.colorScheme.primary)
+                    }
                     else -> Text(
                         track.number?.toString().orEmpty(),
                         style = MaterialTheme.typography.bodyMedium,
@@ -190,22 +290,56 @@ fun TrackRow(
                     )
                 }
             }
-            if (track.popularity != null) PopularityBar(track.popularity)
-            Row(Modifier.width(92.dp).padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                repeat(track.stars ?: 0) {
-                    Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+            if (showPopularity) {
+                Box(Modifier.width(PopularityWidth)) {
+                    val popularity = track.popularity
+                    if (popularity != null) {
+                        Tooltip(strings.popularity((popularity.coerceIn(0f, 1f) * 100).roundToInt())) {
+                            Box(Modifier.padding(vertical = 8.dp)) { PopularityBar(popularity) }
+                        }
+                    }
+                }
+            }
+            if (showPlays) {
+                Box(Modifier.width(PlaysWidth), contentAlignment = Alignment.CenterEnd) {
+                    val plays = track.plays
+                    if (plays != null) {
+                        Tooltip(strings.plays(plays)) {
+                            Text(
+                                if (plays > 0) plays.toString() else "–",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+            Box(Modifier.width(StarsWidth).padding(start = 16.dp)) {
+                val stars = track.stars ?: 0
+                if (stars > 0) {
+                    val hint = if (skipped) "${strings.stars(stars)} · ${strings.trackSkipped}" else strings.stars(stars)
+                    Tooltip(hint) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                            repeat(stars) {
+                                Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
                 }
             }
             Text(
                 track.durationMs?.let(::formatDuration).orEmpty(),
-                Modifier.width(56.dp),
+                Modifier.width(DurationWidth),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.End,
             )
             Box {
-                IconButton(onClick = { menu = true }, Modifier.alpha(if (hovered || menu) 1f else 0f)) {
-                    Icon(Icons.Filled.MoreVert, strings.more)
+                val visible = hovered || menu
+                Tooltip(if (visible) strings.more else null) {
+                    IconButton(onClick = { menu = true }, Modifier.alpha(if (visible) 1f else 0f)) {
+                        Icon(Icons.Filled.MoreVert, strings.more)
+                    }
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(text = { Text(strings.queuePlayNext) }, onClick = {
@@ -225,7 +359,7 @@ fun TrackRow(
 @Composable
 private fun PopularityBar(value: Float) {
     Box(
-        Modifier.width(64.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        Modifier.width(PopularityWidth).height(4.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Box(
             Modifier.fillMaxHeight().fillMaxWidth(value.coerceIn(0.04f, 1f)).background(MaterialTheme.colorScheme.onSurfaceVariant),

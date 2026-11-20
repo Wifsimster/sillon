@@ -39,8 +39,10 @@ class AlbumViewModel @Inject constructor(
     downloads: DownloadManager,
     sleeveWear: SleeveWearRepository,
     private val settings: SettingsStore,
-) : TrackCollectionViewModel(repository, playback, downloads) {
+) : TrackCollectionViewModel(repository, playback, downloads, settings) {
     val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+
+    override val sortList: String get() = "album_$key"
 
     val wear: StateFlow<Wear?> = sleeveWear.levels
         .map { Wear.of(it, key) }
