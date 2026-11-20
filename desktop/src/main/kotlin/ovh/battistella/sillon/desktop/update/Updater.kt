@@ -97,6 +97,9 @@ class UpdateInstaller(
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
         const val LOG = "install.log"
+        const val ANOTHER_INSTALL = 1618
+        const val INSTALL_TRIES = 20
+        const val RETRY_WAIT_S = 15
 
         fun isWindows(): Boolean = System.getProperty("os.name").orEmpty().lowercase().contains("win")
 
@@ -118,12 +121,23 @@ class UpdateInstaller(
                 it.substringAfterLast('\\').substringAfterLast('/').startsWith("Sillon", ignoreCase = true) &&
                     it.none { c -> c == '"' || c == '%' || c == '&' }
             }
-            return buildString {
-                append("@echo off & chcp 65001 >nul & ping -n 3 127.0.0.1 >nul")
-                append(" & msiexec /i \"").append(installer.absolutePath).append("\" /passive /norestart /l* \"").append(log.absolutePath).append("\"")
-                if (relaunch != null) append(" & (if exist \"").append(relaunch).append("\" start \"\" \"").append(relaunch).append("\")")
-                append("\r\n")
-            }
+            val lines = mutableListOf(
+                "@echo off",
+                "chcp 65001 >nul",
+                "ping -n 3 127.0.0.1 >nul",
+                "set /a tries=0",
+                ":install",
+                "msiexec /i \"${installer.absolutePath}\" /passive /norestart /l* \"${log.absolutePath}\"",
+                // 1618: another installation is in progress (Windows Update, another setup). Wait and try again.
+                "if %errorlevel% neq $ANOTHER_INSTALL goto done",
+                "set /a tries+=1",
+                "if %tries% geq $INSTALL_TRIES goto done",
+                "ping -n ${RETRY_WAIT_S + 1} 127.0.0.1 >nul",
+                "goto install",
+                ":done",
+            )
+            if (relaunch != null) lines += "if exist \"$relaunch\" start \"\" \"$relaunch\""
+            return lines.joinToString("\r\n", postfix = "\r\n")
         }
 
         fun detached(command: List<String>, workDir: File) {

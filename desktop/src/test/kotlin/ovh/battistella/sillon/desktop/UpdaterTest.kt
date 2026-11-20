@@ -158,9 +158,9 @@ class UpdaterTest {
         val copy = File(work, ready.installer.name)
         assertEquals(checksum, UpdateInstaller.sha256(copy))
         val script = File(command.last()).readText()
-        assertEquals(1, script.trim().lines().size)
+        assertTrue(script.contains("\r\n"))
         assertTrue(script.contains("msiexec /i \"${copy.absolutePath}\" /passive /norestart /l* \"${File(work, "install.log").absolutePath}\""))
-        assertTrue(script.contains("(if exist \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\" start \"\" \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\")"))
+        assertTrue(script.contains("if exist \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\" start \"\" \"C:\\Users\\Zoé\\AppData\\Local\\Sillon\\Sillon.exe\""))
         assertFalse(script.contains(dir.absolutePath))
         assertEquals("1.27.0", prefs.attemptedVersion())
     }
@@ -300,6 +300,22 @@ class UpdaterTest {
         again.start()
         Thread.sleep(300)
         assertNull(again.whatsNew.value)
+    }
+
+    @Test
+    fun `the install script waits and tries again while another installation is running`() {
+        val script = UpdateInstaller.installScript(File("C:\\cache\\Sillon-1.27.0.msi"), File("C:\\cache\\install.log"), null)
+        val lines = script.trimEnd().split("\r\n")
+        val install = lines.indexOf(":install")
+        val msiexec = lines.indexOfFirst { it.startsWith("msiexec /i ") }
+        assertTrue(install in 0 until msiexec)
+        assertEquals("if %errorlevel% neq 1618 goto done", lines[msiexec + 1])
+        assertEquals("set /a tries+=1", lines[msiexec + 2])
+        assertEquals("if %tries% geq 20 goto done", lines[msiexec + 3])
+        assertEquals("ping -n 16 127.0.0.1 >nul", lines[msiexec + 4])
+        assertEquals("goto install", lines[msiexec + 5])
+        assertEquals(":done", lines.last())
+        assertTrue(lines.indexOf("set /a tries=0") in 0 until install)
     }
 
     @Test
