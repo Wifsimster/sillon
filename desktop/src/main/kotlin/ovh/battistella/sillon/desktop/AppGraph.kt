@@ -25,8 +25,12 @@ import ovh.battistella.sillon.data.settings.PlaybackStateStore
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.wear.SleeveWearCache
 import ovh.battistella.sillon.data.wear.SleeveWearRepository
+import ovh.battistella.sillon.desktop.discord.CoverLookup
+import ovh.battistella.sillon.desktop.discord.DiscordRichPresence
+import ovh.battistella.sillon.desktop.discord.PresenceLabels
 import ovh.battistella.sillon.desktop.download.DownloadFiles
 import ovh.battistella.sillon.desktop.download.Downloader
+import ovh.battistella.sillon.desktop.i18n.stringsFor
 import ovh.battistella.sillon.desktop.platform.DesktopNetworkMonitor
 import ovh.battistella.sillon.desktop.platform.DesktopPrefs
 import ovh.battistella.sillon.desktop.platform.DesktopStorage
@@ -114,6 +118,17 @@ class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
         scope = scope,
     )
 
+    private val covers = CoverLookup(client)
+
+    val discord = DiscordRichPresence(
+        playback = playback.state,
+        enabled = prefs.discordPresence,
+        covers = prefs.discordCovers,
+        lookup = covers::cover,
+        labels = stringsFor().let { PresenceLabels(playing = it.discordPlaying, paused = it.discordPaused) },
+        connect = DiscordRichPresence::connectToDiscord,
+    )
+
     init {
         scope.launch { runCatching { downloader.resume() } }
         scope.launch {
@@ -121,9 +136,11 @@ class AppGraph(val storage: DesktopStorage = DesktopStorage()) {
             playback.state.map { it.volume }.distinctUntilChanged().drop(1).debounce(VOLUME_SAVE_DELAY_MS).collect { prefs.setVolume(it) }
         }
         updater.start()
+        discord.start(scope)
     }
 
     fun close() {
+        runCatching { discord.close() }
         runCatching { playback.release() }
         scope.cancel()
         client.dispatcher.executorService.shutdown()

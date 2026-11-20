@@ -67,6 +67,11 @@ go, with no ads, no tracking and no subscription.
   except listening together.
 - 📊 **Your server stays in sync.** What you play shows under *Now playing* on
   your server, lands in the history and counts as played, like the official apps.
+- 🎮 **On your Discord profile.** On Windows and Linux, Sillon can show the
+  track you're listening to on Discord, with the artist, a progress bar and,
+  if you allow it, the album cover. It talks to the Discord app on your
+  computer and sends nothing about your server. Off until you turn it on in
+  *Settings → Discord*.
 - 💌 **Music postcards.** From the player, an album or an artist, *Share a card*
   makes an image of the cover with the title, the artist and the year, square or
   story-sized, in three styles: Vinyl, Label and Polaroid. Add a few words, your
@@ -118,7 +123,7 @@ albums, playlists, search as you type, gapless playback, the queue (play next,
 add, reorder, remove), radios, star ratings and *My 5 stars*, skipping 1-star
 tracks, loudness levelling, streaming quality, lyrics, genres, sleeve wear,
 downloads for offline listening, the server's activity (who is playing what),
-and play reports to your server. It resumes
+play reports to your server, and what you play on your Discord profile. It resumes
 the queue where you stopped, and speaks English and French.
 
 It keeps itself up to date, without asking: now and then it asks GitHub
@@ -127,7 +132,9 @@ checks it against the release's SHA-256. The update installs itself the next
 time Sillon starts (a progress bar, then the app), and that first start shows
 what is new. That request to GitHub is the
 only one Sillon makes to anything but your server; *Settings → Updates* turns
-it off.
+it off. The one exception is *Album covers on Discord*, off by default: it looks
+up the album (artist and album names only) on Apple's iTunes, to show a public
+cover on Discord.
 
 Shortcuts: `Space` play or pause, `Ctrl` + `→` / `←` next or previous track,
 `Ctrl` + `F` search, `Esc` back.
@@ -147,6 +154,7 @@ cards, listening by side and the listening cache.
 | **Surprise** | Mystery sleeve: a whole album drawn at random (rarely played first, or any album), hidden in the app, the notification, the lock screen and the car until the third track or *Reveal*; *Keep* adds it to a *Surprises* playlist; offline, drawn from your downloads |
 | **Covers** | Sleeve wear: covers age with your plays (yellowed edges, worn corners, ring wear, a crease) on the album grids, the album page and the player; on by default, off in Settings → Appearance |
 | **Together** | Listen together on Jellyfin (SyncPlay): shared play, pause, skip and seek; the notification, headset buttons and Android Auto control the group. Not available on Plex |
+| **Discord** | On Windows and Linux: the track, artist, album and a progress bar on your Discord profile (Rich Presence), through the Discord app on the same computer; optional album covers looked up on iTunes (artist and album names only), never your server's |
 | **Activity** | *Server activity*: who is playing what on your server right now (user, device, track, progress), updated as it happens; optionally a notification when someone starts listening. For the server's owner (Plex) or an administrator (Jellyfin); on Android and Windows (notifications on Android only) |
 | **Sonos** | *Play on…* sends the queue to a Sonos speaker or group on your Wi-Fi, over the local network (no Sonos account, no cloud); the player, the notification, the lock screen and the volume keys drive it, and the music comes back to the phone where it stood. Plex and Jellyfin |
 | **Car** | Android Auto browsing with covers (Artists, Albums, Playlists, Radios, My 5 stars), resume card, voice requests |

@@ -180,6 +180,15 @@ interface Strings {
     val genreShuffle: String
     val genreNothing: String
     val settingsLibrary: String
+    val settingsDiscord: String
+    val settingsDiscordPresence: String
+    val settingsDiscordPresenceHint: String
+    val settingsDiscordCovers: String
+    val settingsDiscordCoversHint: String
+    val discordLive: String
+    val discordWaiting: String
+    val discordPlaying: String
+    val discordPaused: String
     val settingsUpdates: String
     val settingsAutoUpdate: String
     val settingsAutoUpdateHint: String
@@ -416,6 +425,15 @@ object EnglishStrings : Strings {
     override val genreShuffle = "Shuffle the genre"
     override val genreNothing = "Nothing to play in this genre right now."
     override val settingsLibrary = "Music library"
+    override val settingsDiscord = "Discord"
+    override val settingsDiscordPresence = "Show what I play on Discord"
+    override val settingsDiscordPresenceHint = "Your Discord profile shows the track, the artist and a progress bar while Sillon plays. Discord must be open on this computer."
+    override val settingsDiscordCovers = "Album covers on Discord"
+    override val settingsDiscordCoversHint = "Sillon looks the album up on Apple's iTunes (the artist and album names only) and shows that public cover. Your server's covers never leave it."
+    override val discordLive = "Connected to Discord"
+    override val discordWaiting = "Waiting for Discord to open"
+    override val discordPlaying = "Playing"
+    override val discordPaused = "Paused"
     override val settingsUpdates = "Updates"
     override val settingsAutoUpdate = "Update automatically"
     override val settingsAutoUpdateHint = "Sillon asks GitHub now and then whether a new version is out, downloads it, and installs it the next time it starts."
@@ -652,6 +670,15 @@ object FrenchStrings : Strings {
     override val genreShuffle = "Lecture aléatoire du genre"
     override val genreNothing = "Rien à lire dans ce genre pour l'instant."
     override val settingsLibrary = "Bibliothèque musicale"
+    override val settingsDiscord = "Discord"
+    override val settingsDiscordPresence = "Afficher ce que j'écoute sur Discord"
+    override val settingsDiscordPresenceHint = "Votre profil Discord montre le morceau, l'artiste et une barre de progression pendant que Sillon joue. Discord doit être ouvert sur cet ordinateur."
+    override val settingsDiscordCovers = "Pochettes sur Discord"
+    override val settingsDiscordCoversHint = "Sillon cherche l'album sur iTunes d'Apple (seulement les noms de l'artiste et de l'album) et affiche cette pochette publique. Les pochettes de votre serveur n'en sortent jamais."
+    override val discordLive = "Connecté à Discord"
+    override val discordWaiting = "En attente de l'ouverture de Discord"
+    override val discordPlaying = "En lecture"
+    override val discordPaused = "En pause"
     override val settingsUpdates = "Mises à jour"
     override val settingsAutoUpdate = "Mettre à jour automatiquement"
     override val settingsAutoUpdateHint = "Sillon demande de temps en temps à GitHub si une nouvelle version est sortie, la télécharge, et l'installe à son prochain démarrage."

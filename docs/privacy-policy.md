@@ -32,6 +32,11 @@ To play your music, the app connects directly and only to:
    (found by a Wi-Fi multicast search and controlled over your network, no
    Sonos account or cloud) and, on Jellyfin, the other phones you listen
    together with, through your own server.
+4. **The Discord app on your computer**, on Windows and Linux, only if you turn
+   on *Show what I play on Discord*: the title, artist and album of the track
+   playing go to Discord, which shows them on your profile. Nothing about your
+   server is sent. If you also turn on *Album covers on Discord*, the artist and
+   album names are sent to **Apple's iTunes search** to find a public cover.
 
 Your server's access token is sent only to your server (and plex.tv for Plex).
 Those services receive standard technical request data (such as your IP

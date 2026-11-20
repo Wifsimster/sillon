@@ -49,6 +49,7 @@ import ovh.battistella.sillon.data.settings.StreamQuality
 import ovh.battistella.sillon.data.settings.ThemeAccent
 import ovh.battistella.sillon.data.settings.ThemeMode
 import ovh.battistella.sillon.data.settings.ThemePreferences
+import ovh.battistella.sillon.desktop.discord.DiscordStatus
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.update.UpdateState
@@ -66,6 +67,9 @@ fun SettingsScreen(app: AppState) {
     val theme by settings.theme.collectAsState(ThemePreferences())
     val autoUpdate by graph.prefs.autoUpdate.collectAsState(true)
     val update by graph.updater.state.collectAsState()
+    val discordOn by graph.prefs.discordPresence.collectAsState(false)
+    val discordCovers by graph.prefs.discordCovers.collectAsState(false)
+    val discordStatus by graph.discord.status.collectAsState()
     val session by graph.repository.session.collectAsState(null)
     val sectionKey by graph.repository.musicSectionKey.collectAsState(null)
     var sections by remember { mutableStateOf<List<PlexDirectory>>(emptyList()) }
@@ -133,6 +137,19 @@ fun SettingsScreen(app: AppState) {
                 }
             }
         }
+        Header(strings.settingsDiscord)
+        Toggle(strings.settingsDiscordPresence, strings.settingsDiscordPresenceHint, discordOn) {
+            scope.launch { graph.prefs.setDiscordPresence(it) }
+        }
+        Toggle(strings.settingsDiscordCovers, strings.settingsDiscordCoversHint, discordCovers, enabled = discordOn) {
+            scope.launch { graph.prefs.setDiscordCovers(it) }
+        }
+        val discordLine = when (discordStatus) {
+            DiscordStatus.LIVE -> strings.discordLive
+            DiscordStatus.WAITING -> strings.discordWaiting
+            DiscordStatus.OFF -> null
+        }
+        if (discordOn && discordLine != null) Text(discordLine, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Header(strings.settingsAccount)
         (session as? Session.Ready)?.let { Text(strings.settingsServer(it.server.name), style = MaterialTheme.typography.bodyLarge) }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
@@ -171,14 +188,14 @@ fun SettingsScreen(app: AppState) {
 }
 
 @Composable
-private fun Toggle(title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun Toggle(title: String, hint: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(16.dp))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
     }
 }
 
