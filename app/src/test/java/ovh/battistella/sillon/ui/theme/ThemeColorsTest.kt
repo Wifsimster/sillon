@@ -19,13 +19,25 @@ class ThemeColorsTest {
     }
 
     @Test
-    fun `an accent changes the primary role only`() {
+    fun `an accent changes the primary role and the secondary container`() {
         val amber = sillonColorScheme(dark = true)
         val teal = sillonColorScheme(dark = true, accent = ThemeAccent.TEAL)
         assertEquals(Color(ThemeAccent.TEAL.dark.primary), teal.primary)
         assertNotEquals(amber.primary, teal.primary)
+        // No rust progress track or radio card under a teal accent.
+        assertEquals(Color(ThemeAccent.TEAL.dark.primaryContainer), teal.secondaryContainer)
         assertEquals(amber.secondary, teal.secondary)
         assertEquals(amber.background, teal.background)
+    }
+
+    @Test
+    fun `amber keeps the rust containers`() {
+        listOf(false, true).forEach { dark ->
+            val amber = sillonColorScheme(dark)
+            val rust = sillonColorScheme(dark, ThemeAccent.RUST)
+            assertNotEquals(amber.primaryContainer, amber.secondaryContainer)
+            assertEquals(rust.primaryContainer, rust.secondaryContainer)
+        }
     }
 
     @Test

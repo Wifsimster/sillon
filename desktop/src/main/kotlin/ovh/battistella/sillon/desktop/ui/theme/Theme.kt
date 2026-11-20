@@ -135,6 +135,10 @@ fun sillonColorScheme(dark: Boolean, accent: ThemeAccent = ThemeAccent.AMBER, pu
         onPrimaryContainer = Color(tones.onPrimaryContainer),
         inversePrimary = Color(accent.tones(!dark).primary),
         surfaceTint = Color(tones.primary),
+        // The rust containers (progress tracks, the Listen radio cards) clash with other accents:
+        // they take a soft tint of the accent instead. Rust itself stays the secondary colour.
+        secondaryContainer = Color(tones.primaryContainer),
+        onSecondaryContainer = Color(tones.onPrimaryContainer),
     )
     if (!(dark && pureBlack)) return accented
     return accented.copy(

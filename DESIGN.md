@@ -58,9 +58,10 @@ black in dark (for OLED screens); an accent colour in place of the amber; and
 Material You (wallpaper colours, Android 12+), which overrides the accent. The
 accents are Amber (the default), Rust, Olive, Teal, Indigo and Plum
 (`ThemeAccent` in `shared/.../data/settings/ThemeChoices.kt`); each has a light
-and a dark tone that reads at WCAG AA on cream, vinyl and pure black. Only the
-primary role changes: the rust secondary, the warm surfaces and the logo's
-amber label stay. Everything is off by default: the brand's colours come first.
+and a dark tone that reads at WCAG AA on cream, vinyl and pure black. The accent takes
+the primary role, and its soft tint replaces the rust containers (progress
+tracks, the Listen radio cards), which would clash with it; the rust secondary,
+the warm surfaces and the logo's amber label stay. Everything is off by default: the brand's colours come first.
 The Windows app has the same choices in its Settings → Appearance.
 
 The player borrows its colour from the cover: the cover's average colour washes

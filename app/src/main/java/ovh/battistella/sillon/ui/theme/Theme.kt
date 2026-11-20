@@ -92,8 +92,8 @@ private val SillonShapes = Shapes(
 )
 
 /**
- * The brand's scheme with [accent] in the primary role, and black surfaces when [pureBlack]
- * (dark only). The rest of the brand — vinyl, sleeve, rust — stays.
+ * The brand's scheme with [accent] in the primary role and its tint in the secondary container,
+ * and black surfaces when [pureBlack] (dark only). Vinyl, sleeve and the rust secondary stay.
  */
 fun sillonColorScheme(dark: Boolean, accent: ThemeAccent = ThemeAccent.AMBER, pureBlack: Boolean = false): ColorScheme {
     val base = if (dark) DarkColors else LightColors
@@ -106,6 +106,10 @@ fun sillonColorScheme(dark: Boolean, accent: ThemeAccent = ThemeAccent.AMBER, pu
         onPrimaryContainer = Color(tones.onPrimaryContainer),
         inversePrimary = Color(inverse.primary),
         surfaceTint = Color(tones.primary),
+        // The rust containers (progress tracks, the Listen radio cards) clash with other accents:
+        // they take a soft tint of the accent instead. Rust itself stays the secondary colour.
+        secondaryContainer = Color(tones.primaryContainer),
+        onSecondaryContainer = Color(tones.onPrimaryContainer),
     )
     return if (dark && pureBlack) accented.blackened() else accented
 }
