@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,6 +48,7 @@ import ovh.battistella.sillon.data.repository.PlexRepository
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.settings.StreamQuality
+import ovh.battistella.sillon.data.settings.ThemePreferences
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.ui.screens.downloads.DownloadsTotal
 import javax.inject.Inject
@@ -66,7 +68,7 @@ class SettingsViewModel @Inject constructor(
     val mobileQuality = settings.mobileQuality.stateIn(viewModelScope, SharingStarted.Eagerly, StreamQuality.KBPS_320)
     val downloadWifiOnly = settings.downloadOnWifiOnly.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val loudness = settings.loudness.stateIn(viewModelScope, SharingStarted.Eagerly, LoudnessMode.TRACK)
-    val wallpaperColors = settings.wallpaperColors.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val theme = settings.theme.stateIn(viewModelScope, SharingStarted.Eagerly, ThemePreferences())
     val sleeveWear = settings.sleeveWear.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     fun setSleeveWear(value: Boolean) {
@@ -83,10 +85,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setSkipOneStar(value: Boolean) {
         viewModelScope.launch { settings.setSkipOneStar(value) }
-    }
-
-    fun setWallpaperColors(value: Boolean) {
-        viewModelScope.launch { settings.setWallpaperColors(value) }
     }
 
     fun setLoudness(value: LoudnessMode) {
@@ -113,6 +111,8 @@ fun SettingsScreen(
     onDownloads: () -> Unit,
     contentPadding: PaddingValues,
     viewModel: SettingsViewModel = hiltViewModel(),
+    /** Opens the theme page: light or dark, accent colour, pure black, Material You. */
+    onTheme: () -> Unit = {},
     /** The listening cache settings, shown with the downloads; the app passes [ListeningCacheSection]. */
     listeningCache: @Composable () -> Unit = {},
 ) {
@@ -120,7 +120,7 @@ fun SettingsScreen(
     val mobileQuality by viewModel.mobileQuality.collectAsStateWithLifecycle()
     val downloadWifiOnly by viewModel.downloadWifiOnly.collectAsStateWithLifecycle()
     val loudness by viewModel.loudness.collectAsStateWithLifecycle()
-    val wallpaperColors by viewModel.wallpaperColors.collectAsStateWithLifecycle()
+    val theme by viewModel.theme.collectAsStateWithLifecycle()
     val sleeveWear by viewModel.sleeveWear.collectAsStateWithLifecycle()
     val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
     val skipOneStar by viewModel.skipOneStar.collectAsStateWithLifecycle()
@@ -216,6 +216,7 @@ fun SettingsScreen(
             }
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.settings_appearance)) }
+            item { ThemeEntry(theme, onTheme) }
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_sleeve_wear)) },
@@ -227,20 +228,6 @@ fun SettingsScreen(
                         onValueChange = viewModel::setSleeveWear,
                     ),
                 )
-            }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                item {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.settings_wallpaper_colors)) },
-                        supportingContent = { Text(stringResource(R.string.settings_wallpaper_colors_hint)) },
-                        trailingContent = { Switch(checked = wallpaperColors, onCheckedChange = null) },
-                        modifier = Modifier.toggleable(
-                            value = wallpaperColors,
-                            role = Role.Switch,
-                            onValueChange = viewModel::setWallpaperColors,
-                        ),
-                    )
-                }
             }
         }
     }
@@ -266,6 +253,23 @@ private fun DownloadsEntry(total: DownloadsTotal?, onClick: () -> Unit) {
             )
         },
         leadingContent = { Icon(Icons.Rounded.DownloadDone, contentDescription = null) },
+        trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
+        modifier = Modifier.clickable(role = Role.Button, onClick = onClick),
+    )
+}
+
+@Composable
+private fun ThemeEntry(theme: ThemePreferences, onClick: () -> Unit) {
+    val mode = stringResource(theme.mode.label)
+    val colours = if (theme.wallpaperColors && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        stringResource(R.string.settings_wallpaper_colors)
+    } else {
+        stringResource(theme.accent.label)
+    }
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.settings_theme)) },
+        supportingContent = { Text(stringResource(R.string.settings_theme_summary, mode, colours)) },
+        leadingContent = { Icon(Icons.Rounded.Palette, contentDescription = null) },
         trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
         modifier = Modifier.clickable(role = Role.Button, onClick = onClick),
     )

@@ -50,9 +50,18 @@ another colour than amber except in monochrome uses.
 | **Rust** | `#C2552B` | Second accent (secondary) |
 
 The Material 3 schemes in `ui/theme/Theme.kt` derive from these. In light, the
-amber is darkened to `#8A5100` to stay readable on cream (WCAG AA). Material
-You (wallpaper colours) is available in Settings → Appearance, off by default:
-the brand's colours are the default.
+amber is darkened to `#8A5100` to stay readable on cream (WCAG AA).
+
+Settings → Appearance → **Theme** lets people make it their own, with a live
+preview: light, dark or following the system; *pure black* instead of vinyl
+black in dark (for OLED screens); an accent colour in place of the amber; and
+Material You (wallpaper colours, Android 12+), which overrides the accent. The
+accents are Amber (the default), Rust, Olive, Teal, Indigo and Plum
+(`ThemeAccent` in `shared/.../data/settings/ThemeChoices.kt`); each has a light
+and a dark tone that reads at WCAG AA on cream, vinyl and pure black. Only the
+primary role changes: the rust secondary, the warm surfaces and the logo's
+amber label stay. Everything is off by default: the brand's colours come first.
+The Windows app has the same choices in its Settings → Appearance.
 
 The player borrows its colour from the cover: the cover's average colour washes
 down from the top of the screen.

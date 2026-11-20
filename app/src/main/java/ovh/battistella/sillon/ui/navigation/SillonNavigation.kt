@@ -34,6 +34,7 @@ import ovh.battistella.sillon.ui.screens.search.GenresScreen
 import ovh.battistella.sillon.ui.screens.search.SearchScreen
 import ovh.battistella.sillon.ui.screens.settings.ListeningCacheSection
 import ovh.battistella.sillon.ui.screens.settings.SettingsScreen
+import ovh.battistella.sillon.ui.screens.settings.ThemeScreen
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
@@ -248,8 +249,12 @@ private fun LibraryNavHost() {
                             onBack = back,
                             onDownloads = openDownloads,
                             contentPadding = bottom,
+                            onTheme = { navController.navigate(Routes.THEME) { launchSingleTop = true } },
                             listeningCache = { ListeningCacheSection() },
                         )
+                    }
+                    composable(Routes.THEME) {
+                        ThemeScreen(onBack = back, contentPadding = bottom)
                     }
                     composable(Routes.TOGETHER) {
                         TogetherScreen(onBack = back, contentPadding = bottom)

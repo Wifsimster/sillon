@@ -1,6 +1,7 @@
 package ovh.battistella.sillon.desktop.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import ovh.battistella.sillon.data.settings.ThemeAccent
 import ovh.battistella.sillon.desktop.ui.screens.ShelfKind
 import java.util.Locale
 
@@ -154,6 +155,14 @@ interface Strings {
     val settingsAppearance: String
     val settingsSleeveWear: String
     val settingsSleeveWearHint: String
+    val settingsThemeMode: String
+    val settingsThemeSystem: String
+    val settingsThemeLight: String
+    val settingsThemeDark: String
+    val settingsThemeAccent: String
+    val settingsThemePureBlack: String
+    val settingsThemePureBlackHint: String
+    fun accentName(accent: ThemeAccent): String
     val genres: String
     val genresEmpty: String
     val genreShuffle: String
@@ -359,6 +368,21 @@ object EnglishStrings : Strings {
     override val settingsAppearance = "Appearance"
     override val settingsSleeveWear = "Sleeve wear"
     override val settingsSleeveWearHint = "Covers age as you play them, like a real record"
+    override val settingsThemeMode = "Light or dark"
+    override val settingsThemeSystem = "Follow the system"
+    override val settingsThemeLight = "Light"
+    override val settingsThemeDark = "Dark"
+    override val settingsThemeAccent = "Accent colour"
+    override val settingsThemePureBlack = "Pure black"
+    override val settingsThemePureBlackHint = "In dark, true black instead of vinyl black"
+    override fun accentName(accent: ThemeAccent) = when (accent) {
+        ThemeAccent.AMBER -> "Amber"
+        ThemeAccent.RUST -> "Rust"
+        ThemeAccent.OLIVE -> "Olive"
+        ThemeAccent.TEAL -> "Teal"
+        ThemeAccent.INDIGO -> "Indigo"
+        ThemeAccent.PLUM -> "Plum"
+    }
     override val genres = "Genres"
     override val genresEmpty = "None of your albums has a genre on this server."
     override val genreShuffle = "Shuffle the genre"
@@ -564,6 +588,21 @@ object FrenchStrings : Strings {
     override val settingsAppearance = "Apparence"
     override val settingsSleeveWear = "Usure des pochettes"
     override val settingsSleeveWearHint = "Les pochettes vieillissent à force d'être écoutées, comme un vrai disque"
+    override val settingsThemeMode = "Clair ou sombre"
+    override val settingsThemeSystem = "Comme le système"
+    override val settingsThemeLight = "Clair"
+    override val settingsThemeDark = "Sombre"
+    override val settingsThemeAccent = "Couleur d'accent"
+    override val settingsThemePureBlack = "Noir pur"
+    override val settingsThemePureBlackHint = "En sombre, du vrai noir plutôt que le noir vinyle"
+    override fun accentName(accent: ThemeAccent) = when (accent) {
+        ThemeAccent.AMBER -> "Ambre"
+        ThemeAccent.RUST -> "Rouille"
+        ThemeAccent.OLIVE -> "Olive"
+        ThemeAccent.TEAL -> "Canard"
+        ThemeAccent.INDIGO -> "Indigo"
+        ThemeAccent.PLUM -> "Prune"
+    }
     override val genres = "Genres"
     override val genresEmpty = "Aucun de tes albums n'a de genre sur ce serveur."
     override val genreShuffle = "Lecture aléatoire du genre"

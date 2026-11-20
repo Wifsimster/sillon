@@ -4,6 +4,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -25,6 +27,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import okio.Path.Companion.toOkioPath
 import org.jetbrains.skia.Image
+import ovh.battistella.sillon.data.settings.ThemePreferences
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.i18n.stringsFor
 import ovh.battistella.sillon.desktop.platform.DesktopPrefs
@@ -118,10 +121,11 @@ fun main(args: Array<String>) {
             }
             if (customFrame) window.maximizedBounds = WindowChrome.workArea(window)
             CompositionLocalProvider(LocalStrings provides strings, LocalWindowFrame provides frame) {
-                SillonTheme {
+                val theme by graph.settings.theme.collectAsState(ThemePreferences())
+                val dark = theme.isDark(isSystemInDarkTheme())
+                SillonTheme(darkTheme = dark, accent = theme.accent, pureBlack = theme.pureBlack) {
                     val background = MaterialTheme.colorScheme.background
                     val outline = MaterialTheme.colorScheme.outlineVariant
-                    val dark = isSystemInDarkTheme()
                     LaunchedEffect(background, dark) {
                         if (customFrame) {
                             WindowChrome.round(window.windowHandle, outline.toArgb())

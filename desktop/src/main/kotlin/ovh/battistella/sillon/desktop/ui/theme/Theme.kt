@@ -2,6 +2,7 @@ package ovh.battistella.sillon.desktop.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -15,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ovh.battistella.sillon.data.settings.ThemeAccent
 
 object Brand {
     val Vinyl = Color(0xFF15120F)
@@ -122,10 +124,39 @@ private val SillonTypography = Typography(
     labelSmall = base.labelSmall.text(FontWeight.Medium),
 )
 
+/** The brand's scheme with [accent] in the primary role, and true black when [pureBlack] (dark only). */
+fun sillonColorScheme(dark: Boolean, accent: ThemeAccent = ThemeAccent.AMBER, pureBlack: Boolean = false): ColorScheme {
+    val base = if (dark) DarkColors else LightColors
+    val tones = accent.tones(dark)
+    val accented = if (accent == ThemeAccent.AMBER) base else base.copy(
+        primary = Color(tones.primary),
+        onPrimary = Color(tones.onPrimary),
+        primaryContainer = Color(tones.primaryContainer),
+        onPrimaryContainer = Color(tones.onPrimaryContainer),
+        inversePrimary = Color(accent.tones(!dark).primary),
+        surfaceTint = Color(tones.primary),
+    )
+    if (!(dark && pureBlack)) return accented
+    return accented.copy(
+        background = Color.Black,
+        surface = Color.Black,
+        surfaceContainerLowest = Color.Black,
+        surfaceContainerLow = Color(0xFF0E0C0A),
+        surfaceContainer = Color(0xFF141210),
+        surfaceContainerHigh = Color(0xFF1E1B18),
+        surfaceContainerHighest = Color(0xFF292521),
+    )
+}
+
 @Composable
-fun SillonTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun SillonTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: ThemeAccent = ThemeAccent.AMBER,
+    pureBlack: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = sillonColorScheme(darkTheme, accent, pureBlack),
         typography = SillonTypography,
         shapes = SillonShapes,
         content = content,

@@ -1,6 +1,16 @@
 package ovh.battistella.sillon.desktop.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,12 +38,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.plex.PlexDirectory
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.StreamQuality
+import ovh.battistella.sillon.data.settings.ThemeAccent
+import ovh.battistella.sillon.data.settings.ThemeMode
+import ovh.battistella.sillon.data.settings.ThemePreferences
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.update.UpdateState
@@ -48,6 +63,7 @@ fun SettingsScreen(app: AppState) {
     val loudness by settings.loudness.collectAsState(LoudnessMode.TRACK)
     val skipOneStar by settings.skipOneStar.collectAsState(true)
     val sleeveWear by settings.sleeveWear.collectAsState(true)
+    val theme by settings.theme.collectAsState(ThemePreferences())
     val autoUpdate by graph.prefs.autoUpdate.collectAsState(true)
     val update by graph.updater.state.collectAsState()
     val session by graph.repository.session.collectAsState(null)
@@ -81,6 +97,32 @@ fun SettingsScreen(app: AppState) {
         }
         Toggle(strings.settingsSkipOneStar, strings.settingsSkipOneStarHint, skipOneStar) { scope.launch { settings.setSkipOneStar(it) } }
         Header(strings.settingsAppearance)
+        Label(strings.settingsThemeMode)
+        ThemeMode.entries.forEach { mode ->
+            Choice(
+                selected = theme.mode == mode,
+                title = when (mode) {
+                    ThemeMode.SYSTEM -> strings.settingsThemeSystem
+                    ThemeMode.LIGHT -> strings.settingsThemeLight
+                    ThemeMode.DARK -> strings.settingsThemeDark
+                },
+            ) { scope.launch { settings.setThemeMode(mode) } }
+        }
+        Toggle(strings.settingsThemePureBlack, strings.settingsThemePureBlackHint, theme.pureBlack) {
+            scope.launch { settings.setPureBlack(it) }
+        }
+        Label(strings.settingsThemeAccent)
+        val dark = theme.isDark(isSystemInDarkTheme())
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+            ThemeAccent.entries.forEach { accent ->
+                AccentSwatch(
+                    color = Color(accent.tones(dark).primary),
+                    check = Color(accent.tones(dark).onPrimary),
+                    name = strings.accentName(accent),
+                    selected = theme.accent == accent,
+                ) { scope.launch { settings.setThemeAccent(accent) } }
+            }
+        }
         Toggle(strings.settingsSleeveWear, strings.settingsSleeveWearHint, sleeveWear) { scope.launch { settings.setSleeveWear(it) } }
         if (sections.size > 1) {
             Header(strings.settingsLibrary)
@@ -137,6 +179,26 @@ private fun Toggle(title: String, hint: String, checked: Boolean, onChange: (Boo
         }
         Spacer(Modifier.width(16.dp))
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun AccentSwatch(color: Color, check: Color, name: String, selected: Boolean, onClick: () -> Unit) {
+    val ring = if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(4.dp),
+    ) {
+        Box(
+            Modifier.size(40.dp).border(2.dp, ring, CircleShape).padding(4.dp).clip(CircleShape).background(color),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = check, modifier = Modifier.size(18.dp))
+        }
+        Text(name, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
