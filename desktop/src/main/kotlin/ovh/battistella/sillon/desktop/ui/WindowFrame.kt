@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -29,10 +30,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
+import ovh.battistella.sillon.desktop.platform.CaptionAreas
 
 class WindowFrame(
     val custom: Boolean,
@@ -41,6 +45,10 @@ class WindowFrame(
     val toggleMaximize: () -> Unit,
     val close: () -> Unit,
     val draggable: @Composable (Modifier, @Composable () -> Unit) -> Unit,
+    /** Where the drag areas are, for a native frame that moves the window itself. */
+    val captions: CaptionAreas = CaptionAreas(),
+    /** True once the operating system handles dragging, snapping and double-click on the drag areas. */
+    val isNative: () -> Boolean = { false },
 )
 
 val LocalWindowFrame = staticCompositionLocalOf<WindowFrame?> { null }
@@ -52,6 +60,16 @@ fun DragArea(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val frame = LocalWindowFrame.current
     if (frame == null || !frame.custom) {
         Box(modifier) { content() }
+        return
+    }
+    val owner = remember { Any() }
+    DisposableEffect(frame, owner) { onDispose { frame.captions.remove(owner) } }
+    val reported = modifier.onGloballyPositioned { coordinates ->
+        val bounds = coordinates.boundsInWindow()
+        frame.captions.put(owner, bounds.left.toInt(), bounds.top.toInt(), bounds.right.toInt(), bounds.bottom.toInt())
+    }
+    if (frame.isNative()) {
+        Box(reported) { content() }
         return
     }
     val maximizeOnDoubleClick = Modifier.pointerInput(frame) {
@@ -71,7 +89,7 @@ fun DragArea(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
             }
         }
     }
-    frame.draggable(modifier.then(maximizeOnDoubleClick), content)
+    frame.draggable(reported.then(maximizeOnDoubleClick), content)
 }
 
 @Composable
