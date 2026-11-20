@@ -59,6 +59,28 @@ class SettingsStore @Inject constructor(
         prefs.edit { it[WALLPAPER_COLORS] = value }
     }
 
+    /** Light or dark, accent, pure black and wallpaper colours: everything the theme page sets, in one read. */
+    val theme: Flow<ThemePreferences> = prefs.data.map { prefs ->
+        ThemePreferences(
+            mode = ThemeMode.entries.firstOrNull { it.name == prefs[THEME_MODE] } ?: ThemeMode.SYSTEM,
+            accent = ThemeAccent.entries.firstOrNull { it.name == prefs[THEME_ACCENT] } ?: ThemeAccent.AMBER,
+            pureBlack = prefs[PURE_BLACK] ?: false,
+            wallpaperColors = prefs[WALLPAPER_COLORS] ?: false,
+        )
+    }
+
+    suspend fun setThemeMode(value: ThemeMode) {
+        prefs.edit { it[THEME_MODE] = value.name }
+    }
+
+    suspend fun setThemeAccent(value: ThemeAccent) {
+        prefs.edit { it[THEME_ACCENT] = value.name }
+    }
+
+    suspend fun setPureBlack(value: Boolean) {
+        prefs.edit { it[PURE_BLACK] = value }
+    }
+
     val sleeveWear: Flow<Boolean> = prefs.data.map { it[SLEEVE_WEAR] ?: true }
 
     suspend fun setSleeveWear(value: Boolean) {
@@ -104,6 +126,9 @@ class SettingsStore @Inject constructor(
         val MOBILE_QUALITY = stringPreferencesKey("stream_quality_mobile")
         val LOUDNESS = stringPreferencesKey("loudness")
         val WALLPAPER_COLORS = booleanPreferencesKey("wallpaper_colors")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val THEME_ACCENT = stringPreferencesKey("theme_accent")
+        val PURE_BLACK = booleanPreferencesKey("pure_black")
         val SLEEVE_WEAR = booleanPreferencesKey("sleeve_wear")
         val LISTEN_BY_SIDE = booleanPreferencesKey("listen_by_side")
         val LISTENING_CACHE = booleanPreferencesKey("listening_cache")

@@ -76,8 +76,9 @@ go, with no ads, no tracking and no subscription.
 - 🔒 **Private.** No account but your server's, no analytics, no ads. Your
   server token never leaves the app.
 - 🎨 **A look of its own.** Vinyl blacks, sleeve cream and label amber, titles in
-  Fraunces, and a player tinted by the cover playing. Wallpaper colours
-  (Material You) are one switch away. See [DESIGN.md](DESIGN.md).
+  Fraunces, and a player tinted by the cover playing. Make it yours in
+  Settings → Theme: light or dark, pure black, six accent colours or your
+  wallpaper's (Material You). See [DESIGN.md](DESIGN.md).
 - 🌍 **Open source**, in English and French.
 
 ## Get it

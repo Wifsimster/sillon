@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -13,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import ovh.battistella.sillon.data.settings.ThemeAccent
+import ovh.battistella.sillon.data.settings.ThemePreferences
 
 object Brand {
     val Vinyl = Color(0xFF15120F)
@@ -88,19 +91,67 @@ private val SillonShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
+/**
+ * The brand's scheme with [accent] in the primary role and its tint in the secondary container,
+ * and black surfaces when [pureBlack] (dark only). Vinyl, sleeve and the rust secondary stay.
+ */
+fun sillonColorScheme(dark: Boolean, accent: ThemeAccent = ThemeAccent.AMBER, pureBlack: Boolean = false): ColorScheme {
+    val base = if (dark) DarkColors else LightColors
+    val tones = accent.tones(dark)
+    val inverse = accent.tones(!dark)
+    val accented = if (accent == ThemeAccent.AMBER) base else base.copy(
+        primary = Color(tones.primary),
+        onPrimary = Color(tones.onPrimary),
+        primaryContainer = Color(tones.primaryContainer),
+        onPrimaryContainer = Color(tones.onPrimaryContainer),
+        inversePrimary = Color(inverse.primary),
+        surfaceTint = Color(tones.primary),
+        // The rust containers (progress tracks, the Listen radio cards) clash with other accents:
+        // they take a soft tint of the accent instead. Rust itself stays the secondary colour.
+        secondaryContainer = Color(tones.primaryContainer),
+        onSecondaryContainer = Color(tones.onPrimaryContainer),
+    )
+    return if (dark && pureBlack) accented.blackened() else accented
+}
+
+/** Vinyl black becomes true black; the raised surfaces step down with it so cards still stand out. */
+private fun ColorScheme.blackened(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0E0C0A),
+    surfaceContainer = Color(0xFF141210),
+    surfaceContainerHigh = Color(0xFF1E1B18),
+    surfaceContainerHighest = Color(0xFF292521),
+)
+
 @Composable
 fun SillonTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     wallpaperColors: Boolean = false,
+    accent: ThemeAccent = ThemeAccent.AMBER,
+    pureBlack: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
         wallpaperColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            val dynamic = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (darkTheme && pureBlack) dynamic.blackened() else dynamic
         }
-        darkTheme -> DarkColors
-        else -> LightColors
+        else -> sillonColorScheme(darkTheme, accent, pureBlack)
     }
     MaterialTheme(colorScheme = colorScheme, typography = SillonTypography, shapes = SillonShapes, content = content)
+}
+
+/** The app's theme as chosen on the theme page. */
+@Composable
+fun SillonTheme(preferences: ThemePreferences, content: @Composable () -> Unit) {
+    SillonTheme(
+        darkTheme = preferences.isDark(isSystemInDarkTheme()),
+        wallpaperColors = preferences.wallpaperColors,
+        accent = preferences.accent,
+        pureBlack = preferences.pureBlack,
+        content = content,
+    )
 }

@@ -6,18 +6,22 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.activity.ServerActivityWatch
 import ovh.battistella.sillon.data.settings.SettingsStore
+import ovh.battistella.sillon.data.settings.ThemePreferences
 import javax.inject.Inject
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,8 +43,18 @@ class MainActivity : ComponentActivity() {
         maybeRequestNotificationPermission()
         if (savedInstanceState == null) openFrom(intent)
         setContent {
-            val wallpaperColors by settings.wallpaperColors.collectAsStateWithLifecycle(initialValue = false)
-            SillonTheme(wallpaperColors = wallpaperColors) {
+            val theme by settings.theme.collectAsStateWithLifecycle(initialValue = ThemePreferences())
+            val dark = theme.isDark(isSystemInDarkTheme())
+            // Light or dark can be forced on the theme page: the bar icons follow the app, not the system.
+            DisposableEffect(dark) {
+                val bars = SystemBarStyle.auto(
+                    android.graphics.Color.TRANSPARENT,
+                    android.graphics.Color.TRANSPARENT,
+                ) { dark }
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                onDispose {}
+            }
+            SillonTheme(theme) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     SillonRoot()
                 }

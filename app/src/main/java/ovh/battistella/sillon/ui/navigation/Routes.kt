@@ -16,6 +16,7 @@ object Routes {
     const val ALBUM = "album/{$ARG_KEY}"
     const val PLAYER = "player"
     const val SETTINGS = "settings"
+    const val THEME = "settings/theme"
     const val TOGETHER = "together"
     const val ACTIVITY = "activity"
     const val GENRES = "genres"
