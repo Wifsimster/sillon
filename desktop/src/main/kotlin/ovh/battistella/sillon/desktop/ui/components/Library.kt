@@ -56,8 +56,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ovh.battistella.sillon.data.sort.SortableTrack
+import ovh.battistella.sillon.data.sort.TrackOrder
+import ovh.battistella.sillon.data.sort.TrackSort
+import ovh.battistella.sillon.data.sort.next
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
-import java.text.Collator
 import kotlin.math.roundToInt
 
 data class TileUi(
@@ -69,15 +72,17 @@ data class TileUi(
 
 data class TrackUi(
     val key: String,
-    val number: Int?,
-    val title: String,
+    override val number: Int?,
+    override val title: String,
     val artist: String?,
-    val durationMs: Long?,
-    val popularity: Float? = null,
+    override val durationMs: Long?,
+    override val popularity: Float? = null,
     val rating: Float? = null,
     val stars: Int? = null,
-    val plays: Int? = null,
-)
+    override val plays: Int? = null,
+) : SortableTrack {
+    override val sortStars: Float? get() = stars?.toFloat()
+}
 
 @Composable
 fun TileGrid(
@@ -134,81 +139,6 @@ fun Tile(tile: TileUi, round: Boolean, modifier: Modifier = Modifier, wear: Wear
             )
         }
     }
-}
-
-enum class TrackSort(val descendingFirst: Boolean) {
-    NUMBER(false),
-    TITLE(false),
-    POPULARITY(true),
-    PLAYS(true),
-    STARS(true),
-    DURATION(false),
-}
-
-data class TrackOrder(val by: TrackSort, val descending: Boolean)
-
-fun TrackOrder.encode(): String = "${by.name}:${if (descending) "desc" else "asc"}"
-
-fun decodeTrackOrder(value: String?): TrackOrder? {
-    val (column, direction) = value?.split(':')?.takeIf { it.size == 2 } ?: return null
-    val by = TrackSort.entries.firstOrNull { it.name == column } ?: return null
-    return when (direction) {
-        "desc" -> TrackOrder(by, descending = true)
-        "asc" -> TrackOrder(by, descending = false)
-        else -> null
-    }
-}
-
-/** Next state when a column header is clicked: natural direction, then reversed, then back to the original order. */
-fun TrackOrder?.next(column: TrackSort): TrackOrder? = when {
-    this == null || by != column -> TrackOrder(column, column.descendingFirst)
-    descending == column.descendingFirst -> copy(descending = !descending)
-    else -> null
-}
-
-private val titleCollator: Collator = Collator.getInstance().apply { strength = Collator.PRIMARY }
-
-/** Sorts a copy of the list; tracks without a value for the column always come last. Ties keep their original order. */
-fun List<TrackUi>.sortedBy(order: TrackOrder?): List<TrackUi> {
-    if (order == null) return this
-    val values: Comparator<TrackUi> = when (order.by) {
-        TrackSort.NUMBER -> nullsLastBy { it.number }
-        TrackSort.TITLE -> Comparator { a, b -> titleCollator.compare(a.title, b.title) }
-        TrackSort.POPULARITY -> nullsLastBy { it.popularity }
-        TrackSort.PLAYS -> nullsLastBy { it.plays }
-        TrackSort.STARS -> nullsLastBy { it.stars?.takeIf { s -> s > 0 } }
-        TrackSort.DURATION -> nullsLastBy { it.durationMs }
-    }
-    val directed = if (order.descending) {
-        Comparator<TrackUi> { a, b ->
-            val missing = compareValues(a.isMissing(order.by), b.isMissing(order.by))
-            if (missing != 0) missing else values.compare(b, a)
-        }
-    } else {
-        values
-    }
-    return sortedWith(directed)
-}
-
-private fun <T : Comparable<T>> nullsLastBy(selector: (TrackUi) -> T?): Comparator<TrackUi> =
-    Comparator { a, b ->
-        val x = selector(a)
-        val y = selector(b)
-        when {
-            x == null && y == null -> 0
-            x == null -> 1
-            y == null -> -1
-            else -> x.compareTo(y)
-        }
-    }
-
-private fun TrackUi.isMissing(by: TrackSort): Boolean = when (by) {
-    TrackSort.NUMBER -> number == null
-    TrackSort.TITLE -> false
-    TrackSort.POPULARITY -> popularity == null
-    TrackSort.PLAYS -> plays == null
-    TrackSort.STARS -> (stars ?: 0) <= 0
-    TrackSort.DURATION -> durationMs == null
 }
 
 private val NumberWidth = 44.dp

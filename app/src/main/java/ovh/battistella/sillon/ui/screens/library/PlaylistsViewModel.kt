@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.download.DownloadManager
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
@@ -59,8 +60,11 @@ class PlaylistViewModel @Inject constructor(
     private val repository: PlexRepository,
     playback: PlaybackConnection,
     downloads: DownloadManager,
-) : TrackCollectionViewModel(repository, playback, downloads) {
+    settings: SettingsStore,
+) : TrackCollectionViewModel(repository, playback, downloads, settings) {
     private val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
+
+    override val sortList: String get() = "playlist_$key"
 
     init {
         start()
@@ -90,8 +94,11 @@ class FiveStarsViewModel @Inject constructor(
     private val repository: PlexRepository,
     playback: PlaybackConnection,
     downloads: DownloadManager,
+    settings: SettingsStore,
     @ApplicationContext private val context: Context,
-) : TrackCollectionViewModel(repository, playback, downloads) {
+) : TrackCollectionViewModel(repository, playback, downloads, settings) {
+    override val sortList: String get() = "five_stars"
+
     init {
         start()
     }

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Share
@@ -44,12 +45,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.alpha
 import ovh.battistella.sillon.data.rating.RatingBook
 import ovh.battistella.sillon.data.rating.Stars
+import ovh.battistella.sillon.data.sort.TrackOrder
+import ovh.battistella.sillon.data.sort.sortedBy
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +66,8 @@ import ovh.battistella.sillon.ui.screens.queue.TrackQueueMenu
 import ovh.battistella.sillon.ui.screens.queue.rememberQueueTracks
 import ovh.battistella.sillon.playback.Side
 import ovh.battistella.sillon.ui.components.Artwork
+import ovh.battistella.sillon.ui.components.IconTooltip
+import ovh.battistella.sillon.ui.components.TrackSortAction
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.PopularityBars
@@ -106,8 +112,11 @@ fun AlbumUi.shareSource(key: String?) = ShareSource(
 
 @Composable
 fun ShareCardAction(onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share_card))
+    val label = stringResource(R.string.share_card)
+    IconTooltip(label) {
+        IconButton(onClick = onClick) {
+            Icon(Icons.Rounded.Share, contentDescription = label)
+        }
     }
 }
 
@@ -128,6 +137,7 @@ fun TrackCollectionRoute(
     val queueTracks = rememberQueueTracks()
     val ratings by viewModel.ratings.collectAsStateWithLifecycle()
     val skipOneStar by viewModel.skipOneStar.collectAsStateWithLifecycle()
+    val order by viewModel.order.collectAsStateWithLifecycle()
     TrackCollectionScreen(
         state = state,
         nowPlayingKey = nowPlaying.currentKey,
@@ -154,6 +164,8 @@ fun TrackCollectionRoute(
             }
         },
         onQueueTrack = { key, place -> queueTracks(place) { viewModel.queueable(key) } },
+        order = order,
+        onOrder = viewModel::setOrder,
     )
 }
 
@@ -166,15 +178,21 @@ fun DownloadAction(status: DownloadStatus, onDownload: () -> Unit, onRemove: () 
                 modifier = Modifier.size(24.dp),
             )
         }
-        status.isComplete -> IconButton(onClick = onRemove) {
-            Icon(
-                Icons.Rounded.DownloadDone,
-                contentDescription = stringResource(R.string.download_remove),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+        status.isComplete -> {
+            val label = stringResource(R.string.download_remove)
+            IconTooltip(label) {
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Rounded.DownloadDone, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
-        else -> IconButton(onClick = onDownload) {
-            Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.download))
+        else -> {
+            val label = stringResource(R.string.download)
+            IconTooltip(label) {
+                IconButton(onClick = onDownload) {
+                    Icon(Icons.Rounded.Download, contentDescription = label)
+                }
+            }
         }
     }
 }
@@ -198,15 +216,31 @@ fun TrackCollectionScreen(
     onQueueTrack: ((String, QueuePlace) -> Unit)? = null,
     record: Boolean = false,
     playing: Boolean = false,
+    order: TrackOrder? = null,
+    onOrder: ((TrackOrder?) -> Unit)? = null,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {},
-                actions = actions,
+                actions = {
+                    val tracks = (state as? Load.Ready)?.value?.tracks.orEmpty()
+                    if (onOrder != null && tracks.size > 1) {
+                        TrackSortAction(
+                            order = order,
+                            onOrder = onOrder,
+                            showPopularity = tracks.any { it.popularity != null },
+                            showPlays = tracks.any { it.plays != null },
+                        )
+                    }
+                    actions()
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
+                    val back = stringResource(R.string.action_back)
+                    IconTooltip(back) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, back)
+                        }
                     }
                 },
             )
@@ -217,7 +251,8 @@ fun TrackCollectionScreen(
                 modifier = Modifier.padding(top = padding.calculateTopPadding()),
                 contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + 16.dp),
             ) {
-                val sideToggle = onListenBySideChange?.takeIf { album.sides.isNotEmpty() }
+                // Sides follow the album's own order, so they step aside while the list is sorted.
+                val sideToggle = onListenBySideChange?.takeIf { album.sides.isNotEmpty() && order == null }
                 item {
                     val spinning = record && playing && album.tracks.any { it.key == nowPlayingKey }
                     AlbumHeader(album, wear, record, spinning, onPlay = { onPlay(null) }, onShuffle = onShuffle) {
@@ -229,16 +264,19 @@ fun TrackCollectionScreen(
                 } else {
                     emptyMap()
                 }
-                album.tracks.forEach { track ->
+                val shown = album.tracks
+                    .map { it.copy(stars = ratings.ratingOf(it.key, it.stars?.times(2f))?.div(2f)) }
+                    .sortedBy(order)
+                shown.forEach { track ->
                     sideStarts[track.key]?.let { side ->
                         item(key = "side-${side.label}") { SideHeader(side) }
                     }
                     item(key = track.key) {
-                        val rating = ratings.ratingOf(track.key, track.stars?.times(2f))
+                        val rating = track.stars?.times(2f)
                         val oneStar = Stars.isOneStar(rating)
                         val row: @Composable (openMenu: (() -> Unit)?) -> Unit = { openMenu ->
                             TrackRow(
-                                track.copy(stars = rating?.div(2f)),
+                                track,
                                 playing = nowPlayingKey == track.key,
                                 onClick = { onPlay(track.key) },
                                 muted = oneStar,
@@ -299,6 +337,7 @@ fun TrackRow(
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                track.plays?.takeIf { it > 0 }?.let { PlayCount(it, Modifier.padding(end = 12.dp)) }
                 if (popularity != null) PopularityBars(popularity, Modifier.padding(end = 12.dp))
                 track.durationMs?.let { Text(formatDuration(it), style = MaterialTheme.typography.bodySmall) }
             }
@@ -316,6 +355,21 @@ fun TrackRow(
 }
 
 private const val MUTED_ALPHA = 0.45f
+
+/** How many times the track was played, as a small headphones badge. */
+@Composable
+private fun PlayCount(plays: Int, modifier: Modifier = Modifier) {
+    val label = pluralStringResource(R.plurals.track_plays, plays, plays)
+    Row(modifier.semantics(mergeDescendants = true) { contentDescription = label }, verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Rounded.Headphones,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(12.dp).padding(end = 2.dp),
+        )
+        Text(plays.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
 
 @Composable
 private fun ListenBySideChip(selected: Boolean, onChange: (Boolean) -> Unit) {

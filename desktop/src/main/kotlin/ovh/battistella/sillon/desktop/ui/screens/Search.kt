@@ -38,6 +38,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
+import ovh.battistella.sillon.data.sort.decodeTrackOrder
+import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.Screen
@@ -48,9 +50,6 @@ import ovh.battistella.sillon.desktop.ui.components.Tile
 import ovh.battistella.sillon.desktop.ui.components.TileUi
 import ovh.battistella.sillon.desktop.ui.components.TrackListHeader
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
-import ovh.battistella.sillon.desktop.ui.components.decodeTrackOrder
-import ovh.battistella.sillon.desktop.ui.components.encode
-import ovh.battistella.sillon.desktop.ui.components.sortedBy
 import ovh.battistella.sillon.desktop.ui.components.Wear
 
 @Composable
@@ -65,7 +64,7 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     val now by app.graph.playback.state.collectAsState()
     val ratings by app.graph.playback.ratings.collectAsState()
-    val trackOrder by remember { app.graph.prefs.trackSort(SEARCH_SORT).map(::decodeTrackOrder) }.collectAsState(null)
+    val trackOrder by remember { app.graph.settings.trackSort(SEARCH_SORT).map(::decodeTrackOrder) }.collectAsState(null)
     val saving = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -122,7 +121,7 @@ fun SearchScreen(app: AppState, entry: StackEntry) {
                         item {
                             TrackListHeader(
                                 order = trackOrder,
-                                onOrder = { next -> saving.launch { app.graph.prefs.setTrackSort(SEARCH_SORT, next?.encode()) } },
+                                onOrder = { next -> saving.launch { app.graph.settings.setTrackSort(SEARCH_SORT, next?.encode()) } },
                                 showPopularity = showPopularity,
                                 showPlays = showPlays,
                                 modifier = Modifier.padding(horizontal = 16.dp),

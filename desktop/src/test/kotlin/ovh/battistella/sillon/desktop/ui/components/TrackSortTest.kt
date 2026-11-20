@@ -3,6 +3,12 @@ package ovh.battistella.sillon.desktop.ui.components
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import ovh.battistella.sillon.data.sort.TrackOrder
+import ovh.battistella.sillon.data.sort.TrackSort
+import ovh.battistella.sillon.data.sort.decodeTrackOrder
+import ovh.battistella.sillon.data.sort.next
+import ovh.battistella.sillon.data.sort.sortedBy
+import ovh.battistella.sillon.data.sort.toggle
 
 class TrackSortTest {
     private fun track(key: String, stars: Int? = null, plays: Int? = null, title: String = key, number: Int? = null) =
@@ -66,5 +72,13 @@ class TrackSortTest {
         assertNull(decodeTrackOrder("STARS"))
         assertNull(decodeTrackOrder("GONE:desc"))
         assertNull(decodeTrackOrder("STARS:sideways"))
+    }
+
+    @Test
+    fun `menu pick keeps reversing instead of switching off`() {
+        val first = null.toggle(TrackSort.PLAYS)
+        assertEquals(TrackOrder(TrackSort.PLAYS, descending = true), first)
+        assertEquals(TrackOrder(TrackSort.PLAYS, descending = false), first.toggle(TrackSort.PLAYS))
+        assertEquals(TrackOrder(TrackSort.PLAYS, descending = true), first.toggle(TrackSort.PLAYS).toggle(TrackSort.PLAYS))
     }
 }

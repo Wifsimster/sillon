@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.data.sort.decodeTrackOrder
+import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.Screen
@@ -51,10 +53,7 @@ import ovh.battistella.sillon.desktop.ui.components.TrackListHeader
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
 import ovh.battistella.sillon.desktop.ui.components.TrackUi
 import ovh.battistella.sillon.desktop.ui.components.Wear
-import ovh.battistella.sillon.desktop.ui.components.decodeTrackOrder
-import ovh.battistella.sillon.desktop.ui.components.encode
 import ovh.battistella.sillon.desktop.ui.components.formatDuration
-import ovh.battistella.sillon.desktop.ui.components.sortedBy
 
 @Composable
 fun SectionGridScreen(app: AppState, entry: StackEntry, artists: Boolean) {
@@ -149,7 +148,7 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
     val ratings by app.graph.playback.ratings.collectAsState()
     val skipOneStar by app.graph.settings.skipOneStar.collectAsState(true)
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
-    val prefs = app.graph.prefs
+    val prefs = app.graph.settings
     val listId = "${kind.name.lowercase()}_$key"
     val order by remember(listId) { prefs.trackSort(listId).map(::decodeTrackOrder) }.collectAsState(null)
     val saving = rememberCoroutineScope()

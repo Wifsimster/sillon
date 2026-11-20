@@ -377,4 +377,18 @@
     <string name="activity_channel">Server activity</string>
     <string name="activity_notification_listening">%1$s is listening</string>
     <string name="activity_notification_watching">%1$s is watching</string>
+    <string name="sort">Sort</string>
+    <string name="sort_original">Original order</string>
+    <string name="sort_title">Title</string>
+    <string name="sort_popularity">Popularity</string>
+    <string name="sort_plays">Plays</string>
+    <string name="sort_rating">Rating</string>
+    <string name="sort_duration">Duration</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+    <plurals name="track_plays">
+        <item quantity="one">Played once</item>
+        <item quantity="other">Played %d times</item>
+    </plurals>
+    <string name="track_never_played">Never played</string>
 </resources>
