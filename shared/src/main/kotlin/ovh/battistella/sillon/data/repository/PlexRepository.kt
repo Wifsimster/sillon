@@ -473,7 +473,7 @@ class PlexRepository @Inject constructor(
     suspend fun playlists(): List<PlexMetadata> = onServer(
         plex = { clientId, server -> api.playlists(clientId, server) },
         jellyfin = { deviceId, server -> jellyfin.playlists(server, deviceId) },
-    )
+    ).byLatestListen()
 
     suspend fun playlistItems(ratingKey: String): List<PlexMetadata> = onServer(
         plex = { clientId, server -> api.playlistItems(clientId, server, ratingKey) },

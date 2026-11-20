@@ -122,6 +122,7 @@ class JellyfinApi(
         items(
             server, deviceId, "Items",
             "includeItemTypes" to "Playlist", "recursive" to "true", "sortBy" to "SortName", "fields" to "ChildCount",
+            "enableUserData" to "true",
         ).filter { it.mediaType == null || it.mediaType == "Audio" }.map { it.toMetadata() }
 
     suspend fun playlistItems(server: ServerEndpoint, deviceId: String, playlistId: String): List<PlexMetadata> =
