@@ -31,6 +31,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,7 +46,11 @@ import ovh.battistella.sillon.desktop.ui.components.Cover
 import ovh.battistella.sillon.desktop.ui.components.LoadContent
 import ovh.battistella.sillon.desktop.ui.components.Message
 import ovh.battistella.sillon.desktop.ui.components.TileGrid
+import ovh.battistella.sillon.desktop.ui.components.TrackListHeader
+import ovh.battistella.sillon.desktop.ui.components.TrackOrder
 import ovh.battistella.sillon.desktop.ui.components.TrackRow
+import ovh.battistella.sillon.desktop.ui.components.TrackUi
+import ovh.battistella.sillon.desktop.ui.components.sortedBy
 import ovh.battistella.sillon.desktop.ui.components.Wear
 import ovh.battistella.sillon.desktop.ui.components.formatDuration
 
@@ -140,7 +147,13 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
     val ratings by app.graph.playback.ratings.collectAsState()
     val skipOneStar by app.graph.settings.skipOneStar.collectAsState(true)
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
+    var order by remember(key) { mutableStateOf<TrackOrder?>(null) }
     LoadContent(state, model::load) { ui ->
+        val rated = ui.tracks.map { it.copy(stars = ratings.book.starsOf(it.key, it.rating)) }
+        val shown = remember(rated, order) { rated.sortedBy(order) }
+        val playOrder = order?.let { shown.map(TrackUi::key) }
+        val showPopularity = ui.tracks.any { it.popularity != null }
+        val showPlays = ui.tracks.any { it.plays != null }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp)) {
             item {
                 Row(Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalAlignment = Alignment.Bottom) {
@@ -165,7 +178,7 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
                         )
                         Spacer(Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = { model.play(null) }, enabled = ui.tracks.isNotEmpty()) {
+                            Button(onClick = { model.play(null, playOrder) }, enabled = ui.tracks.isNotEmpty()) {
                                 Icon(Icons.Filled.PlayArrow, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(strings.play)
@@ -182,15 +195,27 @@ fun CollectionScreen(app: AppState, entry: StackEntry, kind: CollectionKind, key
             }
             if (ui.tracks.isEmpty()) {
                 item { Text(strings.libraryEmpty, Modifier.padding(16.dp)) }
+            } else {
+                item {
+                    TrackListHeader(
+                        order = order,
+                        onOrder = { order = it },
+                        showPopularity = showPopularity,
+                        showPlays = showPlays,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
             }
-            itemsIndexed(ui.tracks, key = { index, track -> "$index-${track.key}" }) { _, track ->
+            itemsIndexed(shown, key = { index, track -> "$index-${track.key}" }) { _, track ->
                 TrackRow(
-                    track = track.copy(stars = ratings.book.starsOf(track.key, track.rating)),
+                    track = track,
                     playing = now.current?.ratingKey == track.key,
                     skipped = skipOneStar && ratings.book.isOneStar(track.key, track.rating),
-                    onPlay = { model.play(track.key) },
+                    onPlay = { model.play(track.key, playOrder) },
                     onPlayNext = { model.playNext(track.key) },
                     onAddToQueue = { model.addToQueue(track.key) },
+                    showPopularity = showPopularity,
+                    showPlays = showPlays,
                 )
             }
         }
