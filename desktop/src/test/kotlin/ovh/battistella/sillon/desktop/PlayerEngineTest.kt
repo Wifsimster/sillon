@@ -34,6 +34,7 @@ class PlayerEngineTest {
     private val transitions = CopyOnWriteArrayList<Transition>()
     private val skipped = mutableSetOf<String>()
     private val seenAtTransition = CopyOnWriteArrayList<String?>()
+    private val failed = CopyOnWriteArrayList<String>()
 
     @Before
     fun setUp() {
@@ -44,6 +45,10 @@ class PlayerEngineTest {
                 override fun onTransition(transition: Transition) {
                     seenAtTransition.add(engine.state.value.current?.ratingKey)
                     transitions.add(transition)
+                }
+
+                override fun onFailed(track: PlayableTrack) {
+                    failed.add(track.ratingKey)
                 }
             },
             skip = { it.ratingKey in skipped },
@@ -125,7 +130,8 @@ class PlayerEngineTest {
         await("restart of c") { it.index == 2 && it.positionMs < 1_500 }
         engine.previous()
         await("back to b") { it.index == 1 }
-        assertFalse(transitions.any { it.automatic })
+        val seen = transitions.joinToString { "${it.previous?.ratingKey}@${it.previousPositionMs}->${it.current?.ratingKey} auto=${it.automatic}" }
+        assertFalse("failed=$failed transitions=[$seen]", transitions.any { it.automatic })
     }
 
     @Test
