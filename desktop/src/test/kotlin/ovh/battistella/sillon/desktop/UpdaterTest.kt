@@ -207,6 +207,25 @@ class UpdaterTest {
     }
 
     @Test
+    fun `the installer's log outlives the first start of the version it installed`() = runBlocking {
+        val before = updater("1.26.0")
+        before.check(manual = false)
+        assertTrue(before.install())
+        val log = File(work, "install.log")
+        log.writeText("Installation success or error status: 0.")
+        prefs.setLastSeenVersion("1.26.0")
+        val after = updater("1.27.0")
+        after.start()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (prefs.lastSeenVersion() != "1.27.0" && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        Thread.sleep(300)
+        assertEquals("1.27.0", prefs.lastSeenVersion())
+        assertEquals(listOf("install.log"), work.list().orEmpty().toList())
+        assertEquals("Installation success or error status: 0.", log.readText())
+        assertTrue(dir.list().orEmpty().none { it.endsWith(".msi") })
+    }
+
+    @Test
     fun `a release whose installer is not published yet is waited for, quietly`() = runBlocking {
         withInstaller = false
         val updater = updater("1.26.0")

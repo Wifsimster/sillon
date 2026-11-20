@@ -61,8 +61,10 @@ class UpdateInstaller(
         return update to installer
     }
 
+    // The copied installer and the script go; Windows Installer's log stays, so a failed or
+    // finished update can still be read after Sillon restarts. The next run() replaces it.
     fun forget() {
-        runCatching { workDir.deleteRecursively() }
+        workDir.listFiles()?.filter { it.name != LOG }?.forEach { runCatching { it.deleteRecursively() } }
         dir.listFiles()?.filter { it.name.endsWith(".msi") || it.name.endsWith(".part") || it.name.endsWith(".cmd") || it == marker }
             ?.forEach { it.delete() }
     }
@@ -86,7 +88,7 @@ class UpdateInstaller(
             val script = File(workDir, "update.cmd")
             val paths = listOf(copy.absolutePath, script.absolutePath)
             check(paths.none { it.contains('"') || it.contains('%') || it.contains('&') })
-            script.writeText(installScript(copy, File(workDir, "install.log"), executable()), Charsets.UTF_8)
+            script.writeText(installScript(copy, File(workDir, LOG), executable()), Charsets.UTF_8)
             launch(listOf("cmd.exe", "/c", script.absolutePath), workDir)
             update.version
         }.getOrNull()
@@ -94,6 +96,7 @@ class UpdateInstaller(
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
+        const val LOG = "install.log"
 
         fun isWindows(): Boolean = System.getProperty("os.name").orEmpty().lowercase().contains("win")
 
