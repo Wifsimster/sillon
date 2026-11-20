@@ -270,9 +270,10 @@ private fun AccentSwatches(
     onSelect: (ThemeAccent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Six 44 dp swatches spread across the row: one line down to 360 dp wide phones.
     FlowRow(
         modifier = modifier.fillMaxWidth().selectableGroup().alpha(if (enabled) 1f else 0.38f),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         ThemeAccent.entries.forEach { accent ->
@@ -296,7 +297,7 @@ private fun AccentSwatches(
             ) {
                 Box(
                     Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .border(2.dp, ring, CircleShape)
                         .padding(4.dp)
                         .clip(CircleShape)
@@ -308,7 +309,7 @@ private fun AccentSwatches(
                             Icons.Rounded.Check,
                             contentDescription = null,
                             tint = Color(accent.tones(dark).onPrimary),
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
