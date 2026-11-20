@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
 internal interface User32Extra : StdCallLibrary {
     fun IsZoomed(window: WinDef.HWND): Boolean
     fun GetDpiForWindow(window: WinDef.HWND): Int
-    fun DefWindowProcW(window: WinDef.HWND, message: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT
+    fun ScreenToClient(window: WinDef.HWND, point: WinDef.POINT): Boolean
 }
 
 /**
@@ -20,7 +20,9 @@ internal interface User32Extra : StdCallLibrary {
  * leaves it out of Snap (Win + arrows, dragging to a screen edge). This puts the
  * standard frame styles back and subclasses the window procedure so the frame
  * takes no room, which keeps the app-drawn title bar while Windows treats the
- * window as a normal resizable, snappable one.
+ * window as a normal resizable, snappable one. The app's [CaptionAreas] are
+ * reported as the native caption, so Windows runs the drag itself: edge snapping,
+ * Snap Layouts and double-click to maximize come with it.
  */
 object WindowsFrame {
     private const val GWL_STYLE = -16
@@ -39,6 +41,7 @@ object WindowsFrame {
     private const val WM_NCACTIVATE = 0x0086
 
     private const val HTCLIENT = 1
+    private const val HTCAPTION = 2
     private const val HTLEFT = 10
     private const val HTRIGHT = 11
     private const val HTTOP = 12
@@ -68,14 +71,16 @@ object WindowsFrame {
     /** Keeps each window procedure reachable so the GC cannot free a callback Windows still calls. */
     private val procedures = ConcurrentHashMap<Long, WinUser.WindowProc>()
 
-    fun install(windowHandle: Long) {
-        if (!isWindows || windowHandle == 0L || procedures.containsKey(windowHandle)) return
-        val api = extra ?: return
-        runCatching {
+    /** True once Windows runs the frame: resizing, Snap and dragging by the [captions]. */
+    fun install(windowHandle: Long, captions: CaptionAreas): Boolean {
+        if (!isWindows || windowHandle == 0L) return false
+        if (procedures.containsKey(windowHandle)) return true
+        val api = extra ?: return false
+        return runCatching {
             val user32 = User32.INSTANCE
             val hwnd = WinDef.HWND(Pointer(windowHandle))
             val original = Pointer(user32.GetWindowLongPtr(hwnd, GWLP_WNDPROC).toLong())
-            val procedure = FrameProcedure(api, original)
+            val procedure = FrameProcedure(api, original, captions)
             procedures[windowHandle] = procedure
             user32.SetWindowLongPtr(hwnd, GWLP_WNDPROC, CallbackReference.getFunctionPointer(procedure))
             val style = user32.GetWindowLongPtr(hwnd, GWL_STYLE).toLong().toInt()
@@ -84,7 +89,8 @@ object WindowsFrame {
                 hwnd, null, 0, 0, 0, 0,
                 SWP_NOSIZE or SWP_NOMOVE or SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED or SWP_ASYNCWINDOWPOS,
             )
-        }
+            true
+        }.getOrDefault(false)
     }
 
     /** Which resize edge, if any, a point in window coordinates sits on. */
@@ -106,7 +112,11 @@ object WindowsFrame {
         }
     }
 
-    private class FrameProcedure(private val api: User32Extra, private val original: Pointer) : WinUser.WindowProc {
+    private class FrameProcedure(
+        private val api: User32Extra,
+        private val original: Pointer,
+        private val captions: CaptionAreas,
+    ) : WinUser.WindowProc {
         override fun callback(hwnd: WinDef.HWND, message: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT =
             try {
                 when (message) {
@@ -142,15 +152,22 @@ object WindowsFrame {
 
         private fun hitTest(hwnd: WinDef.HWND, message: Int, wParam: WinDef.WPARAM, lParam: WinDef.LPARAM): WinDef.LRESULT {
             val inner = forward(hwnd, message, wParam, lParam)
-            if (inner.toInt() != HTCLIENT || api.IsZoomed(hwnd)) return inner
-            val bounds = WinDef.RECT()
-            if (!User32.INSTANCE.GetWindowRect(hwnd, bounds)) return inner
+            if (inner.toInt() != HTCLIENT) return inner
             val raw = lParam.toLong()
-            val x = (raw and 0xFFFF).toShort().toInt() - bounds.left
-            val y = ((raw shr 16) and 0xFFFF).toShort().toInt() - bounds.top
-            val dpi = runCatching { api.GetDpiForWindow(hwnd) }.getOrDefault(DEFAULT_DPI).takeIf { it > 0 } ?: DEFAULT_DPI
-            val border = RESIZE_BORDER_DP * dpi / DEFAULT_DPI
-            return WinDef.LRESULT(edgeAt(x, y, bounds.right - bounds.left, bounds.bottom - bounds.top, border).toLong())
+            val screenX = (raw and 0xFFFF).toShort().toInt()
+            val screenY = ((raw shr 16) and 0xFFFF).toShort().toInt()
+            if (!api.IsZoomed(hwnd)) {
+                val bounds = WinDef.RECT()
+                if (User32.INSTANCE.GetWindowRect(hwnd, bounds)) {
+                    val dpi = runCatching { api.GetDpiForWindow(hwnd) }.getOrDefault(DEFAULT_DPI).takeIf { it > 0 } ?: DEFAULT_DPI
+                    val border = RESIZE_BORDER_DP * dpi / DEFAULT_DPI
+                    val edge = edgeAt(screenX - bounds.left, screenY - bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top, border)
+                    if (edge != HTCLIENT) return WinDef.LRESULT(edge.toLong())
+                }
+            }
+            val point = WinDef.POINT(screenX, screenY)
+            if (api.ScreenToClient(hwnd, point) && captions.contains(point.x, point.y)) return WinDef.LRESULT(HTCAPTION.toLong())
+            return inner
         }
     }
 }

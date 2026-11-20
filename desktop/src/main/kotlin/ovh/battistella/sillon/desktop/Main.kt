@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -100,6 +101,7 @@ fun main(args: Array<String>) {
             onPreviewKeyEvent = { handleShortcut(it, app) },
         ) {
             window.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT)
+            val nativeFrame = remember(window) { mutableStateOf(false) }
             val frame = remember(window) {
                 WindowFrame(
                     custom = customFrame,
@@ -109,17 +111,22 @@ fun main(args: Array<String>) {
                         if (windowState.placement == WindowPlacement.Maximized) {
                             windowState.placement = WindowPlacement.Floating
                         } else {
-                            window.maximizedBounds = WindowChrome.workArea(window)
+                            if (!nativeFrame.value) window.maximizedBounds = WindowChrome.workArea(window)
                             windowState.placement = WindowPlacement.Maximized
                         }
                     },
                     close = close,
                     draggable = { modifier, content -> WindowDraggableArea(modifier) { content() } },
+                    isNative = { nativeFrame.value },
                 )
             }
-            if (customFrame) window.maximizedBounds = WindowChrome.workArea(window)
+            if (customFrame && !nativeFrame.value) window.maximizedBounds = WindowChrome.workArea(window)
             LaunchedEffect(window) {
-                if (customFrame) WindowsFrame.install(window.windowHandle)
+                if (customFrame && WindowsFrame.install(window.windowHandle, frame.captions)) {
+                    // Windows sizes a maximized window itself; the frame clamps it to the work area.
+                    window.maximizedBounds = null
+                    nativeFrame.value = true
+                }
             }
             CompositionLocalProvider(LocalStrings provides strings, LocalWindowFrame provides frame) {
                 SillonTheme {
