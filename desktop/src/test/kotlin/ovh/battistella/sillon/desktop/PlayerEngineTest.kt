@@ -34,6 +34,7 @@ class PlayerEngineTest {
     private val transitions = CopyOnWriteArrayList<Transition>()
     private val skipped = mutableSetOf<String>()
     private val seenAtTransition = CopyOnWriteArrayList<String?>()
+    private val failed = CopyOnWriteArrayList<String>()
 
     @Before
     fun setUp() {
@@ -44,6 +45,10 @@ class PlayerEngineTest {
                 override fun onTransition(transition: Transition) {
                     seenAtTransition.add(engine.state.value.current?.ratingKey)
                     transitions.add(transition)
+                }
+
+                override fun onFailed(track: PlayableTrack) {
+                    failed.add(track.ratingKey)
                 }
             },
             skip = { it.ratingKey in skipped },
@@ -125,7 +130,28 @@ class PlayerEngineTest {
         await("restart of c") { it.index == 2 && it.positionMs < 1_500 }
         engine.previous()
         await("back to b") { it.index == 1 }
-        assertFalse(transitions.any { it.automatic })
+        assertFalse("failed=$failed " + transitions.joinToString { "${it.previous?.ratingKey}@${it.previousPositionMs}->${it.current?.ratingKey} auto=${it.automatic}" }, transitions.any { it.automatic })
+    }
+
+    @Test
+    fun repeatJumps() {
+        repeat(25) { n ->
+            transitions.clear()
+            failed.clear()
+            engine.play(listOf(track("a$n", 8.0), track("b$n", 8.0), track("c$n", 8.0)))
+            await("a") { it.playing && it.index == 0 }
+            engine.next()
+            await("b") { it.playing && it.index == 1 }
+            engine.jumpTo(2)
+            await("c") { it.playing && it.index == 2 }
+            engine.seekTo(5_000)
+            await("seeked") { it.positionMs in 4_900..6_500 }
+            engine.previous()
+            await("restart of c") { it.index == 2 && it.positionMs < 1_500 }
+            engine.previous()
+            await("back to b") { it.index == 1 }
+            assertFalse("run $n: failed=$failed " + transitions.joinToString { "${it.previous?.ratingKey}@${it.previousPositionMs}->${it.current?.ratingKey} auto=${it.automatic}" }, transitions.any { it.automatic })
+        }
     }
 
     @Test
