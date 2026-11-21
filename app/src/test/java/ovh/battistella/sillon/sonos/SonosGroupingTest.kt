@@ -33,7 +33,7 @@ class SonosGroupingTest {
     }
 
     @Test
-    fun `three lone rooms picked: two join the first`() {
+    fun `three lone rooms picked, two join the first`() {
         val plan = SonosGrouping.plan(listOf(chambre, cuisine, salon), alone, chambre)
         assertTrue(plan.leave.isEmpty())
         assertEquals(listOf(cuisine, salon), plan.join)
