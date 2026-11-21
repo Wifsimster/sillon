@@ -357,11 +357,13 @@
     <string name="output_phone">Ce téléphone</string>
     <string name="output_selected">Sélectionné</string>
     <string name="output_not_selected">Non sélectionné</string>
-    <plurals name="output_rooms">
-        <item quantity="one">Sonos · %1$d pièce</item>
-        <item quantity="many">Sonos · %1$d pièces</item>
-        <item quantity="other">Sonos · %1$d pièces</item>
+    <plurals name="output_play_rooms">
+        <item quantity="one">Lire sur %1$d enceinte</item>
+        <item quantity="many">Lire sur %1$d enceintes</item>
+        <item quantity="other">Lire sur %1$d enceintes</item>
     </plurals>
+    <string name="output_pick_hint">Coche une ou plusieurs enceintes : elles joueront ensemble.</string>
+    <string name="output_room_playing">En lecture ici</string>
     <string name="output_playing_on">Lecture sur %1$s</string>
     <string name="output_connecting">Envoi de la file vers %1$s…</string>
     <string name="output_connecting_short">Connexion…</string>

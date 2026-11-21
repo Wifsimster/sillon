@@ -34,6 +34,45 @@ class SonosHandover(
         private set
     private var access: SonosAccess? = null
 
+    /**
+     * Plays on the picked [rooms] together: Sonos groups them around one leader, then the queue goes
+     * to it. Rooms joining or leaving around the speaker already playing don't move the music.
+     */
+    suspend fun playOn(rooms: List<SonosZone>) {
+        if (rooms.isEmpty()) return
+        if (togetherActive()) return tell(OutputNotice.TOGETHER_ON_PHONE)
+        val current = player
+        val topology = topology(current?.group?.coordinator ?: rooms.first())
+        val leader = SonosGrouping.leader(rooms, topology, current?.group?.coordinator)
+        val plan = SonosGrouping.plan(rooms, topology, leader)
+        if (current != null && current.group.coordinator.uuid == leader.uuid) {
+            if (plan.isEmpty && current.group.members.map { it.uuid }.toSet() == rooms.map { it.uuid }.toSet()) return
+            if (!regroup(plan)) return tell(OutputNotice.FAILED)
+            val group = SonosGrouping.formed(rooms, topology(leader), leader)
+            current.group = group
+            show(Output.OnSonos(group))
+            return
+        }
+        val asked = SonosGrouping.formed(rooms, emptyList(), leader)
+        if (!plan.isEmpty) {
+            show(Output.Connecting(asked))
+            if (!regroup(plan)) {
+                show(current?.let { Output.OnSonos(it.group) } ?: Output.Phone)
+                return tell(OutputNotice.FAILED)
+            }
+        }
+        playOn(SonosGrouping.formed(rooms, if (plan.isEmpty) topology else topology(leader), leader))
+    }
+
+    private suspend fun topology(from: SonosZone): List<SonosGroup> = runCatching {
+        ZoneGroups.parse(client.call(from.baseUrl, AvTransport.zoneGroupState())["ZoneGroupState"].orEmpty())
+    }.onFailure { Log.w(TAG, "topology failed: ${it.message}") }.getOrDefault(emptyList())
+
+    private suspend fun regroup(plan: GroupPlan): Boolean = runCatching {
+        plan.leave.forEach { client.call(it.baseUrl, AvTransport.leaveGroup()) }
+        plan.join.forEach { client.call(it.baseUrl, AvTransport.joinGroup(plan.leader.uuid)) }
+    }.onFailure { Log.w(TAG, "grouping failed: ${it.message}") }.isSuccess
+
     /** Hands the queue to [group]: the speaker fetches the tracks from the server itself. */
     suspend fun playOn(group: SonosGroup) {
         val current = player

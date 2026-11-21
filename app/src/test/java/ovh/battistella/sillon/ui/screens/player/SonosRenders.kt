@@ -23,6 +23,7 @@ import org.robolectric.annotation.GraphicsMode
 import ovh.battistella.sillon.sonos.Output
 import ovh.battistella.sillon.sonos.OutputNotice
 import ovh.battistella.sillon.sonos.SonosGroup
+import ovh.battistella.sillon.sonos.SonosGrouping
 import ovh.battistella.sillon.sonos.SonosZone
 import ovh.battistella.sillon.ui.theme.SillonTheme
 import java.io.File
@@ -86,8 +87,18 @@ abstract class SonosRenders(private val locale: String) {
     }
 
     @Composable
-    private fun Sheet(output: Output, groups: List<SonosGroup>, scanning: Boolean = false) =
-        OutputSheetContent(output, groups, scanning, block = null, reducedMotion = true, onPhone = {}, onGroup = {}, onRescan = {})
+    private fun Sheet(output: Output, groups: List<SonosGroup>, scanning: Boolean = false, picked: Set<String>? = null) =
+        OutputSheetContent(
+            output,
+            SonosGrouping.rooms(groups),
+            scanning,
+            block = null,
+            reducedMotion = true,
+            onPhone = {},
+            onPlay = {},
+            onRescan = {},
+            initiallyPicked = picked,
+        )
 
     @Test
     fun headerBefore() = render("1-header-before") { Header(output = null) }
@@ -100,6 +111,16 @@ abstract class SonosRenders(private val locale: String) {
 
     @Test
     fun sheetFound() = render("4-sheet-found") { Sheet(Output.Phone, listOf(salonGroup, both, bedroom)) }
+
+    @Test
+    fun sheetPickedSeveral() = render("4b-sheet-picked-several") {
+        Sheet(Output.Phone, listOf(salonGroup, both, bedroom), picked = setOf("RINCON_A", "RINCON_C"))
+    }
+
+    @Test
+    fun sheetOnGroup() = render("4c-sheet-on-group") {
+        Sheet(Output.OnSonos(both), listOf(both, bedroom), picked = setOf("RINCON_A", "RINCON_B", "RINCON_C"))
+    }
 
     @Test
     fun sheetConnecting() = render("5-sheet-connecting") { Sheet(Output.Connecting(salonGroup), listOf(salonGroup, both, bedroom)) }

@@ -63,6 +63,16 @@ object AvTransport {
 
     fun queueUri(coordinatorUuid: String) = "x-rincon-queue:$coordinatorUuid#0"
 
+    /** Sent to a room: it plays along with [coordinatorUuid]'s group (`x-rincon:RINCON_…`). */
+    fun joinGroup(coordinatorUuid: String) = av(
+        "SetAVTransportURI",
+        "CurrentURI" to "x-rincon:$coordinatorUuid",
+        "CurrentURIMetaData" to "",
+    )
+
+    /** Sent to a room: it leaves its group and stands alone. */
+    fun leaveGroup() = av("BecomeCoordinatorOfStandaloneGroup")
+
     fun seekToTrack(index: Int) = av("Seek", "Unit" to "TRACK_NR", "Target" to (index + 1).toString())
 
     fun seekTo(positionMs: Long) = av("Seek", "Unit" to "REL_TIME", "Target" to SonosTime.format(positionMs))

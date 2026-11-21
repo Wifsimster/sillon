@@ -40,7 +40,7 @@ enum class SonosLoss {
  */
 @OptIn(UnstableApi::class)
 class SonosPlayer(
-    val group: SonosGroup,
+    group: SonosGroup,
     private val client: SoapCaller,
     private val scope: CoroutineScope,
     /** The speaker's copy of each item (same order), or null for one it can't play. */
@@ -55,6 +55,10 @@ class SonosPlayer(
     now: () -> Long = SystemClock::elapsedRealtime,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
     private class Entry(val uid: Long, val item: MediaItem, val track: SonosTrack)
+
+    /** Rooms can join or leave around the same coordinator while the music plays on. */
+    var group: SonosGroup = group
+        internal set
 
     private val base = group.coordinator.baseUrl
     private val commands = Mutex()

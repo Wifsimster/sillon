@@ -10,14 +10,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.SpeakerGroup
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -31,9 +35,11 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -48,9 +54,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
 import ovh.battistella.sillon.sonos.Output
 import ovh.battistella.sillon.sonos.OutputNotice
-import ovh.battistella.sillon.sonos.SonosGroup
+import ovh.battistella.sillon.sonos.SonosGrouping
+import ovh.battistella.sillon.sonos.SonosZone
 
-/** "Play on…": this phone, or a Sonos group found on the Wi-Fi. */
+/** "Play on…": this phone, or one or more Sonos rooms found on the Wi-Fi, played together. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OutputSheet(onDismiss: () -> Unit, viewModel: OutputViewModel = hiltViewModel()) {
@@ -65,7 +72,7 @@ fun OutputSheet(onDismiss: () -> Unit, viewModel: OutputViewModel = hiltViewMode
     ) {
         OutputSheetContent(
             output = output,
-            groups = groups,
+            rooms = remember(groups) { SonosGrouping.rooms(groups) },
             scanning = scanning,
             block = block,
             reducedMotion = rememberReducedMotion(),
@@ -73,8 +80,8 @@ fun OutputSheet(onDismiss: () -> Unit, viewModel: OutputViewModel = hiltViewMode
                 viewModel.backToPhone()
                 onDismiss()
             },
-            onGroup = { group ->
-                viewModel.playOn(group)
+            onPlay = { rooms ->
+                viewModel.playOn(rooms)
                 onDismiss()
             },
             onRescan = viewModel::scan,
@@ -85,19 +92,23 @@ fun OutputSheet(onDismiss: () -> Unit, viewModel: OutputViewModel = hiltViewMode
 @Composable
 fun OutputSheetContent(
     output: Output,
-    groups: List<SonosGroup>,
+    rooms: List<SonosZone>,
     scanning: Boolean,
     block: OutputBlock?,
     reducedMotion: Boolean,
     onPhone: () -> Unit,
-    onGroup: (SonosGroup) -> Unit,
+    onPlay: (List<SonosZone>) -> Unit,
     onRescan: () -> Unit,
+    initiallyPicked: Set<String>? = null,
 ) {
-    val current = when (output) {
-        is Output.OnSonos -> output.group.id
-        is Output.Connecting -> output.group.id
+    val group = when (output) {
+        is Output.OnSonos -> output.group
+        is Output.Connecting -> output.group
         Output.Phone -> null
     }
+    val playing = group?.members.orEmpty().map { it.uuid }.toSet()
+    var picked by remember(playing) { mutableStateOf(initiallyPicked ?: playing) }
+    val chosen = rooms.filter { it.uuid in picked }
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
@@ -109,27 +120,45 @@ fun OutputSheetContent(
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )
-        OutputRow(
-            icon = Icons.Rounded.PhoneAndroid,
-            title = stringResource(R.string.output_phone),
-            detail = null,
-            selected = current == null,
-            enabled = true,
-            onClick = onPhone,
-        )
-        groups.forEach { group ->
-            OutputRow(
-                icon = if (group.members.size > 1) Icons.Rounded.SpeakerGroup else Icons.Rounded.Speaker,
-                title = group.name,
-                detail = if (group.id == current && output is Output.Connecting) {
-                    stringResource(R.string.output_connecting_short)
-                } else {
-                    pluralStringResource(R.plurals.output_rooms, group.members.size, group.members.size)
-                },
-                selected = group.id == current,
-                enabled = block == null,
-                onClick = { onGroup(group) },
+        PhoneRow(selected = group == null, onClick = onPhone)
+        if (rooms.isNotEmpty()) {
+            Text(
+                stringResource(R.string.output_pick_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 4.dp),
             )
+        }
+        rooms.forEach { room ->
+            RoomRow(
+                title = room.name,
+                detail = when {
+                    room.uuid !in playing -> null
+                    output is Output.Connecting -> stringResource(R.string.output_connecting_short)
+                    else -> stringResource(R.string.output_room_playing)
+                },
+                checked = room.uuid in picked,
+                enabled = block == null,
+                onToggle = { on -> picked = if (on) picked + room.uuid else picked - room.uuid },
+            )
+        }
+        if (rooms.isNotEmpty()) {
+            Button(
+                onClick = { onPlay(chosen) },
+                enabled = block == null && chosen.isNotEmpty() && chosen.map { it.uuid }.toSet() != playing,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .heightIn(min = 48.dp),
+            ) {
+                Icon(
+                    if (chosen.size > 1) Icons.Rounded.SpeakerGroup else Icons.Rounded.Speaker,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(pluralStringResource(R.plurals.output_play_rooms, chosen.size.coerceAtLeast(1), chosen.size.coerceAtLeast(1)))
+            }
         }
         Row(
             modifier = Modifier
@@ -144,7 +173,7 @@ fun OutputSheetContent(
                     if (!reducedMotion) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     Text(stringResource(R.string.output_searching), style = MaterialTheme.typography.bodyMedium)
                 }
-                groups.isEmpty() -> Text(
+                rooms.isEmpty() -> Text(
                     stringResource(R.string.output_none),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
@@ -178,31 +207,46 @@ fun OutputSheetContent(
 }
 
 @Composable
-private fun OutputRow(
-    icon: ImageVector,
-    title: String,
-    detail: String?,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
+private fun PhoneRow(selected: Boolean, onClick: () -> Unit) {
     val state = stringResource(if (selected) R.string.output_selected else R.string.output_not_selected)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .semantics { stateDescription = state }
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        Icon(Icons.Rounded.PhoneAndroid, contentDescription = null, tint = tint)
+        Text(
+            stringResource(R.string.output_phone),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun RoomRow(title: String, detail: String?, checked: Boolean, enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onToggle)
             .padding(horizontal = 24.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val tint = when {
             !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            selected -> MaterialTheme.colorScheme.primary
+            checked -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
-        Icon(icon, contentDescription = null, tint = tint)
+        Icon(Icons.Rounded.Speaker, contentDescription = null, tint = tint)
         Column(Modifier.weight(1f)) {
             Text(
                 title,
@@ -215,7 +259,7 @@ private fun OutputRow(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 

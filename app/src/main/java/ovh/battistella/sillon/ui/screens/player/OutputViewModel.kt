@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.playback.mystery.MysteryMask
 import ovh.battistella.sillon.playback.mystery.MysterySession
-import ovh.battistella.sillon.sonos.SonosGroup
+import ovh.battistella.sillon.sonos.SonosZone
 import ovh.battistella.sillon.sonos.SonosOutput
 import ovh.battistella.sillon.together.ListenTogether
 import javax.inject.Inject
@@ -47,7 +47,7 @@ class OutputViewModel @Inject constructor(
 
     fun scan() = sonos.scan()
 
-    fun playOn(group: SonosGroup) = sonos.playOn(group)
+    fun playOn(rooms: List<SonosZone>) = sonos.playOn(rooms)
 
     fun backToPhone() = sonos.backToPhone()
 
