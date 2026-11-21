@@ -203,7 +203,7 @@ class PlaybackService : MediaLibraryService() {
         scope.launch {
             sonosOutput.requests.collect { request ->
                 when (request) {
-                    is OutputRequest.PlayOn -> sonosHandover?.playOn(request.group)
+                    is OutputRequest.PlayOn -> sonosHandover?.playOn(request.rooms)
                     OutputRequest.BackToPhone -> sonosHandover?.backToPhone(resume = true)
                 }
             }

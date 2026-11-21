@@ -39,7 +39,7 @@ enum class OutputNotice {
 }
 
 sealed interface OutputRequest {
-    data class PlayOn(val group: SonosGroup) : OutputRequest
+    data class PlayOn(val rooms: List<SonosZone>) : OutputRequest
 
     data object BackToPhone : OutputRequest
 }
@@ -82,9 +82,10 @@ class SonosOutput @Inject constructor(
         }
     }
 
-    fun playOn(group: SonosGroup) {
+    fun playOn(rooms: List<SonosZone>) {
+        if (rooms.isEmpty()) return backToPhone()
         _notice.value = null
-        _requests.trySend(OutputRequest.PlayOn(group))
+        _requests.trySend(OutputRequest.PlayOn(rooms))
     }
 
     fun backToPhone() {

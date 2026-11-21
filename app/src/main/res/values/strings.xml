@@ -355,10 +355,12 @@
     <string name="output_phone">This phone</string>
     <string name="output_selected">Selected</string>
     <string name="output_not_selected">Not selected</string>
-    <plurals name="output_rooms">
-        <item quantity="one">Sonos · %1$d room</item>
-        <item quantity="other">Sonos · %1$d rooms</item>
+    <plurals name="output_play_rooms">
+        <item quantity="one">Play on %1$d speaker</item>
+        <item quantity="other">Play on %1$d speakers</item>
     </plurals>
+    <string name="output_pick_hint">Pick one or more speakers: they play together.</string>
+    <string name="output_room_playing">Playing here</string>
     <string name="output_playing_on">Playing on %1$s</string>
     <string name="output_connecting">Sending the queue to %1$s…</string>
     <string name="output_connecting_short">Connecting…</string>

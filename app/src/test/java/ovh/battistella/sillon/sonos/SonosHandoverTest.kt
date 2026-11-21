@@ -50,10 +50,10 @@ class SonosHandoverTest {
 
     private fun uri(key: String) = "http://192.168.1.5:32400/library/parts/$key/file.flac?X-Plex-Token=transient"
 
-    private fun TestScope.handover(unplayable: Set<String> = emptySet()) = SonosHandover(
+    private fun TestScope.handover(unplayable: Set<String> = emptySet(), client: SoapCaller = speaker) = SonosHandover(
         phone = phone,
         scope = backgroundScope,
-        client = speaker,
+        client = client,
         openAccess = {
             opened++
             accessError?.let { throw it }
@@ -330,5 +330,98 @@ class SonosHandoverTest {
         assertEquals("no pause sent to a dead speaker", 0, speaker.count("Pause"))
         assertEquals("nothing polled after the loss", callsWhenLost, speaker.calls.size)
         assertEquals(1, closed)
+    }
+
+    private val kitchen = SonosZone("RINCON_B", "Cuisine", "http://192.168.1.22:1400")
+    private val bedroom = SonosZone("RINCON_C", "Chambre", "http://192.168.1.23:1400")
+
+    @Test
+    fun `several rooms picked play together, the queue going to the leader only`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a", "b")
+        val house = FakeHousehold(speaker, zone, kitchen, bedroom)
+        val handover = handover(client = house)
+
+        handover.playOn(listOf(zone, bedroom))
+
+        assertEquals(mapOf("RINCON_C" to "RINCON_A"), house.joined)
+        assertEquals(listOf(uri("a"), uri("b")), speaker.queue)
+        assertEquals("PLAYING", speaker.transport)
+        val shownGroup = (shown.last() as Output.OnSonos).group
+        assertEquals("Salon + Chambre", shownGroup.name)
+        assertEquals(setOf(house.baseOf("RINCON_A")), house.queueCallsTo)
+    }
+
+    @Test
+    fun `adding or removing a room around the playing speaker doesn't move the music`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a", "b")
+        val house = FakeHousehold(speaker, zone, kitchen, bedroom)
+        val handover = handover(client = house)
+        handover.playOn(listOf(zone, bedroom))
+        val player = handover.player
+        val added = speaker.count("AddMultipleURIsToQueue")
+
+        handover.playOn(listOf(zone, kitchen))
+
+        assertSame(player, handover.player)
+        assertEquals(added, speaker.count("AddMultipleURIsToQueue"))
+        assertEquals(mapOf("RINCON_B" to "RINCON_A"), house.joined)
+        assertEquals("Salon + Cuisine", (shown.last() as Output.OnSonos).group.name)
+        assertEquals("Salon + Cuisine", handover.player?.group?.name)
+    }
+
+    @Test
+    fun `a room that won't join leaves the music on the phone`() = runTest(timeout = 5.minutes) {
+        playingOnPhone("a")
+        val house = FakeHousehold(speaker, zone, kitchen, bedroom).apply { refuses = "RINCON_C" }
+        val handover = handover(client = house)
+
+        handover.playOn(listOf(zone, bedroom))
+
+        assertNull(handover.player)
+        assertTrue(speaker.queue.isEmpty())
+        assertEquals(Output.Phone, shown.last())
+        assertEquals(listOf(OutputNotice.FAILED), told)
+    }
+}
+
+/** A household of lone rooms that Sonos lets group; the [speaker] answers for the leader's transport. */
+class FakeHousehold(private val speaker: FakeSpeaker, vararg rooms: SonosZone) : SoapCaller {
+    private val rooms = rooms.toList()
+
+    /** Room uuid → the coordinator it plays along with. */
+    val joined = linkedMapOf<String, String>()
+    var refuses: String? = null
+    val queueCallsTo = mutableSetOf<String>()
+
+    fun baseOf(uuid: String) = rooms.first { it.uuid == uuid }.baseUrl
+
+    override suspend fun call(baseUrl: String, call: SoapCall): Map<String, String> {
+        val room = rooms.first { it.baseUrl == baseUrl }
+        val args = call.args.toMap()
+        return when {
+            call.action == "GetZoneGroupState" -> mapOf("ZoneGroupState" to state())
+            call.action == "BecomeCoordinatorOfStandaloneGroup" -> emptyMap<String, String>().also {
+                joined.remove(room.uuid)
+                joined.entries.removeAll { it.value == room.uuid }
+            }
+            call.action == "SetAVTransportURI" && args["CurrentURI"].orEmpty().startsWith("x-rincon:") -> {
+                if (room.uuid == refuses) throw SonosException(800, "join refused")
+                emptyMap<String, String>().also { joined[room.uuid] = args.getValue("CurrentURI").removePrefix("x-rincon:") }
+            }
+            else -> {
+                if (call.action == "AddMultipleURIsToQueue") queueCallsTo += baseUrl
+                speaker.call(baseUrl, call)
+            }
+        }
+    }
+
+    private fun state(): String {
+        val leaders = rooms.filter { it.uuid !in joined }
+        return "<ZoneGroupState><ZoneGroups>" + leaders.joinToString("") { leader ->
+            val members = listOf(leader) + rooms.filter { joined[it.uuid] == leader.uuid }
+            "<ZoneGroup Coordinator=\"${leader.uuid}\" ID=\"${leader.uuid}:1\">" +
+                members.joinToString("") { "<ZoneGroupMember UUID=\"${it.uuid}\" Location=\"${it.baseUrl}/xml/device_description.xml\" ZoneName=\"${it.name}\"/>" } +
+                "</ZoneGroup>"
+        } + "</ZoneGroups></ZoneGroupState>"
     }
 }
