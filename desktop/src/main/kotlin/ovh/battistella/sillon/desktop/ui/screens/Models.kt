@@ -143,6 +143,10 @@ class ArtistModel(private val graph: AppGraph, private val scope: CoroutineScope
         }
     }
 
+    fun setHidden(name: String, hidden: Boolean) {
+        scope.launch { graph.settings.setArtistHidden(name, hidden) }
+    }
+
     fun load() {
         _state.value = Load.Loading
         scope.launch {

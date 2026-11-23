@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -121,6 +122,17 @@ class SettingsStore @Inject constructor(
         prefs.edit { it[SKIP_ONE_STAR] = value }
     }
 
+    val hiddenArtists: Flow<Set<String>> = prefs.data.map { it[HIDDEN_ARTISTS].orEmpty() }
+
+    suspend fun setArtistHidden(name: String, hidden: Boolean) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        prefs.edit { values ->
+            val others = values[HIDDEN_ARTISTS].orEmpty().filterNot { it.equals(trimmed, ignoreCase = true) }.toSet()
+            values[HIDDEN_ARTISTS] = if (hidden) others + trimmed else others
+        }
+    }
+
     private fun String?.toQuality(default: StreamQuality) =
         StreamQuality.entries.firstOrNull { it.name == this } ?: default
 
@@ -142,5 +154,6 @@ class SettingsStore @Inject constructor(
         val LISTENING_CACHE = booleanPreferencesKey("listening_cache")
         val LISTENING_CACHE_GB = intPreferencesKey("listening_cache_gb")
         val SKIP_ONE_STAR = booleanPreferencesKey("skip_one_star")
+        val HIDDEN_ARTISTS = stringSetPreferencesKey("hidden_artists")
     }
 }

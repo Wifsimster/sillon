@@ -22,12 +22,15 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import ovh.battistella.sillon.data.settings.HiddenArtists
 import ovh.battistella.sillon.data.sort.decodeTrackOrder
 import ovh.battistella.sillon.data.sort.sortedBy
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
@@ -112,6 +116,7 @@ fun ArtistScreen(app: AppState, entry: StackEntry, key: String) {
     val model = entry.model("artist") { scope -> ArtistModel(app.graph, scope, key) }
     val state by model.state.collectAsState()
     val startingRadio by model.startingRadio.collectAsState()
+    val hiddenArtists by app.graph.settings.hiddenArtists.collectAsState(emptySet())
     val wear by app.graph.sleeveWear.levels.collectAsState(emptyMap())
     LoadContent(state, model::load) { ui ->
         TileGrid(ui.albums, onClick = { app.open(Screen.Album(it.key)) }, wear = wear) {
@@ -130,6 +135,15 @@ fun ArtistScreen(app: AppState, entry: StackEntry, key: String) {
                         Spacer(Modifier.width(8.dp))
                         Text(strings.artistRadio)
                     }
+                    val hidden = HiddenArtists.matches(ui.name, hiddenArtists)
+                    if (ui.name.isNotBlank()) {
+                        TextButton(onClick = { model.setHidden(ui.name, !hidden) }) {
+                            Icon(if (hidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (hidden) strings.artistUnhide else strings.artistHide)
+                        }
+                    }
+                    if (hidden) Text(strings.artistHiddenNotice, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

@@ -416,4 +416,10 @@
         <item quantity="other">Écouté %d fois</item>
     </plurals>
     <string name="track_never_played">Jamais écouté</string>
+    <string name="artist_hide">Écarter des radios</string>
+    <string name="artist_unhide">Remettre dans les radios</string>
+    <string name="settings_hidden_artists">Artistes écartés des radios</string>
+    <string name="settings_hidden_artists_hint">Leurs titres ne sortent jamais dans les radios ni l\'aléatoire. Albums et playlists les jouent toujours.</string>
+    <string name="settings_hidden_artists_none">Aucun. Écarte un artiste depuis sa page.</string>
+    <string name="settings_hidden_artist_restore">Remettre</string>
 </resources>

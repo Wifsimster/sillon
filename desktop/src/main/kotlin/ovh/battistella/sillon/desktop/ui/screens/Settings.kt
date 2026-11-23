@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.plex.PlexDirectory
@@ -63,6 +65,7 @@ fun SettingsScreen(app: AppState) {
     val quality by settings.wifiQuality.collectAsState(StreamQuality.ORIGINAL)
     val loudness by settings.loudness.collectAsState(LoudnessMode.TRACK)
     val skipOneStar by settings.skipOneStar.collectAsState(true)
+    val hiddenArtists by settings.hiddenArtists.collectAsState(emptySet())
     val sleeveWear by settings.sleeveWear.collectAsState(true)
     val theme by settings.theme.collectAsState(ThemePreferences())
     val autoUpdate by graph.prefs.autoUpdate.collectAsState(true)
@@ -100,6 +103,16 @@ fun SettingsScreen(app: AppState) {
             ) { scope.launch { settings.setLoudness(option) } }
         }
         Toggle(strings.settingsSkipOneStar, strings.settingsSkipOneStarHint, skipOneStar) { scope.launch { settings.setSkipOneStar(it) } }
+        Label(strings.settingsHiddenArtists, strings.settingsHiddenArtistsHint)
+        if (hiddenArtists.isEmpty()) {
+            Text(strings.settingsHiddenArtistsNone, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        hiddenArtists.sortedBy { it.lowercase() }.forEach { name ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                TextButton(onClick = { scope.launch { settings.setArtistHidden(name, false) } }) { Text(strings.settingsHiddenArtistRestore) }
+            }
+        }
         Header(strings.settingsAppearance)
         Label(strings.settingsThemeMode)
         ThemeMode.entries.forEach { mode ->

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ovh.battistella.sillon.data.repository.PlexRepository
+import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.wear.SleeveWearRepository
 import ovh.battistella.sillon.playback.PlaybackConnection
 import ovh.battistella.sillon.ui.components.Load
@@ -27,11 +28,19 @@ class ArtistViewModel @Inject constructor(
     private val repository: PlexRepository,
     private val playback: PlaybackConnection,
     sleeveWear: SleeveWearRepository,
+    private val settings: SettingsStore,
 ) : ViewModel() {
     val key: String = checkNotNull(savedStateHandle[Routes.ARG_KEY])
 
     val wear: StateFlow<Map<String, Int>> =
         sleeveWear.levels.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    val hiddenArtists: StateFlow<Set<String>> =
+        settings.hiddenArtists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun setHidden(name: String, hidden: Boolean) {
+        viewModelScope.launch { settings.setArtistHidden(name, hidden) }
+    }
 
     private val _state = MutableStateFlow<Load<ArtistUi>>(Load.Loading)
     val state = _state.asStateFlow()
