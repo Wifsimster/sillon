@@ -125,10 +125,13 @@ fun NowPlaying(app: AppState) {
                 Text(strings.playerNothing, Modifier.align(Alignment.Center), style = MaterialTheme.typography.bodyLarge)
                 return@Box
             }
-            if (!lyricsShown && !lyrics.isNullOrEmpty()) {
-                IconButton(onClick = { scope.launch { app.graph.prefs.setLyricsShown(true) } }, Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-                    Icon(Icons.Filled.Lyrics, strings.lyricsShow)
+            Row(Modifier.align(Alignment.TopEnd).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (!lyricsShown && !lyrics.isNullOrEmpty()) {
+                    IconButton(onClick = { scope.launch { app.graph.prefs.setLyricsShown(true) } }) {
+                        Icon(Icons.Filled.Lyrics, strings.lyricsShow)
+                    }
                 }
+                VolumeAndQueue(app, state)
             }
             Row(Modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 56.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -141,7 +144,7 @@ fun NowPlaying(app: AppState) {
                     Spacer(Modifier.height(24.dp))
                     Text(track.title, style = MaterialTheme.typography.headlineMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(
-                        listOfNotNull(track.artist, track.album).joinToString(" · "),
+                        byline(track),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

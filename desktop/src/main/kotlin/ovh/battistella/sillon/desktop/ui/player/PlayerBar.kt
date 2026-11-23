@@ -59,6 +59,7 @@ import ovh.battistella.sillon.desktop.player.RepeatMode
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.components.Cover
 import ovh.battistella.sillon.desktop.ui.components.formatDuration
+import ovh.battistella.sillon.playback.PlayableTrack
 
 @Composable
 fun PlayerBar(app: AppState) {
@@ -78,7 +79,7 @@ fun PlayerBar(app: AppState) {
                 Column {
                     Text(track?.title.orEmpty(), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        listOfNotNull(track?.artist, track?.album).joinToString(" · "),
+                        track?.let(::byline).orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -91,19 +92,28 @@ fun PlayerBar(app: AppState) {
                 SeekBar(playback, state)
             }
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                Icon(Icons.AutoMirrored.Filled.VolumeUp, strings.volume, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                SlimSlider(value = state.volume, onValueChange = { playback.setVolume(it) }, modifier = Modifier.width(120.dp).padding(horizontal = 8.dp))
-                IconButton(onClick = { app.queueOpen = !app.queueOpen }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.QueueMusic,
-                        strings.queue,
-                        tint = if (app.queueOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                VolumeAndQueue(app, state)
             }
         }
     }
 }
+
+@Composable
+fun VolumeAndQueue(app: AppState, state: EngineState) {
+    val strings = LocalStrings.current
+    Icon(Icons.AutoMirrored.Filled.VolumeUp, strings.volume, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    SlimSlider(value = state.volume, onValueChange = { app.graph.playback.setVolume(it) }, modifier = Modifier.width(120.dp).padding(horizontal = 8.dp))
+    IconButton(onClick = { app.queueOpen = !app.queueOpen }) {
+        Icon(
+            Icons.AutoMirrored.Filled.QueueMusic,
+            strings.queue,
+            tint = if (app.queueOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+fun byline(track: PlayableTrack): String =
+    listOfNotNull(track.artist, track.album?.takeUnless { it.isBlank() || it.equals(track.title, ignoreCase = true) }).joinToString(" · ")
 
 @Composable
 fun Transport(playback: Playback, state: EngineState, large: Boolean = false) {
