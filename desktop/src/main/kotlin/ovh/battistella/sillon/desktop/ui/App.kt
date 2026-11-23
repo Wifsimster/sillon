@@ -134,7 +134,7 @@ private fun Shell(app: AppState) {
                     }
                 }
             }
-            PlayerBar(app)
+            if (!app.playerOpen) PlayerBar(app)
         }
     }
 }
