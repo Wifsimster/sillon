@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ovh.battistella.sillon.data.rating.RatingSend
+import ovh.battistella.sillon.data.settings.HiddenArtists
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
 import ovh.battistella.sillon.desktop.ui.components.Cover
@@ -185,6 +188,21 @@ fun NowPlaying(app: AppState) {
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(strings.trackRadio, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    val artist = HiddenArtists.primary(track.artist)
+                    if (artist != null) {
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    app.graph.settings.setArtistHidden(artist, true)
+                                    playback.dropUpcoming { HiddenArtists.credits(it.artist, setOf(artist)) }
+                                }
+                            },
+                        ) {
+                            Icon(Icons.Filled.VisibilityOff, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(strings.playerHideArtist(artist), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
                 val lines = lyrics

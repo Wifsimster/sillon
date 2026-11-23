@@ -106,6 +106,10 @@ interface Strings {
     val radios: String
     val radioLibrary: String
     val artistRadio: String
+    val artistHide: String
+    val artistUnhide: String
+    val artistHiddenNotice: String
+    fun playerHideArtist(name: String): String
     val trackRadio: String
     val listenOffline: String
     val listenFromDownloads: String
@@ -164,6 +168,10 @@ interface Strings {
     val settingsLoudnessAlbum: String
     val settingsSkipOneStar: String
     val settingsSkipOneStarHint: String
+    val settingsHiddenArtists: String
+    val settingsHiddenArtistsHint: String
+    val settingsHiddenArtistsNone: String
+    val settingsHiddenArtistRestore: String
     val settingsAppearance: String
     val settingsSleeveWear: String
     val settingsSleeveWearHint: String
@@ -340,6 +348,10 @@ object EnglishStrings : Strings {
     override val radios = "Radios"
     override val radioLibrary = "Library radio"
     override val artistRadio = "Artist radio"
+    override val artistHide = "Keep out of radios"
+    override val artistUnhide = "Back in radios"
+    override val artistHiddenNotice = "Never played in radios or shuffles."
+    override fun playerHideArtist(name: String) = "Keep $name out of radios"
     override val trackRadio = "Radio from this track"
     override val listenOffline = "You are offline. Your downloads still play; what needs your server comes back with the connection."
     override val listenFromDownloads = "Offline: shuffling your downloads."
@@ -402,6 +414,10 @@ object EnglishStrings : Strings {
     override val settingsLoudnessAlbum = "Per album: keeps each album's own dynamics"
     override val settingsSkipOneStar = "Skip 1-star tracks"
     override val settingsSkipOneStarHint = "In albums and playlists. Double-click one to hear it anyway. Shuffle and radios never play them."
+    override val settingsHiddenArtists = "Artists kept out of radios"
+    override val settingsHiddenArtistsHint = "Their tracks never come up in radios or shuffles. Albums and playlists still play them."
+    override val settingsHiddenArtistsNone = "None. Keep an artist out from their page."
+    override val settingsHiddenArtistRestore = "Put back"
     override val settingsAppearance = "Appearance"
     override val settingsSleeveWear = "Sleeve wear"
     override val settingsSleeveWearHint = "Covers age as you play them, like a real record"
@@ -585,6 +601,10 @@ object FrenchStrings : Strings {
     override val radios = "Radios"
     override val radioLibrary = "Radio de la bibliothèque"
     override val artistRadio = "Radio de l'artiste"
+    override val artistHide = "Écarter des radios"
+    override val artistUnhide = "Remettre dans les radios"
+    override val artistHiddenNotice = "Jamais joué dans les radios ni l'aléatoire."
+    override fun playerHideArtist(name: String) = "Écarter $name des radios"
     override val trackRadio = "Radio à partir de ce titre"
     override val listenOffline = "Tu es hors ligne. Tes téléchargements restent lisibles ; ce qui dépend de ton serveur revient avec la connexion."
     override val listenFromDownloads = "Hors ligne : lecture aléatoire de tes téléchargements."
@@ -647,6 +667,10 @@ object FrenchStrings : Strings {
     override val settingsLoudnessAlbum = "Par album : garde la dynamique propre à chaque album"
     override val settingsSkipOneStar = "Passer les titres 1 étoile"
     override val settingsSkipOneStarHint = "Dans les albums et les playlists. Double-clique sur l'un d'eux pour l'écouter quand même. L'aléatoire et les radios ne les jouent jamais."
+    override val settingsHiddenArtists = "Artistes écartés des radios"
+    override val settingsHiddenArtistsHint = "Leurs titres ne sortent jamais dans les radios ni l'aléatoire. Albums et playlists les jouent toujours."
+    override val settingsHiddenArtistsNone = "Aucun. Écarte un artiste depuis sa page."
+    override val settingsHiddenArtistRestore = "Remettre"
     override val settingsAppearance = "Apparence"
     override val settingsSleeveWear = "Usure des pochettes"
     override val settingsSleeveWearHint = "Les pochettes vieillissent à force d'être écoutées, comme un vrai disque"

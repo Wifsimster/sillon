@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -87,6 +90,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settings.setSkipOneStar(value) }
     }
 
+    val hiddenArtists = settings.hiddenArtists.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    fun restoreArtist(name: String) {
+        viewModelScope.launch { settings.setArtistHidden(name, false) }
+    }
+
     fun setLoudness(value: LoudnessMode) {
         viewModelScope.launch { settings.setLoudness(value) }
     }
@@ -124,6 +133,7 @@ fun SettingsScreen(
     val sleeveWear by viewModel.sleeveWear.collectAsStateWithLifecycle()
     val listenBySide by viewModel.listenBySide.collectAsStateWithLifecycle()
     val skipOneStar by viewModel.skipOneStar.collectAsStateWithLifecycle()
+    val hiddenArtists by viewModel.hiddenArtists.collectAsStateWithLifecycle()
     val downloadsTotal by viewModel.downloadsTotal.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -212,6 +222,28 @@ fun SettingsScreen(
                         role = Role.Switch,
                         onValueChange = viewModel::setSkipOneStar,
                     ),
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_hidden_artists)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                if (hiddenArtists.isEmpty()) R.string.settings_hidden_artists_none else R.string.settings_hidden_artists_hint,
+                            ),
+                        )
+                    },
+                )
+            }
+            items(hiddenArtists.sortedBy { it.lowercase() }, key = { "hidden-$it" }) { name ->
+                ListItem(
+                    headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    trailingContent = {
+                        TextButton(onClick = { viewModel.restoreArtist(name) }) {
+                            Text(stringResource(R.string.settings_hidden_artist_restore))
+                        }
+                    },
                 )
             }
             item { HorizontalDivider() }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ovh.battistella.sillon.R
+import ovh.battistella.sillon.data.settings.HiddenArtists
 import ovh.battistella.sillon.ui.components.Load
 import ovh.battistella.sillon.ui.components.LoadContent
 import ovh.battistella.sillon.ui.components.Message
@@ -43,6 +46,7 @@ fun ArtistScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val startingRadio by viewModel.startingRadio.collectAsStateWithLifecycle()
     val wear by viewModel.wear.collectAsStateWithLifecycle()
+    val hiddenArtists by viewModel.hiddenArtists.collectAsStateWithLifecycle()
     var shareSource by remember { mutableStateOf<ShareSource?>(null) }
 
     Scaffold(
@@ -63,6 +67,15 @@ fun ArtistScreen(
                                 title = artist.name,
                                 year = CardRules.yearSpan(artist.years),
                                 artworkUri = artist.artworkUrl,
+                            )
+                        }
+                    }
+                    (state as? Load.Ready)?.value?.name?.takeIf { it.isNotBlank() }?.let { name ->
+                        val hidden = HiddenArtists.matches(name, hiddenArtists)
+                        IconButton(onClick = { viewModel.setHidden(name, !hidden) }) {
+                            Icon(
+                                if (hidden) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                                stringResource(if (hidden) R.string.artist_unhide else R.string.artist_hide),
                             )
                         }
                     }

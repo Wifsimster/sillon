@@ -412,4 +412,10 @@
         <item quantity="other">Played %d times</item>
     </plurals>
     <string name="track_never_played">Never played</string>
+    <string name="artist_hide">Keep out of radios</string>
+    <string name="artist_unhide">Back in radios</string>
+    <string name="settings_hidden_artists">Artists kept out of radios</string>
+    <string name="settings_hidden_artists_hint">Their tracks never come up in radios or shuffles. Albums and playlists still play them.</string>
+    <string name="settings_hidden_artists_none">None. Keep an artist out from their page.</string>
+    <string name="settings_hidden_artist_restore">Put back</string>
 </resources>

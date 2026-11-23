@@ -146,6 +146,14 @@ class Playback(
 
     fun move(from: Int, to: Int) = engine?.move(from, to)
 
+    fun dropUpcoming(matches: (PlayableTrack) -> Boolean) {
+        val now = state.value
+        for (i in now.queue.lastIndex downTo now.index + 1) {
+            if (matches(now.queue[i])) engine?.removeAt(i)
+        }
+        if (now.current?.let(matches) == true) engine?.next()
+    }
+
     fun playNext(tracks: List<PlayableTrack>) = engine?.insertNext(tracks)
 
     fun addToQueue(tracks: List<PlayableTrack>) = engine?.append(tracks)

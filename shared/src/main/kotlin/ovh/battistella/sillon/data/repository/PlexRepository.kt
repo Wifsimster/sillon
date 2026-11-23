@@ -46,6 +46,7 @@ import ovh.battistella.sillon.data.session.SelectedServer
 import ovh.battistella.sillon.data.session.Session
 import ovh.battistella.sillon.data.session.SessionStore
 import ovh.battistella.sillon.data.settings.FiveStarsCache
+import ovh.battistella.sillon.data.settings.HiddenArtists
 import ovh.battistella.sillon.data.settings.LoudnessMode
 import ovh.battistella.sillon.data.settings.SettingsStore
 import ovh.battistella.sillon.data.settings.StreamQuality
@@ -416,11 +417,14 @@ class PlexRepository @Inject constructor(
         runCatching { ratings.update(server) { it.learn(tracks) } }
     }
 
-    /** A queue drawn for the listener (shuffle, radios): tracks rated 1 star never come in. */
+    /** A queue drawn for the listener (shuffle, radios): tracks rated 1 star and hidden artists never come in. */
     private suspend fun drawn(
         plex: suspend (String, ServerEndpoint) -> List<PlexMetadata>,
         jellyfin: suspend (String, ServerEndpoint) -> List<PlexMetadata>,
-    ): List<PlexMetadata> = withoutOneStar(onServer(plex, jellyfin))
+    ): List<PlexMetadata> {
+        val hidden = runCatching { settings.hiddenArtists.first() }.getOrDefault(emptySet())
+        return HiddenArtists.keep(withoutOneStar(onServer(plex, jellyfin)), hidden)
+    }
 
     /** What the phone knows of the ratings: lets downloads (which carry none) skip the 1-star tracks offline. */
     suspend fun ratingBook(): RatingBook =
