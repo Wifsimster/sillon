@@ -55,10 +55,15 @@ val LocalWindowFrame = staticCompositionLocalOf<WindowFrame?> { null }
 
 val TITLE_STRIP_HEIGHT = 36.dp
 
+/**
+ * Lets the user move the window by dragging [content], and maximize it with a double click.
+ * Keep buttons out of it: under the native Windows frame the whole area is title bar, so
+ * clicks there never reach Compose. Pass [enabled] = false while something is drawn over it.
+ */
 @Composable
-fun DragArea(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun DragArea(modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable () -> Unit) {
     val frame = LocalWindowFrame.current
-    if (frame == null || !frame.custom) {
+    if (frame == null || !frame.custom || !enabled) {
         Box(modifier) { content() }
         return
     }

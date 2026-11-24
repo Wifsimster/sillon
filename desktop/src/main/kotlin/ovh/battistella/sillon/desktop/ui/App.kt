@@ -195,21 +195,27 @@ private fun Content(app: AppState) {
             } else {
                 Spacer(Modifier.width(12.dp))
             }
-            Text(
-                when (entry.screen) {
-                    Screen.Listen -> strings.listen
-                    Screen.Search -> strings.search
-                    Screen.Artists -> strings.artists
-                    Screen.Albums -> strings.albums
-                    Screen.Playlists -> strings.playlists
-                    Screen.Genres -> strings.genres
-                    Screen.Downloads -> strings.downloads
-                    Screen.Activity -> strings.activity
-                    Screen.Settings -> strings.settings
-                    else -> ""
-                },
-                style = MaterialTheme.typography.titleLarge,
-            )
+            // The rest of the header moves the window. Off while the player covers it, so its
+            // buttons stay clickable under the native frame.
+            DragArea(Modifier.weight(1f).fillMaxHeight(), enabled = !app.playerOpen) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                    Text(
+                        when (entry.screen) {
+                            Screen.Listen -> strings.listen
+                            Screen.Search -> strings.search
+                            Screen.Artists -> strings.artists
+                            Screen.Albums -> strings.albums
+                            Screen.Playlists -> strings.playlists
+                            Screen.Genres -> strings.genres
+                            Screen.Downloads -> strings.downloads
+                            Screen.Activity -> strings.activity
+                            Screen.Settings -> strings.settings
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
+            }
         }
         Box(Modifier.weight(1f)) {
             holder.SaveableStateProvider(entry.id) {

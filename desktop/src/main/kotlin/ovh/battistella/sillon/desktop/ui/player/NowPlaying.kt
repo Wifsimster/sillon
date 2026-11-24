@@ -64,6 +64,7 @@ import ovh.battistella.sillon.data.rating.RatingSend
 import ovh.battistella.sillon.data.settings.HiddenArtists
 import ovh.battistella.sillon.desktop.i18n.LocalStrings
 import ovh.battistella.sillon.desktop.ui.AppState
+import ovh.battistella.sillon.desktop.ui.DragArea
 import ovh.battistella.sillon.desktop.ui.components.Cover
 import ovh.battistella.sillon.desktop.ui.components.Wear
 import ovh.battistella.sillon.playback.PlayableTrack
@@ -134,7 +135,7 @@ fun NowPlaying(app: AppState) {
                 IconButton(onClick = { app.playerOpen = false }) {
                     Icon(Icons.Filled.KeyboardArrowDown, strings.playerClose)
                 }
-                Spacer(Modifier.weight(1f))
+                DragArea(Modifier.weight(1f).height(48.dp)) { Spacer(Modifier.fillMaxSize()) }
                 if (track != null) {
                     if (!lyricsShown && !lyrics.isNullOrEmpty()) {
                         IconButton(onClick = { scope.launch { app.graph.prefs.setLyricsShown(true) } }) {
