@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ovh.battistella.sillon.desktop.player.EngineState
 import ovh.battistella.sillon.desktop.player.Playback
@@ -59,7 +60,8 @@ fun WaveformSeekBar(playback: Playback, state: EngineState, heights: List<Float>
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             formatDuration((fraction * duration).toLong()),
-            Modifier.width(48.dp),
+            Modifier.width(48.dp).padding(end = 8.dp),
+            textAlign = TextAlign.End,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

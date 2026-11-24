@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ovh.battistella.sillon.data.rating.JellyfinStars
 import ovh.battistella.sillon.data.rating.RatingSend
@@ -152,7 +153,8 @@ fun SeekBar(playback: Playback, state: EngineState, modifier: Modifier = Modifie
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             formatDuration(((dragging ?: fraction) * duration).toLong()),
-            Modifier.width(48.dp),
+            Modifier.width(48.dp).padding(end = 8.dp),
+            textAlign = TextAlign.End,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
