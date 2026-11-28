@@ -54,7 +54,7 @@ function scanLine(line, family, inBlock) {
     const spaced = i === 0 || /\s/.test(line[i - 1]);
     if (family === 'hash') {
       if (ch === '#' && spaced) return { comment: line.slice(i), inBlock };
-    } else if (ch === '/' && next === '/' && (i === 0 || line[i - 1] !== ':')) {
+    } else if (ch === '/' && next === '/' && (i === 0 || (line[i - 1] !== ':' && line[i - 1] !== '\\'))) {
       return { comment: line.slice(i), inBlock };
     } else if (ch === '/' && next === '*') {
       inBlock = true;

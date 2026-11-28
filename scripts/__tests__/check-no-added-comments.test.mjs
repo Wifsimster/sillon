@@ -33,6 +33,11 @@ test('commentLines ignores comment markers inside strings and URLs', () => {
   assert.deepEqual([...commentLines(source, 'c').keys()], []);
 });
 
+test('commentLines ignores an escaped slash that ends a regex literal', () => {
+  const source = 'const SKIPPED = /(^|\\/)docs\\//;';
+  assert.deepEqual([...commentLines(source, 'c').keys()], []);
+});
+
 test('commentLines handles hash comments and keeps the shebang', () => {
   const source = ['#!/usr/bin/env bash', '# note', 'echo "a # b"', 'echo $# args', 'run # trailing'].join('\n');
   assert.deepEqual([...commentLines(source, 'hash').keys()], [2, 5]);
